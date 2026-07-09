@@ -1,0 +1,2 @@
+ALTER TABLE history
+    ADD COLUMN status VARCHAR(20);
