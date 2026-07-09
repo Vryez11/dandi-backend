@@ -18,3 +18,7 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: true
+
+  devtools:
+    restart:
+      additional-exclude: "db/migration/**"
