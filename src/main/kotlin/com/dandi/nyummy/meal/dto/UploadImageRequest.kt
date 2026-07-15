@@ -1,14 +1,15 @@
 package com.dandi.nyummy.meal.dto
 
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 
 data class UploadImageRequest(
-    @field:NotBlank
+    @field:NotBlank()
     val fileName: String,
 
-    @field:NotBlank
+    @field:NotBlank()
     val contentType: String,
 
-    @field:NotBlank
+    @field:NotNull()
     val fileSizeBytes: Long
 )
