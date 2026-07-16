@@ -5,51 +5,51 @@ import java.time.LocalDateTime
 
 @Entity
 @Table(name = "meal")
-class Meal {
+class Meal(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long = 0
+    val id: Long = 0,
 
     @Column
-    val userId: Long = 0
+    val userId: Long = 0,
 
     @Column
-    val name: String = ""
+    val name: String = "",
 
     @Column
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
 
     @Column
-    val carbs: Int? = null
+    val carbs: Int? = null,
 
     @Column
-    val protein: Int? = null
+    val protein: Int? = null,
 
     @Column
-    val fat: Int? = null
+    val fat: Int? = null,
 
     @Column
-    val score: Int? = null
+    val score: Int? = null,
 
     @Column
-    val calory: Int? = null
+    val calory: Int? = null,
 
     @Column
-    val createdAt: LocalDateTime = LocalDateTime.now()
+    val createdAt: LocalDateTime = LocalDateTime.now(),
 
     @Column
-    val mealAt: LocalDateTime? = null
+    val mealAt: LocalDateTime? = null,
 
     @Column
-    val updatedAt: LocalDateTime? = null
+    val updatedAt: LocalDateTime? = null,
 
     @Column
-    val deletedAt: LocalDateTime? = null
+    val deletedAt: LocalDateTime? = null,
 
     @Column
-    val status: String? = null
+    val status: String? = null,
 
     @Column
-    val isDeleted: Boolean = false
-}
+    val isDeleted: Boolean = false,
+)
