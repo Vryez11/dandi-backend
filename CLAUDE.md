@@ -55,6 +55,16 @@
 | 재화 | Coin | |
 | 애정도 | Love | |
 | 경험치 | Exp | |
+| 프로필 | Profile | 신체/개인 정보 (users에서 분리됨) |
+| 아이콘 | Icon | |
+| 성별 | Gender | TINYINT: 0=남, 1=여 (팀 확정 전 임시 인코딩) |
+| 영양 | Nutrition | |
+| 하루 평가 | DailyNutritionEvaluation | POSITIVE / NEGATIVE / UNRECORDED |
+| 권장 섭취량 | RecommendedDailyIntake | Recommended(권장) + Intake(섭취량) |
+| 월간 | Monthly | 연간/주간이 생기면 Yearly/Weekly로 통일 |
+| 일일 | Daily | |
+| 캘린더 | Calendar | 주 시작 = 일요일 (프론트 확인 전 임시 가정) |
+| 기간 | Period | 시작~종료 구간. 조회는 반개구간 [start, end) |
 
 ## 케이스 규칙
 
