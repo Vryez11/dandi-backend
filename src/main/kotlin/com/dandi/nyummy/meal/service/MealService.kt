@@ -1,10 +1,16 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.meal.dto.DailyNutritionEvaluation
+import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
+import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
 import org.springframework.stereotype.Service
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.YearMonth
 
 @Service
 class MealService(
@@ -12,6 +18,49 @@ class MealService(
     val profileRepository: ProfileRepository,
     val nutritionRecommendationCalculator: NutritionRecommendationCalculator
 ) {
+
+    fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
+
+        val range = MonthlyCalendarRange.calculate(YearMonth.of(year, month))
+
+        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
+            userId,
+            LocalDateTime.of(range.startDate, LocalTime.MIN),
+            LocalDateTime.of(range.endDate, LocalTime.MAX)
+        )
+
+        val mealsByDate: Map<LocalDate, List<Meal>> =
+            mealsByPeriod.filter { it.mealAt != null }
+                .groupBy { it.mealAt!!.toLocalDate() }
+
+
+        val profile = profileRepository.getProfileByUserId(userId)
+        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.now())
+
+        val days = mutableListOf<MonthlyMealDayResponse>()
+        var date = range.startDate
+        while (date <= range.endDate) {
+
+            days.add(
+                MonthlyMealDayResponse(
+                    date = date,
+                    isCurrentMonth = date.year == year && date.monthValue == month,
+                    dailyNutritionEvaluation = calculateDailyNutritionEvaluation(
+                        meals = mealsByDate[date] ?: emptyList(),
+                        recommended = recommended
+                    ),
+                    foodIconIds = emptyList()
+                )
+            )
+            date = date.plusDays(1)
+        }
+
+        return MonthlyMealsResponse(
+            year = year,
+            month = month,
+            days = days
+        )
+    }
 
     fun calculateDailyNutritionEvaluation(
         meals: List<Meal>,
