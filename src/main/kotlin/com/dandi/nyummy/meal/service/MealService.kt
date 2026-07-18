@@ -116,8 +116,8 @@ class MealService(
 
         var totalCalories: Int = 0
         var totalCarbs: Int = 0
-        var totalProteins: Int = 0
-        var totalFats: Int = 0
+        var totalProtein: Int = 0
+        var totalFat: Int = 0
 
         for (meal in mealsByPeriod) {
 
@@ -130,26 +130,26 @@ class MealService(
                     carbs = meal.carbs ?: 0,
                     protein = meal.protein ?: 0,
                     fat = meal.fat ?: 0,
-                    status = getMealStatus(meal.status)
+                    status = convertMealStatus(meal.status)
                 )
             )
 
             totalCalories += meal.calory ?: 0
             totalCarbs += meal.carbs ?: 0
-            totalProteins += meal.protein ?: 0
-            totalFats += meal.fat ?: 0
+            totalProtein += meal.protein ?: 0
+            totalFat += meal.fat ?: 0
         }
 
-        val profileByUserId = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.getProfileByUserId(userId)
 
-        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profileByUserId, LocalDate.of(year, month, day))
+        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
         val dailyNutrition = DailyNutritionResponse(
             current = Nutrition(
                 calories = totalCalories,
                 carbs = totalCarbs,
-                protein = totalProteins,
-                fat = totalFats,
+                protein = totalProtein,
+                fat = totalFat,
             ),
             target = Nutrition(
                 calories = recommended.calory,
@@ -166,7 +166,7 @@ class MealService(
         )
     }
 
-    fun getMealStatus(status: String?): MealStatus {
+    fun convertMealStatus(status: String?): MealStatus {
 
         when (status) {
             "COMPLETED" -> return MealStatus.COMPLETED

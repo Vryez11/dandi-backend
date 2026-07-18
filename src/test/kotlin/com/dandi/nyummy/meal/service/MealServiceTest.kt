@@ -372,19 +372,19 @@ class MealServiceTest {
         }
     }
 
-    // ---------- getMealStatus ----------
+    // ---------- convertMealStatus ----------
 
     @Test
     fun `status 문자열을 MealStatus로 변환한다`() {
-        assertEquals(MealStatus.COMPLETED, mealService.getMealStatus("COMPLETED"))
-        assertEquals(MealStatus.FAILED, mealService.getMealStatus("FAILED"))
-        assertEquals(MealStatus.ANALYSIS, mealService.getMealStatus("ANALYSIS"))
+        assertEquals(MealStatus.COMPLETED, mealService.convertMealStatus("COMPLETED"))
+        assertEquals(MealStatus.FAILED, mealService.convertMealStatus("FAILED"))
+        assertEquals(MealStatus.ANALYSIS, mealService.convertMealStatus("ANALYSIS"))
     }
 
     @Test
     fun `알 수 없거나 null인 status는 UNKNOWN으로 변환한다`() {
-        assertEquals(MealStatus.UNKNOWN, mealService.getMealStatus(null))
-        assertEquals(MealStatus.UNKNOWN, mealService.getMealStatus("completed"))
-        assertEquals(MealStatus.UNKNOWN, mealService.getMealStatus("DELETED"))
+        assertEquals(MealStatus.UNKNOWN, mealService.convertMealStatus(null))
+        assertEquals(MealStatus.UNKNOWN, mealService.convertMealStatus("completed"))
+        assertEquals(MealStatus.UNKNOWN, mealService.convertMealStatus("DELETED"))
     }
 }
