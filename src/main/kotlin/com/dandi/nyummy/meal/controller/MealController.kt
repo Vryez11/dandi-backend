@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.controller
 
+import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.service.MealService
 import org.springframework.web.bind.annotation.*
@@ -17,4 +18,16 @@ class MealController(private val mealService: MealService) {
 
         return mealService.getMonthlyMeals(userId, year, month)
     }
+
+    @GetMapping("/daily")
+    fun getDailyMeals(
+        @RequestHeader("X-User-Id") userId: Long,
+        @RequestParam year: Int,
+        @RequestParam month: Int,
+        @RequestParam day: Int,
+    ) : DailyMealsResponse {
+
+        return mealService.getDailyMeals(userId, year, month, day)
+    }
+
 }
