@@ -1,6 +1,8 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.meal.dto.DailyNutritionEvaluation
+import com.dandi.nyummy.meal.dto.MealStatus
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.entity.Profile
@@ -12,10 +14,12 @@ import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import java.time.DateTimeException
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class MealServiceTest {
@@ -244,5 +248,143 @@ class MealServiceTest {
 
         val july10 = result.days.first { it.date == LocalDate.of(2026, 7, 10) }
         assertEquals(DailyNutritionEvaluation.NEGATIVE, july10.dailyNutritionEvaluation)
+    }
+
+    // ---------- getDailyMeals ----------
+
+    @Test
+    fun `기록이 없는 날도 빈 목록과 0 합계, target을 반환한다`() {
+        `when`(mealRepository.getMealsByUserIdAndPeriod(anyLong(), anyDateTime(), anyDateTime()))
+            .thenReturn(emptyList())
+        `when`(profileRepository.getProfileByUserId(1L)).thenReturn(null)
+
+        val result = mealService.getDailyMeals(userId = 1L, year = 2026, month = 7, day = 12)
+
+        assertEquals(LocalDate.of(2026, 7, 12), result.date)
+        assertTrue(result.meals.isEmpty())
+        assertEquals(Nutrition(calories = 0, carbs = 0, protein = 0, fat = 0), result.dailyNutrition.current)
+        // 프로필이 없으면 기본 권장량이 target으로 내려간다 (기록이 없어도 target은 항상 존재)
+        assertEquals(Nutrition(calories = 2000, carbs = 250, protein = 100, fat = 67), result.dailyNutrition.target)
+    }
+
+    @Test
+    fun `여러 식사의 영양을 합산해 current로 반환한다`() {
+        // API 스펙 예시와 동일한 합계: 1350/185/42/31
+        val meals = listOf(
+            meal(calory = 540, carbs = 60, protein = 40, fat = 12, mealAt = LocalDateTime.of(2026, 7, 12, 12, 36)),
+            meal(calory = 810, carbs = 125, protein = 2, fat = 19, mealAt = LocalDateTime.of(2026, 7, 12, 18, 0)),
+        )
+        `when`(mealRepository.getMealsByUserIdAndPeriod(anyLong(), anyDateTime(), anyDateTime()))
+            .thenReturn(meals)
+        `when`(profileRepository.getProfileByUserId(1L)).thenReturn(null)
+
+        val result = mealService.getDailyMeals(userId = 1L, year = 2026, month = 7, day = 12)
+
+        assertEquals(2, result.meals.size)
+        assertEquals(Nutrition(calories = 1350, carbs = 185, protein = 42, fat = 31), result.dailyNutrition.current)
+    }
+
+    @Test
+    fun `식사 항목의 필드가 응답에 매핑된다`() {
+        val poke = Meal(
+            id = 7,
+            userId = 1,
+            name = "닭가슴살 포케",
+            calory = 540,
+            carbs = 60,
+            protein = 40,
+            fat = 12,
+            mealAt = LocalDateTime.of(2026, 7, 12, 12, 36),
+            status = "COMPLETED",
+        )
+        `when`(mealRepository.getMealsByUserIdAndPeriod(anyLong(), anyDateTime(), anyDateTime()))
+            .thenReturn(listOf(poke))
+        `when`(profileRepository.getProfileByUserId(1L)).thenReturn(null)
+
+        val response = mealService.getDailyMeals(userId = 1L, year = 2026, month = 7, day = 12).meals.single()
+
+        assertEquals(7L, response.mealId)
+        assertEquals("닭가슴살 포케", response.name)
+        assertEquals(LocalDateTime.of(2026, 7, 12, 12, 36), response.mealAt)
+        assertEquals(540, response.calories)
+        assertEquals(60, response.carbs)
+        assertEquals(40, response.protein)
+        assertEquals(12, response.fat)
+        assertEquals(MealStatus.COMPLETED, response.status)
+    }
+
+    @Test
+    fun `영양값이 null인 식사는 0으로 응답하고 합산에도 0으로 반영한다`() {
+        val meals = listOf(
+            meal(calory = null, carbs = null, protein = null, fat = null, mealAt = LocalDateTime.of(2026, 7, 12, 9, 0)),
+            meal(calory = 500, carbs = 50, protein = 30, fat = 10, mealAt = LocalDateTime.of(2026, 7, 12, 12, 0)),
+        )
+        `when`(mealRepository.getMealsByUserIdAndPeriod(anyLong(), anyDateTime(), anyDateTime()))
+            .thenReturn(meals)
+        `when`(profileRepository.getProfileByUserId(1L)).thenReturn(null)
+
+        val result = mealService.getDailyMeals(userId = 1L, year = 2026, month = 7, day = 12)
+
+        assertEquals(0, result.meals.first().calories)
+        assertEquals(Nutrition(calories = 500, carbs = 50, protein = 30, fat = 10), result.dailyNutrition.current)
+    }
+
+    @Test
+    fun `조회 기간은 당일 하루 전체다`() {
+        `when`(mealRepository.getMealsByUserIdAndPeriod(anyLong(), anyDateTime(), anyDateTime()))
+            .thenReturn(emptyList())
+        `when`(profileRepository.getProfileByUserId(1L)).thenReturn(null)
+
+        mealService.getDailyMeals(userId = 1L, year = 2026, month = 7, day = 12)
+
+        val captor = ArgumentCaptor.forClass(LocalDateTime::class.java)
+        verify(mealRepository).getMealsByUserIdAndPeriod(eq(1L), capture(captor), capture(captor))
+        val (start, end) = captor.allValues
+        assertEquals(LocalDateTime.of(2026, 7, 12, 0, 0), start)
+        assertTrue(!end.isBefore(LocalDateTime.of(2026, 7, 12, 23, 59, 59)), "종료 경계가 당일 전체를 포함해야 함: $end")
+        assertTrue(end.isBefore(LocalDateTime.of(2026, 7, 13, 0, 0)), "종료 경계가 다음 날로 넘어가면 안 됨: $end")
+    }
+
+    @Test
+    fun `프로필이 있으면 개인화된 권장량을 target으로 반환한다`() {
+        // 남성 175cm/70kg, 2001-03-15생 → 조회일(2026-07-12) 기준 25세
+        // BMR = 700 + 1093.75 - 125 + 5 = 1673.75, 권장 칼로리 = 1673.75 * 1.375 = 2301
+        val profile = Profile(
+            userId = 1L,
+            birth = LocalDateTime.of(2001, 3, 15, 0, 0),
+            gender = 0,
+            height = 175,
+            weight = 70,
+        )
+        `when`(mealRepository.getMealsByUserIdAndPeriod(anyLong(), anyDateTime(), anyDateTime()))
+            .thenReturn(emptyList())
+        `when`(profileRepository.getProfileByUserId(1L)).thenReturn(profile)
+
+        val result = mealService.getDailyMeals(userId = 1L, year = 2026, month = 7, day = 12)
+
+        assertEquals(Nutrition(calories = 2301, carbs = 287, protein = 115, fat = 76), result.dailyNutrition.target)
+    }
+
+    @Test
+    fun `존재하지 않는 날짜면 예외가 발생한다`() {
+        assertFailsWith<DateTimeException> {
+            mealService.getDailyMeals(userId = 1L, year = 2026, month = 2, day = 30)
+        }
+    }
+
+    // ---------- getMealStatus ----------
+
+    @Test
+    fun `status 문자열을 MealStatus로 변환한다`() {
+        assertEquals(MealStatus.COMPLETED, mealService.getMealStatus("COMPLETED"))
+        assertEquals(MealStatus.FAILED, mealService.getMealStatus("FAILED"))
+        assertEquals(MealStatus.ANALYSIS, mealService.getMealStatus("ANALYSIS"))
+    }
+
+    @Test
+    fun `알 수 없거나 null인 status는 UNKNOWN으로 변환한다`() {
+        assertEquals(MealStatus.UNKNOWN, mealService.getMealStatus(null))
+        assertEquals(MealStatus.UNKNOWN, mealService.getMealStatus("completed"))
+        assertEquals(MealStatus.UNKNOWN, mealService.getMealStatus("DELETED"))
     }
 }
