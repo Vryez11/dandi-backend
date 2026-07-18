@@ -1,8 +1,13 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.meal.dto.DailyMealResponse
+import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.DailyNutritionEvaluation
+import com.dandi.nyummy.meal.dto.DailyNutritionResponse
+import com.dandi.nyummy.meal.dto.MealStatus
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
@@ -98,6 +103,78 @@ class MealService(
         }
 
         return DailyNutritionEvaluation.NEGATIVE
+    }
+
+    fun getDailyMeals(userId: Long, year: Int, month: Int, day: Int): DailyMealsResponse {
+
+        val start = LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.MIN)
+        val end = LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.MAX)
+
+        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
+
+        val meals = mutableListOf<DailyMealResponse>()
+
+        var totalCalories: Int = 0
+        var totalCarbs: Int = 0
+        var totalProteins: Int = 0
+        var totalFats: Int = 0
+
+        for (meal in mealsByPeriod) {
+
+            meals.add(
+                DailyMealResponse(
+                    mealId = meal.id,
+                    name = meal.name,
+                    mealAt = meal.mealAt!!,
+                    calories = meal.calory ?: 0,
+                    carbs = meal.carbs ?: 0,
+                    protein = meal.protein ?: 0,
+                    fat = meal.fat ?: 0,
+                    status = getMealStatus(meal.status)
+                )
+            )
+
+            totalCalories += meal.calory ?: 0
+            totalCarbs += meal.carbs ?: 0
+            totalProteins += meal.protein ?: 0
+            totalFats += meal.fat ?: 0
+        }
+
+        val profileByUserId = profileRepository.getProfileByUserId(userId)
+
+        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profileByUserId, LocalDate.of(year, month, day))
+
+        val dailyNutrition = DailyNutritionResponse(
+            current = Nutrition(
+                calories = totalCalories,
+                carbs = totalCarbs,
+                protein = totalProteins,
+                fat = totalFats,
+            ),
+            target = Nutrition(
+                calories = recommended.calory,
+                carbs = recommended.carbs,
+                protein = recommended.protein,
+                fat = recommended.fat
+            )
+        )
+
+        return DailyMealsResponse(
+            date = LocalDate.of(year, month, day),
+            meals = meals,
+            dailyNutrition = dailyNutrition
+        )
+    }
+
+    fun getMealStatus(status: String?): MealStatus {
+
+        when (status) {
+            "COMPLETED" -> return MealStatus.COMPLETED
+            "FAILED" -> return MealStatus.FAILED
+            "ANALYSIS" -> return MealStatus.ANALYSIS
+        }
+
+        return MealStatus.UNKNOWN
     }
 
     private fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
