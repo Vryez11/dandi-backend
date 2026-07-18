@@ -3,7 +3,7 @@ package com.dandi.nyummy.meal.dto
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-data class DailMealsResponse (
+data class DailyMealsResponse (
 
     val date: LocalDate,
     val meals: List<DailyMealResponse>,
@@ -18,7 +18,8 @@ data class DailyMealResponse(
     val calories: Int,
     val carbs: Int,
     val protein: Int,
-    val fat: Int
+    val fat: Int,
+    val status: MealStatus
 )
 
 data class DailyNutritionResponse(
