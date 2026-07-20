@@ -1,5 +1,7 @@
 package com.dandi.nyummy.meal.controller
 
+import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.CreateMealResponse
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.service.CreateMealService
@@ -18,6 +20,13 @@ class CreateMealController(private val createMealService: CreateMealService) {
         @Valid @RequestBody request: UploadImageRequest
     ): UploadImageResponse {
         return createMealService.getUploadUrl(request)
+    }
+
+    @PostMapping("/")
+    suspend fun createMeal(
+        @Valid @RequestBody request: CreateMealRequest
+    ): CreateMealResponse {
+        return createMealService.createMeal(request)
     }
 
 }
