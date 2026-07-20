@@ -15,7 +15,7 @@ class Meal(
     val userId: Long = 0,
 
     @Column
-    val name: String = "",
+    var name: String = "",
 
     @Column
     val imageUrl: String? = null,
