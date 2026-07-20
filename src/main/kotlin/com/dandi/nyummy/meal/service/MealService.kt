@@ -214,6 +214,20 @@ class MealService(
         )
     }
 
+    fun deleteSingleMeal(userId: Long, mealId: Long) {
+
+        val findMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
+
+        if (findMeal == null) {
+            /*
+            에러 발생 !
+             */
+        }
+
+        findMeal?.isDeleted = true
+        mealRepository.save(findMeal?:Meal())
+    }
+
     fun convertMealStatus(status: String?): MealStatus {
 
         when (status) {
