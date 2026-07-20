@@ -51,5 +51,5 @@ class Meal(
     val status: String? = null,
 
     @Column
-    val isDeleted: Boolean = false,
+    var isDeleted: Boolean = false,
 )
