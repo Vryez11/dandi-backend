@@ -1,17 +1,20 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.common.enum.Status
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
 import com.dandi.nyummy.meal.dto.CreateMealRequest
-import com.dandi.nyummy.meal.dto.CreateMealResponse
+import com.dandi.nyummy.meal.dto.GetStatusResponse
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.meal.toEntity
-import com.dandi.nyummy.meal.toResponse
+import com.dandi.nyummy.meal.toGetStatusResponse
+import jakarta.persistence.EntityNotFoundException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import java.util.*
 import kotlin.time.Clock
@@ -22,7 +25,8 @@ import kotlin.time.Duration.Companion.seconds
 class CreateMealService(
     private val s3Presigner: S3Presigner,
     private val clock: Clock = Clock.System,
-    private val mealRepository: MealRepository
+    private val mealRepository: MealRepository,
+    private val nutritionUpdateService: NutritionUpdateService,
 ) {
 
     companion object {
@@ -69,24 +73,49 @@ class CreateMealService(
         )
     }
 
-    fun createMeal(request: CreateMealRequest): CreateMealResponse {
+    fun createMeal(request: CreateMealRequest): GetStatusResponse {
 
         val meal = request.toEntity()
         val savedMeal = mealRepository.save(meal)
 
-        CoroutineScope(Dispatchers.IO).launch {
-            runCatching {
-                createNutrition()
-            }.getOrThrow()
+        nutritionUpdateService.updateStatus(meal.id, Status.ANALYSIS)
+
+        analysisNutrition(savedMeal.id)
+
+        return savedMeal.toGetStatusResponse()
+    }
+
+    fun getStatus(mealId: Long): GetStatusResponse {
+
+        val meal = mealRepository.findByIdOrNull(mealId)
+            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
+
+        return meal.toGetStatusResponse()
+    }
+
+    fun retryNutritionAnalysis(mealId: Long): GetStatusResponse {
+
+        val meal = mealRepository.findByIdOrNull(mealId)
+            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
+
+        if (meal.status == Status.FAILED) {
+            nutritionUpdateService.updateStatus(meal.id, Status.ANALYSIS)
+            analysisNutrition(meal.id)
         }
 
-        return savedMeal.toResponse()
+        return meal.toGetStatusResponse()
     }
 
-    suspend fun createNutrition() {
-        println("영양소 분석 시작")
-        delay(5.seconds)
-        println("영양소 분석 끝")
+    private fun analysisNutrition(mealId: Long) {
+        CoroutineScope(Dispatchers.IO).launch {
+            println("영양소 분석 시작")
+            delay(10.seconds)
+            runCatching {
+                nutritionUpdateService.updateNutrition(mealId)
+            }.onFailure {
+                nutritionUpdateService.updateStatus(mealId, Status.FAILED)
+            }
+            println("영양소 분석 끝")
+        }
     }
-
 }
