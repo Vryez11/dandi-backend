@@ -8,6 +8,7 @@ import com.dandi.nyummy.meal.dto.MealStatus
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.Nutrition
+import com.dandi.nyummy.meal.dto.SingleMealResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
@@ -163,6 +164,25 @@ class MealService(
             date = LocalDate.of(year, month, day),
             meals = meals,
             dailyNutrition = dailyNutrition
+        )
+    }
+
+    fun getSingleMeal(userId: Long, mealId: Long): SingleMealResponse {
+
+        val singleMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
+
+        return SingleMealResponse(
+            mealId = mealId,
+            name = singleMeal?.name?: "Unknown",
+            mealAt = singleMeal?.mealAt?: LocalDateTime.now(),
+            status = convertMealStatus(singleMeal?.status?: "Unknown"),
+            nutrition = Nutrition(
+                calories = singleMeal?.calory?:0,
+                carbs = singleMeal?.carbs?:0,
+                protein = singleMeal?.protein?:0,
+                fat = singleMeal?.fat?:0,
+            ),
+            imageUrl = singleMeal?.imageUrl?: "Unknown"
         )
     }
 
