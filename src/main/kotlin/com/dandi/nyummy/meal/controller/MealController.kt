@@ -41,4 +41,14 @@ class MealController(private val mealService: MealService) {
         return mealService.getSingleMeal(userId, mealId)
     }
 
+    @PutMapping("/{mealId}")
+    fun updateSingleMeal(
+        @RequestHeader("X-User-Id") userId: Long,
+        @PathVariable("mealId") mealId: Long,
+        @RequestParam name: String,
+    ) : SingleMealResponse {
+
+        return mealService.updateSingleMeal(userId, mealId, name)
+    }
+
 }
