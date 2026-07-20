@@ -226,7 +226,7 @@ class MealService(
     }
 
     private fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
-
+S
         return 0.9 * recommendedValue <= totalValue && totalValue < 1.5 * recommendedValue
     }
 }
