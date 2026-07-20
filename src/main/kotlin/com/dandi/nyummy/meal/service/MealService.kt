@@ -214,7 +214,7 @@ class MealService(
         )
     }
 
-    fun deleteSingle Meal(userId: Long, mealId: Long) {
+    fun deleteSingleMeal(userId: Long, mealId: Long) {
 
         val findMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
 
