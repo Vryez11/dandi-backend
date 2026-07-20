@@ -186,6 +186,34 @@ class MealService(
         )
     }
 
+    fun updateSingleMeal(userId: Long, mealId: Long, name: String): SingleMealResponse {
+
+        val findMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
+
+        if (findMeal == null) {
+            /*
+            에러 발생 !
+             */
+        }
+
+        findMeal?.name = name
+        mealRepository.save(findMeal?:Meal())
+
+        return SingleMealResponse(
+            mealId = mealId,
+            name = findMeal?.name?: "Unknown",
+            mealAt = findMeal?.mealAt?: LocalDateTime.now(),
+            status = convertMealStatus(findMeal?.status?: "Unknown"),
+            nutrition = Nutrition(
+                calories = findMeal?.calory?:0,
+                carbs = findMeal?.carbs?: 0,
+                protein = findMeal?.protein?: 0,
+                fat = findMeal?.fat?: 0
+            ),
+            imageUrl = findMeal?.imageUrl?: "Unknown"
+        )
+    }
+
     fun convertMealStatus(status: String?): MealStatus {
 
         when (status) {
