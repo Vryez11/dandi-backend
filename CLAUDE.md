@@ -24,6 +24,7 @@
 | 검증 | validate | check, verify | `validateEmail()` |
 | 증가 | increase | add, plus | `increaseCoin()` |
 | 감소 | decrease | minus, subtract | `decreaseCoin()` |
+| 재시도 | retry | resume, redo | `retryNutritionAnalysis()` |
 
 ## 클래스 접미사
 
@@ -34,6 +35,8 @@
 | 서비스 | ~Service | ~Manager, ~Handler |
 | 리포지토리 | ~Repository | ~Dao |
 | 컨트롤러 | ~Controller | ~Api, ~Resource |
+| 설정 바인딩(@ConfigurationProperties) | ~Properties | ~Config |
+| DTO-엔티티 변환 | ~Mapper | ~Converter, ~Transformer |
 
 ## Boolean 네이밍
 

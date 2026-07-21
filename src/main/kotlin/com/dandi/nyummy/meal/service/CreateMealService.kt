@@ -34,7 +34,7 @@ class CreateMealService(
         private val ALLOWED_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp")
     }
 
-    fun getUploadUrl(request: UploadImageRequest): UploadImageResponse {
+    fun createUploadUrl(request: UploadImageRequest): UploadImageResponse {
 
         val extension = request.fileName.substringAfterLast(".", missingDelimiterValue = "").lowercase()
 

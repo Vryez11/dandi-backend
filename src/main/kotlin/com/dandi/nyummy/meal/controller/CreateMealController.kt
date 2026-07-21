@@ -17,7 +17,7 @@ class CreateMealController(private val createMealService: CreateMealService) {
     fun getUploadUrl(
         @Valid @RequestBody request: UploadImageRequest
     ): UploadImageResponse {
-        return createMealService.getUploadUrl(request)
+        return createMealService.createUploadUrl(request)
     }
 
     @PostMapping("/")
