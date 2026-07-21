@@ -1,8 +1,14 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.meal.dto.DailyMealResponse
+import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.DailyNutritionEvaluation
+import com.dandi.nyummy.meal.dto.DailyNutritionResponse
+import com.dandi.nyummy.meal.dto.MealStatus
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
+import com.dandi.nyummy.meal.dto.Nutrition
+import com.dandi.nyummy.meal.dto.SingleMealResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
@@ -98,6 +104,139 @@ class MealService(
         }
 
         return DailyNutritionEvaluation.NEGATIVE
+    }
+
+    fun getDailyMeals(userId: Long, year: Int, month: Int, day: Int): DailyMealsResponse {
+
+        val start = LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.MIN)
+        val end = LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.MAX)
+
+        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
+
+        val meals = mutableListOf<DailyMealResponse>()
+
+        var totalCalories: Int = 0
+        var totalCarbs: Int = 0
+        var totalProtein: Int = 0
+        var totalFat: Int = 0
+
+        for (meal in mealsByPeriod) {
+
+            meals.add(
+                DailyMealResponse(
+                    mealId = meal.id,
+                    name = meal.name,
+                    mealAt = meal.mealAt!!,
+                    calories = meal.calory ?: 0,
+                    carbs = meal.carbs ?: 0,
+                    protein = meal.protein ?: 0,
+                    fat = meal.fat ?: 0,
+                    status = convertMealStatus(meal.status)
+                )
+            )
+
+            totalCalories += meal.calory ?: 0
+            totalCarbs += meal.carbs ?: 0
+            totalProtein += meal.protein ?: 0
+            totalFat += meal.fat ?: 0
+        }
+
+        val profile = profileRepository.getProfileByUserId(userId)
+
+        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
+
+        val dailyNutrition = DailyNutritionResponse(
+            current = Nutrition(
+                calories = totalCalories,
+                carbs = totalCarbs,
+                protein = totalProtein,
+                fat = totalFat,
+            ),
+            target = Nutrition(
+                calories = recommended.calory,
+                carbs = recommended.carbs,
+                protein = recommended.protein,
+                fat = recommended.fat
+            )
+        )
+
+        return DailyMealsResponse(
+            date = LocalDate.of(year, month, day),
+            meals = meals,
+            dailyNutrition = dailyNutrition
+        )
+    }
+
+    fun getSingleMeal(userId: Long, mealId: Long): SingleMealResponse {
+
+        val singleMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
+
+        return SingleMealResponse(
+            mealId = mealId,
+            name = singleMeal?.name?: "Unknown",
+            mealAt = singleMeal?.mealAt?: LocalDateTime.now(),
+            status = convertMealStatus(singleMeal?.status?: "Unknown"),
+            nutrition = Nutrition(
+                calories = singleMeal?.calory?:0,
+                carbs = singleMeal?.carbs?:0,
+                protein = singleMeal?.protein?:0,
+                fat = singleMeal?.fat?:0,
+            ),
+            imageUrl = singleMeal?.imageUrl?: "Unknown"
+        )
+    }
+
+    fun updateSingleMeal(userId: Long, mealId: Long, name: String): SingleMealResponse {
+
+        val findMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
+
+        if (findMeal == null) {
+            /*
+            에러 발생 !
+             */
+        }
+
+        findMeal?.name = name
+        mealRepository.save(findMeal?:Meal())
+
+        return SingleMealResponse(
+            mealId = mealId,
+            name = findMeal?.name?: "Unknown",
+            mealAt = findMeal?.mealAt?: LocalDateTime.now(),
+            status = convertMealStatus(findMeal?.status?: "Unknown"),
+            nutrition = Nutrition(
+                calories = findMeal?.calory?:0,
+                carbs = findMeal?.carbs?: 0,
+                protein = findMeal?.protein?: 0,
+                fat = findMeal?.fat?: 0
+            ),
+            imageUrl = findMeal?.imageUrl?: "Unknown"
+        )
+    }
+
+    fun deleteSingleMeal(userId: Long, mealId: Long) {
+
+        val findMeal = mealRepository.getMealByIdAndUserIdAndIsDeletedIsFalse(mealId, userId)
+
+        if (findMeal == null) {
+            /*
+            에러 발생 !
+             */
+        }
+
+        findMeal?.isDeleted = true
+        mealRepository.save(findMeal?:Meal())
+    }
+
+    fun convertMealStatus(status: String?): MealStatus {
+
+        when (status) {
+            "COMPLETED" -> return MealStatus.COMPLETED
+            "FAILED" -> return MealStatus.FAILED
+            "ANALYSIS" -> return MealStatus.ANALYSIS
+        }
+
+        return MealStatus.UNKNOWN
     }
 
     private fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {

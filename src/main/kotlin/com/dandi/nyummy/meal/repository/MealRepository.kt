@@ -19,4 +19,6 @@ interface MealRepository : JpaRepository<Meal, Long> {
     """
     )
     fun getMealsByUserIdAndPeriod(userId: Long, start: Instant, end: Instant): List<Meal>
+
+    fun getMealByIdAndUserIdAndIsDeletedIsFalse(mealId: Long, userId: Long): Meal?
 }
