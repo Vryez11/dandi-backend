@@ -1,9 +1,14 @@
 package com.dandi.nyummy.meal.entity
 
+import com.dandi.nyummy.common.enum.Status
 import jakarta.persistence.*
-import java.time.LocalDateTime
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedDate
+import org.springframework.data.jpa.domain.support.AuditingEntityListener
+import java.time.Instant
 
 @Entity
+@EntityListeners(AuditingEntityListener::class)
 @Table(name = "meal")
 class Meal(
 
@@ -12,44 +17,62 @@ class Meal(
     val id: Long = 0,
 
     @Column
-    val userId: Long = 0,
+    var name: String = "",
 
     @Column
-    val name: String = "",
+    var carbs: Int? = null,
 
     @Column
-    val imageUrl: String? = null,
+    var protein: Int? = null,
 
     @Column
-    val carbs: Int? = null,
+    var fat: Int? = null,
 
     @Column
-    val protein: Int? = null,
+    var score: Int? = null,
 
     @Column
-    val fat: Int? = null,
+    var calory: Int? = null,
 
     @Column
-    val score: Int? = null,
+    @Enumerated(EnumType.STRING)
+    var status: Status,
 
     @Column
-    val calory: Int? = null,
+    val imageKey: String,
 
     @Column
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val mealAt: Instant,
 
     @Column
-    val mealAt: LocalDateTime? = null,
+    @CreatedDate
+    var createdAt: Instant = Instant.now(),
 
     @Column
-    val updatedAt: LocalDateTime? = null,
+    @LastModifiedDate
+    var updatedAt: Instant? = null,
 
     @Column
-    val deletedAt: LocalDateTime? = null,
-
-    @Column
-    val status: String? = null,
+    val deletedAt: Instant? = null,
 
     @Column
     val isDeleted: Boolean = false,
-)
+
+    @Column
+    val userId: Long = 0,
+
+    @Column
+    val iconId: Long = 0,
+) {
+    fun updateNutrition(calory: Int, carbs: Int, protein: Int, fat: Int) {
+        this.status = Status.COMPLETED
+        this.calory = calory
+        this.carbs = carbs
+        this.protein = protein
+        this.fat = fat
+    }
+
+    fun updateStatus(status: Status) {
+        this.status = status
+    }
+}
