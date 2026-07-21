@@ -1,0 +1,5 @@
+ALTER TABLE meal
+    MODIFY COLUMN status varchar(20) NOT NULL,
+    MODIFY COLUMN image_key varchar(512) NOT NULL,
+    MODIFY COLUMN meal_at TIMESTAMP NOT NULL,
+    MODIFY COLUMN updated_at TIMESTAMP NOT NULL

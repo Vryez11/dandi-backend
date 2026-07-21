@@ -36,6 +36,18 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-flyway")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
+
+    // Kotlin Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+
+    // AWS SDK
+    implementation("aws.sdk.kotlin:s3:1.4.0")
+
+    // .env 파일 파싱용 라이브러리
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
+
+    // 입력 검증
+    implementation("org.springframework.boot:spring-boot-starter-validation")
 }
 
 kotlin {

@@ -2,9 +2,11 @@ package com.dandi.nyummy.meal.repository
 
 import com.dandi.nyummy.meal.entity.Meal
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
 import org.springframework.data.jpa.repository.Query
-import java.time.LocalDateTime
+import java.time.Instant
 
+@Repository
 interface MealRepository : JpaRepository<Meal, Long> {
 
     @Query(
@@ -16,7 +18,7 @@ interface MealRepository : JpaRepository<Meal, Long> {
         AND m.mealAt < :end
     """
     )
-    fun getMealsByUserIdAndPeriod(userId: Long, start: LocalDateTime, end: LocalDateTime): List<Meal>
+    fun getMealsByUserIdAndPeriod(userId: Long, start: Instant, end: Instant): List<Meal>
 
     fun getMealByIdAndUserIdAndIsDeletedIsFalse(mealId: Long, userId: Long): Meal?
 }

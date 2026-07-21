@@ -1,7 +1,7 @@
 package com.dandi.nyummy.meal.dto
 
 data class Nutrition(
-    val calories: Int,
+    val calory: Int,
     val carbs: Int,
     val protein: Int,
     val fat: Int
