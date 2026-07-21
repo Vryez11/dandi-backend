@@ -1,4 +1,4 @@
-package com.dandi.nyummy.meal.service
+package com.dandi.nyummy.meal.domain
 
 import com.dandi.nyummy.profile.entity.Profile
 import org.springframework.stereotype.Component

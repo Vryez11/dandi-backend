@@ -13,12 +13,12 @@ interface MealRepository : JpaRepository<Meal, Long> {
         """
         select m from Meal as m
         where m.userId = :userId
-        AND m.isDeleted = false
+        AND m.deletedAt is null
         AND m.mealAt >= :start 
         AND m.mealAt < :end
     """
     )
     fun getMealsByUserIdAndPeriod(userId: Long, start: Instant, end: Instant): List<Meal>
 
-    fun getMealByIdAndUserIdAndIsDeletedIsFalse(mealId: Long, userId: Long): Meal?
+    fun getMealByIdAndUserIdAndDeletedAtIsNull(mealId: Long, userId: Long): Meal?
 }

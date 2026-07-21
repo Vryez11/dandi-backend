@@ -1,6 +1,6 @@
 package com.dandi.nyummy.meal.entity
 
-import com.dandi.nyummy.common.enum.Status
+import com.dandi.nyummy.meal.enum.MealStatus
 import jakarta.persistence.*
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedDate
@@ -36,7 +36,7 @@ class Meal(
 
     @Column
     @Enumerated(EnumType.STRING)
-    var status: Status,
+    var status: MealStatus,
 
     @Column
     val imageKey: String,
@@ -53,10 +53,7 @@ class Meal(
     var updatedAt: Instant? = null,
 
     @Column
-    val deletedAt: Instant? = null,
-
-    @Column
-    val isDeleted: Boolean = false,
+    var deletedAt: Instant? = null,
 
     @Column
     val userId: Long = 0,
@@ -65,14 +62,22 @@ class Meal(
     val iconId: Long = 0,
 ) {
     fun updateNutrition(calory: Int, carbs: Int, protein: Int, fat: Int) {
-        this.status = Status.COMPLETED
+        this.status = MealStatus.COMPLETED
         this.calory = calory
         this.carbs = carbs
         this.protein = protein
         this.fat = fat
     }
 
-    fun updateStatus(status: Status) {
+    fun updateStatus(status: MealStatus) {
         this.status = status
+    }
+
+    fun updateName(name: String) {
+        this.name = name
+    }
+
+    fun updateDeletedAt(deletedAt: Instant) {
+        this.deletedAt = deletedAt
     }
 }
