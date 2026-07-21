@@ -1,4 +1,4 @@
 package com.dandi.nyummy.meal.service
 
-class NutritionUpdateService {
+class SingleMealService {
 }
