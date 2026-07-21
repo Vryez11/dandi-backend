@@ -1,16 +1,16 @@
 package com.dandi.nyummy.meal
 
-import com.dandi.nyummy.common.enum.Status
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.GetStatusResponse
-import com.dandi.nyummy.meal.dto.Nutrition
+import com.dandi.nyummy.meal.domain.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
+import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant
 
 // DTO -> Entity 변환 확장 함수
 fun CreateMealRequest.toEntity() = Meal(
     name = this.name,
-    status = Status.ANALYSIS,
+    status = MealStatus.ANALYSIS,
     imageKey = this.imageKey,
     mealAt = this.mealAt,
     createdAt = Instant.now(),
