@@ -26,6 +26,7 @@
 | 감소 | decrease | minus, subtract | `decreaseCoin()` |
 | 변환 | convert | parse, transform, map, to | `convertMealStatus()` |
 | 재시도 | retry | resume, redo | `retryNutritionAnalysis()` |
+| 분석 | analyze | analysis(명사를 동사 자리에 금지), analyse | `analyzeNutrition()` |
 
 ## 클래스 접미사
 
@@ -62,7 +63,7 @@
 | 프로필 | Profile | 신체/개인 정보 (users에서 분리됨) |
 | 아이콘 | Icon | |
 | 성별 | Gender | TINYINT: 0=남, 1=여 (팀 확정 전 임시 인코딩) |
-| 영양 | Nutrition | 영양 4종(calories/carbs/protein/fat) 값 객체로도 사용 (응답 current/target 공용) |
+| 영양 | Nutrition | 영양 4종(calory/carbs/protein/fat) 값 객체로도 사용 (응답 current/target 공용) |
 | 하루 평가 | DailyNutritionEvaluation | POSITIVE / NEGATIVE / UNRECORDED |
 | 권장 섭취량 | RecommendedDailyIntake | Recommended(권장) + Intake(섭취량). 내부 계산용 |
 | 월간 | Monthly | 연간/주간이 생기면 Yearly/Weekly로 통일 |
@@ -72,10 +73,12 @@
 | 식사 상태 | MealStatus | ANALYSIS / COMPLETED / FAILED / UNKNOWN. DB status 문자열을 enum으로 변환해 응답 |
 | 현재 섭취량 | Current | 하루 영양 합계. 응답에서 Target과 쌍으로 사용 |
 | 목표 섭취량 | Target | 응답 표기용. 값은 RecommendedDailyIntake 계산 결과 |
-| 칼로리 | Calories | 코드·응답은 calories. 엔티티 필드/DB 컬럼만 calory (레거시 유지) |
+| 칼로리 | Calory | 코드·응답·엔티티/DB 모두 calory로 통일 (calories 금지) |
 | 탄수화물 | Carbs | carbohydrate 아님 |
 | 단백질 | Protein | 단수형 고정 (proteins 아님) |
 | 지방 | Fat | 단수형 고정 (fats 아님) |
+| 분석 | Analysis | 영양 분석. 명사 위치에 사용 (MealStatus.ANALYSIS, AnalysisMealService, retryNutritionAnalysis) |
+| 단건 | Single | 식사 단건 개념 (SingleMealService, getSingleMeal 등) |
 
 ## 케이스 규칙
 

@@ -1,11 +1,11 @@
 package com.dandi.nyummy.meal.service
 
-import com.dandi.nyummy.common.enum.Status
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.GetStatusResponse
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
+import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.meal.toEntity
 import com.dandi.nyummy.meal.toGetStatusResponse
@@ -16,17 +16,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import java.util.*
+import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Service
-class CreateMealService(
-    private val s3Presigner: S3Presigner,
-    private val clock: Clock = Clock.System,
+class AnalysisMealService (
     private val mealRepository: MealRepository,
     private val nutritionUpdateService: NutritionUpdateService,
+    private val s3Presigner: S3Presigner,
+    private val clock: Clock = Clock.System,
 ) {
 
     companion object {
@@ -73,14 +73,14 @@ class CreateMealService(
         )
     }
 
-    fun createMeal(request: CreateMealRequest): GetStatusResponse {
+    fun createSingleMeal(request: CreateMealRequest): GetStatusResponse {
 
         val meal = request.toEntity()
         val savedMeal = mealRepository.save(meal)
 
-        nutritionUpdateService.updateStatus(meal.id, Status.ANALYSIS)
+        nutritionUpdateService.updateStatus(meal.id, MealStatus.ANALYSIS)
 
-        analysisNutrition(savedMeal.id)
+        analyzeNutrition(savedMeal.id)
 
         return savedMeal.toGetStatusResponse()
     }
@@ -93,29 +93,30 @@ class CreateMealService(
         return meal.toGetStatusResponse()
     }
 
-    fun retryNutritionAnalysis(mealId: Long): GetStatusResponse {
+    private fun analyzeNutrition(mealId: Long) {
 
-        val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
-
-        if (meal.status == Status.FAILED) {
-            nutritionUpdateService.updateStatus(meal.id, Status.ANALYSIS)
-            analysisNutrition(meal.id)
-        }
-
-        return meal.toGetStatusResponse()
-    }
-
-    private fun analysisNutrition(mealId: Long) {
         CoroutineScope(Dispatchers.IO).launch {
             println("영양소 분석 시작")
             delay(10.seconds)
             runCatching {
                 nutritionUpdateService.updateNutrition(mealId)
             }.onFailure {
-                nutritionUpdateService.updateStatus(mealId, Status.FAILED)
+                nutritionUpdateService.updateStatus(mealId, MealStatus.FAILED)
             }
             println("영양소 분석 끝")
         }
+    }
+
+    fun retryNutritionAnalysis(mealId: Long): GetStatusResponse {
+
+        val meal = mealRepository.findByIdOrNull(mealId)
+            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
+
+        if (meal.status == MealStatus.FAILED) {
+            nutritionUpdateService.updateStatus(meal.id, MealStatus.ANALYSIS)
+            analyzeNutrition(meal.id)
+        }
+
+        return meal.toGetStatusResponse()
     }
 }

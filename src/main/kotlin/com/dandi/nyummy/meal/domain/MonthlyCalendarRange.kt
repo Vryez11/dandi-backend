@@ -1,4 +1,4 @@
-package com.dandi.nyummy.meal.service
+package com.dandi.nyummy.meal.domain
 
 import java.time.DayOfWeek
 import java.time.LocalDate

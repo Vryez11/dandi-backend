@@ -1,17 +1,30 @@
 package com.dandi.nyummy.meal.controller
 
+import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
+import com.dandi.nyummy.meal.dto.GetStatusResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.SingleMealResponse
-import com.dandi.nyummy.meal.service.MealService
-import jakarta.servlet.http.HttpServletRequest
+import com.dandi.nyummy.meal.dto.UploadImageRequest
+import com.dandi.nyummy.meal.dto.UploadImageResponse
+import com.dandi.nyummy.meal.service.AnalysisMealService
+import com.dandi.nyummy.meal.service.DailyMealService
+import com.dandi.nyummy.meal.service.MonthlyMealService
+import com.dandi.nyummy.meal.service.SingleMealService
 import jakarta.servlet.http.HttpServletResponse
+import jakarta.validation.Valid
+import jakarta.validation.constraints.NotNull
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/v1/meals")
-class MealController(private val mealService: MealService) {
+class MealController(
+    private val monthlyMealService: MonthlyMealService,
+    private val dailyMealService: DailyMealService,
+    private val singleMealService: SingleMealService,
+    private val analysisMealService: AnalysisMealService,
+    ) {
 
     @GetMapping("/monthly")
     fun getMonthlyMeals(
@@ -20,7 +33,7 @@ class MealController(private val mealService: MealService) {
         @RequestParam month: Int,
     ): MonthlyMealsResponse {
 
-        return mealService.getMonthlyMeals(userId, year, month)
+        return monthlyMealService.getMonthlyMeals(userId, year, month)
     }
 
     @GetMapping("/daily")
@@ -31,7 +44,7 @@ class MealController(private val mealService: MealService) {
         @RequestParam day: Int,
     ) : DailyMealsResponse {
 
-        return mealService.getDailyMeals(userId, year, month, day)
+        return dailyMealService.getDailyMeals(userId, year, month, day)
     }
 
     @GetMapping("/{mealId}")
@@ -40,7 +53,7 @@ class MealController(private val mealService: MealService) {
         @PathVariable("mealId") mealId: Long,
     ) : SingleMealResponse {
 
-        return mealService.getSingleMeal(userId, mealId)
+        return singleMealService.getSingleMeal(userId, mealId)
     }
 
     @PutMapping("/{mealId}")
@@ -50,7 +63,7 @@ class MealController(private val mealService: MealService) {
         @RequestParam name: String,
     ) : SingleMealResponse {
 
-        return mealService.updateSingleMeal(userId, mealId, name)
+        return singleMealService.updateSingleMeal(userId, mealId, name)
     }
 
     @DeleteMapping("/{mealId}")
@@ -60,7 +73,31 @@ class MealController(private val mealService: MealService) {
         response: HttpServletResponse
     ) {
 
-        mealService.deleteSingleMeal(userId, mealId)
+        singleMealService.deleteSingleMeal(userId, mealId)
         response.status = HttpStatus.NO_CONTENT.value()
+    }
+
+    @PostMapping
+    fun createMeal(
+        @Valid @RequestBody request: CreateMealRequest
+    ): GetStatusResponse {
+        return analysisMealService.createSingleMeal(request)
+    }
+
+    @GetMapping("/{mealId}/analysis")
+    fun getStatus(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse {
+        return analysisMealService.getStatus(mealId)
+    }
+
+    @PostMapping("/{mealId}/analysis")
+    fun retryAnalysis(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse {
+        return analysisMealService.retryNutritionAnalysis(mealId)
+    }
+
+    @PostMapping("/images/presigned-url")
+    fun getUploadUrl(
+        @Valid @RequestBody request: UploadImageRequest
+    ): UploadImageResponse {
+        return analysisMealService.createUploadUrl(request)
     }
 }

@@ -1,6 +1,9 @@
 package com.dandi.nyummy.meal.dto
 
-import java.time.LocalDateTime
+import aws.smithy.kotlin.runtime.net.url.Url
+import com.dandi.nyummy.meal.domain.Nutrition
+import com.dandi.nyummy.meal.enum.MealStatus
+import java.time.Instant
 
 data class SingleMealResponse (
 
@@ -8,11 +11,11 @@ data class SingleMealResponse (
 
     val name: String,
 
-    val mealAt: LocalDateTime,
+    val mealAt: Instant,
 
-    val status : MealStatus,
+    val status: MealStatus,
 
     val nutrition: Nutrition,
 
-    val imageUrl: String,
+    val imageUrl: Url,
 )

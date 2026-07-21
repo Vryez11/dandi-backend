@@ -1,7 +1,9 @@
 package com.dandi.nyummy.meal.dto
 
+import com.dandi.nyummy.meal.domain.Nutrition
+import com.dandi.nyummy.meal.enum.MealStatus
+import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 data class DailyMealsResponse (
 
@@ -14,8 +16,8 @@ data class DailyMealResponse(
 
     val mealId: Long,
     val name: String,
-    val mealAt: LocalDateTime,
-    val calories: Int,
+    val mealAt: Instant,
+    val calory: Int,
     val carbs: Int,
     val protein: Int,
     val fat: Int,

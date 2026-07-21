@@ -1,0 +1,1 @@
+ALTER TABLE meal DROP COLUMN is_deleted;

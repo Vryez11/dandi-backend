@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.dto
 
+import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import java.time.LocalDate
 
 data class MonthlyMealsResponse(

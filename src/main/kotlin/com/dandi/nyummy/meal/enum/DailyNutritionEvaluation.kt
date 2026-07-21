@@ -1,4 +1,4 @@
-package com.dandi.nyummy.meal.dto
+package com.dandi.nyummy.meal.enum
 
 enum class DailyNutritionEvaluation {
 
