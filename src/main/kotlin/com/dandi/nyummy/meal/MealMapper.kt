@@ -2,7 +2,7 @@ package com.dandi.nyummy.meal
 
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.GetStatusResponse
-import com.dandi.nyummy.meal.domain.Nutrition
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant

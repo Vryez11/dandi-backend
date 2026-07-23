@@ -1,4 +1,4 @@
-package com.dandi.nyummy.meal.domain
+package com.dandi.nyummy.meal.dto
 
 data class Nutrition(
     val calory: Int,

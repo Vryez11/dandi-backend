@@ -1,8 +1,5 @@
 package com.dandi.nyummy.meal.service
 
-import com.dandi.nyummy.meal.domain.DailyNutritionEvaluationCalculator
-import com.dandi.nyummy.meal.domain.MonthlyCalendarRange
-import com.dandi.nyummy.meal.domain.NutritionRecommendationCalculator
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.entity.Meal
