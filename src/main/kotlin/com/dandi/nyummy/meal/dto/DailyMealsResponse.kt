@@ -1,6 +1,5 @@
 package com.dandi.nyummy.meal.dto
 
-import com.dandi.nyummy.meal.domain.Nutrition
 import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant
 import java.time.LocalDate

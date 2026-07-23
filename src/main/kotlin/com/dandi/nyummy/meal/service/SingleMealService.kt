@@ -1,7 +1,7 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
-import com.dandi.nyummy.meal.domain.Nutrition
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.SingleMealResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import jakarta.transaction.Transactional

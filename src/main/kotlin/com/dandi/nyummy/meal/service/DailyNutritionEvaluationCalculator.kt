@@ -1,4 +1,4 @@
-package com.dandi.nyummy.meal.domain
+package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation

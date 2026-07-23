@@ -1,7 +1,6 @@
 package com.dandi.nyummy.meal.service
 
-import com.dandi.nyummy.meal.domain.Nutrition
-import com.dandi.nyummy.meal.domain.NutritionRecommendationCalculator
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.DailyMealResponse
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.DailyNutritionResponse
