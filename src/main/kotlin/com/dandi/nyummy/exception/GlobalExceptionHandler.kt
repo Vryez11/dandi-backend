@@ -1,16 +1,20 @@
 package com.dandi.nyummy.exception
 
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.context.request.WebRequest
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 
 @RestControllerAdvice
-class GlobalExceptionHandler {
+class GlobalExceptionHandler: ResponseEntityExceptionHandler() {
 
     companion object {
         private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
@@ -24,6 +28,21 @@ class GlobalExceptionHandler {
             .body(ErrorResponse.of(e.errorCode.code, e.message ?: e.errorCode.message))
     }
 
+    override fun handleExceptionInternal(
+        ex: Exception,
+        body: Any?,
+        headers: HttpHeaders,
+        statusCode: HttpStatusCode,
+        request: WebRequest,
+    ): ResponseEntity<Any>? {
+        log.warn("Spring MVC exception: {}", ex.message)
+        return ResponseEntity
+            .status(statusCode)
+            .body(ErrorResponse.of("api.common.invalidInputValue", ex.message ?:
+            statusCode.toString()))
+    }
+
+    /*
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleMethodArgumentNotValidException(
         e: MethodArgumentNotValidException,
@@ -59,6 +78,7 @@ class GlobalExceptionHandler {
             .status(HttpStatus.BAD_REQUEST)
             .body(ErrorResponse.of("api.common.missingParameter", message))
     }
+     */
 
     @ExceptionHandler(Exception::class)
     fun handleException(e: Exception): ResponseEntity<ErrorResponse> {
