@@ -4,7 +4,7 @@ import aws.smithy.kotlin.runtime.net.url.Url
 import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant
 
-data class SingleMealResponse (
+data class MealResponse(
 
     val mealId: Long,
 

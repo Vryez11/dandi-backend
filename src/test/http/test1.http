@@ -1,0 +1,10 @@
+### 식사기록 생성하는 API
+POST {{url}}/api/v1/meals
+Content-Type: application/json
+
+{
+  "name": "눈알짱구",
+  "imageKey": "짱구눈알작음.png",
+  "mealAt": "2026-07-20T07:12:26Z",
+  "iconId": 1
+}
