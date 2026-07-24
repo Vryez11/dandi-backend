@@ -1,4 +1,4 @@
-package com.dandi.nyummy.meal
+package com.dandi.nyummy.meal.mapper
 
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.GetStatusResponse

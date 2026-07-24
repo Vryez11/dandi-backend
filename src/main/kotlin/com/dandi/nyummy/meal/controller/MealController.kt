@@ -1,16 +1,8 @@
 package com.dandi.nyummy.meal.controller
 
-import com.dandi.nyummy.meal.dto.CreateMealRequest
-import com.dandi.nyummy.meal.dto.DailyMealsResponse
-import com.dandi.nyummy.meal.dto.GetStatusResponse
-import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
-import com.dandi.nyummy.meal.dto.SingleMealResponse
-import com.dandi.nyummy.meal.dto.UploadImageRequest
-import com.dandi.nyummy.meal.dto.UploadImageResponse
-import com.dandi.nyummy.meal.service.AnalysisMealService
-import com.dandi.nyummy.meal.service.DailyMealService
-import com.dandi.nyummy.meal.service.MonthlyMealService
-import com.dandi.nyummy.meal.service.SingleMealService
+import com.dandi.nyummy.meal.dto.*
+import com.dandi.nyummy.meal.service.AnalysisService
+import com.dandi.nyummy.meal.service.MealService
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
@@ -20,11 +12,9 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/v1/meals")
 class MealController(
-    private val monthlyMealService: MonthlyMealService,
-    private val dailyMealService: DailyMealService,
-    private val singleMealService: SingleMealService,
-    private val analysisMealService: AnalysisMealService,
-    ) {
+    private val mealService: MealService,
+    private val analysisService: AnalysisService,
+) {
 
     @GetMapping("/monthly")
     fun getMonthlyMeals(
@@ -33,7 +23,7 @@ class MealController(
         @RequestParam month: Int,
     ): MonthlyMealsResponse {
 
-        return monthlyMealService.getMonthlyMeals(userId, year, month)
+        return mealService.getMonthlyMeals(userId, year, month)
     }
 
     @GetMapping("/daily")
@@ -42,38 +32,38 @@ class MealController(
         @RequestParam year: Int,
         @RequestParam month: Int,
         @RequestParam day: Int,
-    ) : DailyMealsResponse {
+    ): DailyMealsResponse {
 
-        return dailyMealService.getDailyMeals(userId, year, month, day)
+        return mealService.getDailyMeals(userId, year, month, day)
     }
 
     @GetMapping("/{mealId}")
-    fun getSingleMeal(
+    fun getMeal(
         @RequestHeader("X-User-Id") userId: Long,
         @PathVariable("mealId") mealId: Long,
-    ) : SingleMealResponse {
+    ): MealResponse {
 
-        return singleMealService.getSingleMeal(userId, mealId)
+        return mealService.getMeal(userId, mealId)
     }
 
     @PutMapping("/{mealId}")
-    fun updateSingleMeal(
+    fun updateMeal(
         @RequestHeader("X-User-Id") userId: Long,
         @PathVariable("mealId") mealId: Long,
         @RequestParam name: String,
-    ) : SingleMealResponse {
+    ): MealResponse {
 
-        return singleMealService.updateSingleMeal(userId, mealId, name)
+        return mealService.updateMeal(userId, mealId, name)
     }
 
     @DeleteMapping("/{mealId}")
-    fun deleteSingleMeal(
+    fun deleteMeal(
         @RequestHeader("X-User-Id") userId: Long,
         @PathVariable("mealId") mealId: Long,
         response: HttpServletResponse
     ) {
 
-        singleMealService.deleteSingleMeal(userId, mealId)
+        mealService.deleteMeal(userId, mealId)
         response.status = HttpStatus.NO_CONTENT.value()
     }
 
@@ -81,23 +71,23 @@ class MealController(
     fun createMeal(
         @Valid @RequestBody request: CreateMealRequest
     ): GetStatusResponse {
-        return analysisMealService.createSingleMeal(request)
+        return mealService.createMeal(request)
     }
 
     @GetMapping("/{mealId}/analysis")
     fun getStatus(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse {
-        return analysisMealService.getStatus(mealId)
+        return analysisService.getStatus(mealId)
     }
 
     @PostMapping("/{mealId}/analysis")
     fun retryAnalysis(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse {
-        return analysisMealService.retryNutritionAnalysis(mealId)
+        return analysisService.retryNutritionAnalysis(mealId)
     }
 
     @PostMapping("/images/presigned-url")
     fun getUploadUrl(
         @Valid @RequestBody request: UploadImageRequest
     ): UploadImageResponse {
-        return analysisMealService.createUploadUrl(request)
+        return mealService.createUploadUrl(request)
     }
 }
