@@ -1,10 +1,10 @@
 package com.dandi.nyummy.meal.repository
 
 import com.dandi.nyummy.meal.entity.Meal
-import java.time.Instant
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
+import java.time.Instant
 
 @Repository
 interface MealRepository : JpaRepository<Meal, Long> {

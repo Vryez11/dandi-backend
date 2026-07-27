@@ -7,13 +7,13 @@ import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import jakarta.persistence.EntityNotFoundException
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import kotlin.time.Duration.Companion.seconds
 
 @Service
 class AnalysisService(private val mealRepository: MealRepository) {

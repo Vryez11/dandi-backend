@@ -1,10 +1,10 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.profile.entity.Profile
+import org.springframework.stereotype.Component
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.Period
-import org.springframework.stereotype.Component
 
 @Component
 class NutritionRecommendationCalculator {
