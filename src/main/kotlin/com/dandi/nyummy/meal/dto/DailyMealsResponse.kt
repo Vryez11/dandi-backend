@@ -4,11 +4,11 @@ import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant
 import java.time.LocalDate
 
-data class DailyMealsResponse (
+data class DailyMealsResponse(
 
     val date: LocalDate,
     val meals: List<DailyMealResponse>,
-    val dailyNutrition: DailyNutritionResponse
+    val dailyNutrition: DailyNutritionResponse,
 )
 
 data class DailyMealResponse(
@@ -20,11 +20,7 @@ data class DailyMealResponse(
     val carbs: Int,
     val protein: Int,
     val fat: Int,
-    val status: MealStatus
+    val status: MealStatus,
 )
 
-data class DailyNutritionResponse(
-
-    val current: Nutrition,
-    val target: Nutrition
-)
+data class DailyNutritionResponse(val current: Nutrition, val target: Nutrition)

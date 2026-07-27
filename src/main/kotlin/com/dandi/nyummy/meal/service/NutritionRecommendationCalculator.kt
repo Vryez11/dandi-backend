@@ -1,10 +1,10 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.profile.entity.Profile
-import org.springframework.stereotype.Component
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.Period
+import org.springframework.stereotype.Component
 
 @Component
 class NutritionRecommendationCalculator {
@@ -14,12 +14,11 @@ class NutritionRecommendationCalculator {
             calory = 2000,
             carbs = 250,
             protein = 100,
-            fat = 67
+            fat = 67,
         )
     }
 
     fun calculateRecommendedDailyIntake(profile: Profile?, today: LocalDate): RecommendedDailyIntake {
-
         val birth = profile?.birth ?: return DEFAULT_INTAKE
         val gender = profile.gender ?: return DEFAULT_INTAKE
         val height = profile.height ?: return DEFAULT_INTAKE
@@ -44,16 +43,8 @@ class NutritionRecommendationCalculator {
         )
     }
 
-    private fun getAgeByBirth(birth: LocalDateTime, today: LocalDate): Int {
-
-        return Period.between(birth.toLocalDate(), today).years
-    }
+    private fun getAgeByBirth(birth: LocalDateTime, today: LocalDate): Int =
+        Period.between(birth.toLocalDate(), today).years
 }
 
-data class RecommendedDailyIntake(
-    val calory: Int,
-    val carbs: Int,
-    val protein: Int,
-    val fat: Int
-)
-
+data class RecommendedDailyIntake(val calory: Int, val carbs: Int, val protein: Int, val fat: Int)

@@ -10,16 +10,14 @@ import org.springframework.context.annotation.Configuration
 class S3Config(
     @Value("\${AWS_ACCESS_KEY}") private val accessKey: String,
     @Value("\${AWS_SECRET_ACCESS_KEY}") private val secretKey: String,
-    @Value("\${AWS_REGION}") private val region: String
+    @Value("\${AWS_REGION}") private val region: String,
 ) {
     @Bean
-    fun s3Client(): S3Client {
-        return S3Client {
-            this.region = this@S3Config.region
-            credentialsProvider = StaticCredentialsProvider {
-                accessKeyId = accessKey
-                secretAccessKey = secretKey
-            }
+    fun s3Client(): S3Client = S3Client {
+        this.region = this@S3Config.region
+        credentialsProvider = StaticCredentialsProvider {
+            accessKeyId = accessKey
+            secretAccessKey = secretKey
         }
     }
 }

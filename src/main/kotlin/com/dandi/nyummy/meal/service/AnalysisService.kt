@@ -7,20 +7,17 @@ import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import jakarta.persistence.EntityNotFoundException
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import kotlin.time.Duration.Companion.seconds
 
 @Service
-class AnalysisService(
-    private val mealRepository: MealRepository,
-) {
+class AnalysisService(private val mealRepository: MealRepository) {
     fun getStatus(mealId: Long): GetStatusResponse {
-
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND, "Meal Not Found")
 
@@ -28,7 +25,6 @@ class AnalysisService(
     }
 
     fun analyzeNutrition(mealId: Long) {
-
         val meal = mealRepository.findByIdOrNull(mealId)
 
         if (meal == null) {
@@ -56,7 +52,6 @@ class AnalysisService(
     }
 
     fun retryNutritionAnalysis(mealId: Long): GetStatusResponse {
-
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
 

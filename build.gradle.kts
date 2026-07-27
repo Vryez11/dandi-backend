@@ -4,6 +4,9 @@ plugins {
     id("org.springframework.boot") version "4.1.0"
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("plugin.jpa") version "2.3.21"
+
+    id("com.diffplug.spotless") version "8.8.0"
+    id("com.github.jakemarsden.git-hooks") version "0.0.2"
 }
 
 group = "com.dandi"
@@ -54,6 +57,30 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
     }
+}
+
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        targetExclude("**/build/**", "**/generated/**")
+        ktlint("1.8.0")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint("1.8.0")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+gitHooks {
+    setHooks(
+        mapOf(
+            "pre-commit" to "spotlessApply",
+        ),
+    )
 }
 
 allOpen {

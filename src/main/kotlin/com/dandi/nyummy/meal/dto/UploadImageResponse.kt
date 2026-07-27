@@ -5,5 +5,5 @@ data class UploadImageResponse(
     val imageKey: String,
     val uploadMethod: String,
     val uploadHeaders: Map<String, String>,
-    val expiresAt: String
+    val expiresAt: String,
 )
