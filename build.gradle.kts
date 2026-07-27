@@ -78,7 +78,7 @@ spotless {
 gitHooks {
     setHooks(
         mapOf(
-            "pre-commit" to "spotlessApply",
+            "pre-commit" to "spotlessApply stageChanges",
         ),
     )
 }
@@ -87,6 +87,14 @@ allOpen {
     annotation("jakarta.persistence.Entity")
     annotation("jakarta.persistence.MappedSuperclass")
     annotation("jakarta.persistence.Embeddable")
+}
+
+tasks.register<Exec>("stageChanges") {
+    commandLine("git", "add", "-u")
+}
+
+tasks.named("stageChanges") {
+    mustRunAfter("spotlessApply")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
