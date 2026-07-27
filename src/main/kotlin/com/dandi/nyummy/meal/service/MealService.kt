@@ -1,6 +1,8 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
+import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
+import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
 import com.dandi.nyummy.meal.dto.*
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
@@ -97,8 +99,7 @@ class MealService(
 
         val profile = profileRepository.getProfileByUserId(userId)
 
-        val recommended =
-            nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
+        val recommended = calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
         val dailyNutrition = DailyNutritionResponse(
             current = mealsByPeriod.fold(Nutrition.ZERO) {acc, meal -> acc.plus(meal.toNutrition())},
@@ -130,7 +131,7 @@ class MealService(
 
 
         val profile = profileRepository.getProfileByUserId(userId)
-        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.now())
+        val recommended = calculateRecommendedDailyIntake(profile, LocalDate.now())
 
         val days = mutableListOf<MonthlyMealDayResponse>()
         var date = range.startDate
@@ -140,7 +141,7 @@ class MealService(
                 MonthlyMealDayResponse(
                     date = date,
                     isCurrentMonth = date.year == year && date.monthValue == month,
-                    dailyNutritionEvaluation = dailyNutritionEvaluationCalculator.calculateDailyNutritionEvaluation(
+                    dailyNutritionEvaluation = calculateDailyNutritionEvaluation(
                         meals = mealsByDate[date] ?: emptyList(),
                         recommended = recommended
                     ),
