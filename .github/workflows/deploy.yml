@@ -11,6 +11,21 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-24.04-arm
+    services:
+      mysql:
+        image: mysql:8.4.9
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nyummy_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: 소스 체크아웃
@@ -29,6 +44,16 @@ jobs:
         run: ./gradlew spotlessCheck
 
       - name: 빌드
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: "3306"
+          MYSQL_DB: nyummy_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+          AWS_ACCESS_KEY: dummy
+          AWS_SECRET_ACCESS_KEY: dummy
+          AWS_REGION: ap-northeast-2
+          AWS_S3_BUCKET_NAME: dummy
         run: ./gradlew clean build
 
       - name: AWS 자격 증명 설정
