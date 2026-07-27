@@ -1,16 +1,79 @@
 package com.dandi.nyummy.infra.ai.nutrition
 
 import com.dandi.nyummy.infra.ai.AiProperties
+import com.dandi.nyummy.infra.aws.s3.S3Reader
 import com.dandi.nyummy.meal.dto.Nutrition
+import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import tools.jackson.databind.ObjectMapper
+import kotlin.collections.listOf
+import kotlin.collections.mapOf
+import kotlin.io.encoding.Base64
+import kotlin.to
 
-class GeminiNutritionAnalyzeNutrition(
+@Component
+class GeminiNutritionAnalysisClient(
     private val restClient: RestClient,
-    private val aiProperties: AiProperties
+    private val aiProperties: AiProperties,
+    private val s3Reader: S3Reader,
+    private val objectMapper: ObjectMapper
 ) : NutritionAnalysisClient {
 
-    override fun analyzeNutrition(imageUrl: String): Nutrition {
+    companion object {
 
+        private const val PROMPT = "이 음식 사진을 분석해서 총 칼로리(kcal), 탄수화물(g), 단백질(g), 지방(g)을 정수로 추정해줘."
 
+        private val RESPONSE_SCHEMA = mapOf(
+            "type" to "OBJECT",
+            "properties" to mapOf(
+                "calory" to mapOf("type" to "INTEGER"),
+                "carbs" to mapOf("type" to "INTEGER"),
+                "protein" to mapOf("type" to "INTEGER"),
+                "fat" to mapOf("type" to "INTEGER"),
+            ),
+            "required" to listOf("calory", "carbs", "protein", "fat"),
+        )
+    }
+
+    override fun analyzeNutrition(imageKey: String): Nutrition {
+
+        val objectContent = s3Reader.getObject(imageKey)
+        val encodedContent = Base64.encode(objectContent.bytes, 0, objectContent.bytes.size)
+        val mimeType = objectContent.contentType
+
+        val requestBody = mapOf(
+            "contents" to listOf(
+                mapOf("parts" to listOf(
+                    mapOf("inlineData" to mapOf(
+                        "mimeType" to mimeType,
+                        "data" to encodedContent,
+                    )),
+                    mapOf("text" to PROMPT),
+                )),
+            ),
+            "generationConfig" to mapOf(
+                "responseMimeType" to "application/json",
+                "responseSchema" to RESPONSE_SCHEMA,
+            ),
+        )
+
+        val response = restClient.post()
+            .uri("/v1beta/models/{model}:generateContent", aiProperties.model)
+            .header("x-goog-api-key", aiProperties.apiKey)
+            .body(requestBody)
+            .retrieve()
+            .body(GeminiGenerateContentResponse::class.java)
+            ?: throw IllegalStateException("Gemini 응답이 비어 있습니다.")
+
+        val resultJson = response.candidates.firstOrNull()
+            ?.content?.parts?.firstOrNull()?.text
+            ?: throw IllegalStateException("Gemini 응답에 결과가 없습니다.")
+
+        return objectMapper.readValue(resultJson, Nutrition::class.java)
     }
 }
+
+data class GeminiGenerateContentResponse(val candidates: List<GeminiCandidate> = emptyList())
+data class GeminiCandidate(val content: GeminiContent?)
+data class GeminiContent(val parts: List<GeminiPart> = emptyList())
+data class GeminiPart(val text: String?)
