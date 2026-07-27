@@ -195,7 +195,7 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes)
+        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes).toString()
 
         return meal.toMealResponse(imageUrl)
     }
@@ -206,7 +206,7 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes)
+        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes).toString()
 
         meal.updateName(name)
 

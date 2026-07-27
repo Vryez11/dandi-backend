@@ -1,6 +1,5 @@
 package com.dandi.nyummy.meal.dto
 
-import aws.smithy.kotlin.runtime.net.url.Url
 import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant
 
@@ -16,5 +15,5 @@ data class MealResponse(
 
     val nutrition: Nutrition,
 
-    val imageUrl: Url,
+    val imageUrl: String,
 )

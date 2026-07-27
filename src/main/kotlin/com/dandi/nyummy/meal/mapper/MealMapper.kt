@@ -1,6 +1,5 @@
 package com.dandi.nyummy.meal.mapper
 
-import aws.smithy.kotlin.runtime.net.url.Url
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealResponse
 import com.dandi.nyummy.meal.dto.GetStatusResponse
@@ -45,7 +44,7 @@ fun Meal.toDailyMealResponse() = DailyMealResponse(
     status = this.status
 )
 
-fun Meal.toMealResponse(imageUrl: Url) = MealResponse(
+fun Meal.toMealResponse(imageUrl: String) = MealResponse(
     mealId = this.id,
     name = this.name,
     mealAt = this.mealAt,
