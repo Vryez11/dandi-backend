@@ -1,7 +1,17 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
-import com.dandi.nyummy.meal.dto.*
+import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.DailyMealResponse
+import com.dandi.nyummy.meal.dto.DailyMealsResponse
+import com.dandi.nyummy.meal.dto.DailyNutritionResponse
+import com.dandi.nyummy.meal.dto.GetStatusResponse
+import com.dandi.nyummy.meal.dto.MealResponse
+import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
+import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
+import com.dandi.nyummy.meal.dto.Nutrition
+import com.dandi.nyummy.meal.dto.UploadImageRequest
+import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
@@ -29,7 +39,7 @@ class MealService(
     private val clock: Clock = Clock.System,
     private val profileRepository: ProfileRepository,
     private val nutritionRecommendationCalculator: NutritionRecommendationCalculator,
-    private val dailyNutritionEvaluationCalculator: DailyNutritionEvaluationCalculator
+    private val dailyNutritionEvaluationCalculator: DailyNutritionEvaluationCalculator,
 ) {
     companion object {
         private val PRESIGNED_PUT_URL_EXPIRATION = 10.minutes
@@ -37,7 +47,6 @@ class MealService(
     }
 
     fun createUploadUrl(request: UploadImageRequest): UploadImageResponse {
-
         val extension = request.fileName.substringAfterLast(".", missingDelimiterValue = "").lowercase()
 
         require(extension in ALLOWED_EXTENSIONS) {
@@ -59,7 +68,7 @@ class MealService(
             s3Presigner.getPutObjectUrl(
                 keyName = s3KeyPath,
                 type = request.contentType,
-                duration = PRESIGNED_PUT_URL_EXPIRATION
+                duration = PRESIGNED_PUT_URL_EXPIRATION,
             )
         }.getOrElse {
             println("PUT url 반환 실패")
@@ -71,16 +80,15 @@ class MealService(
             imageKey = s3KeyPath,
             uploadMethod = "PUT",
             uploadHeaders = mapOf("Content-Type" to request.contentType),
-            expiresAt = expirationInstant,
+            expiresAt = expirationInstant.toString(),
         )
     }
 
     fun createMeal(request: CreateMealRequest): GetStatusResponse {
-
         val meal = request.toEntity()
         val savedMeal = mealRepository.save(meal)
 
-        savedMeal.updateStatus(MealStatus.ANALYSIS)
+        savedMeal.updateStatus(MealStatus.WAITING)
 
         analysisService.analyzeNutrition(savedMeal.id)
 
@@ -88,7 +96,6 @@ class MealService(
     }
 
     fun getDailyMeals(userId: Long, year: Int, month: Int, day: Int): DailyMealsResponse {
-
         val zone = ZoneId.of("Asia/Seoul")
         val date = LocalDate.of(year, month, day)
         val start = date.atStartOfDay(zone).toInstant()
@@ -104,7 +111,6 @@ class MealService(
         var totalFat: Int = 0
 
         for (meal in mealsByPeriod) {
-
             meals.add(
                 DailyMealResponse(
                     mealId = meal.id,
@@ -114,8 +120,8 @@ class MealService(
                     carbs = meal.carbs ?: 0,
                     protein = meal.protein ?: 0,
                     fat = meal.fat ?: 0,
-                    status = meal.status
-                )
+                    status = meal.status,
+                ),
             )
 
             totalCalory += meal.calory ?: 0
@@ -140,14 +146,14 @@ class MealService(
                 calory = recommended.calory,
                 carbs = recommended.carbs,
                 protein = recommended.protein,
-                fat = recommended.fat
-            )
+                fat = recommended.fat,
+            ),
         )
 
         return DailyMealsResponse(
             date = LocalDate.of(year, month, day),
             meals = meals,
-            dailyNutrition = dailyNutrition
+            dailyNutrition = dailyNutrition,
         )
     }
 
@@ -155,7 +161,6 @@ class MealService(
         meals: List<Meal>,
         recommended: RecommendedDailyIntake,
     ): DailyNutritionEvaluation {
-
         if (meals.isEmpty()) {
             return DailyNutritionEvaluation.UNRECORDED
         }
@@ -178,13 +183,16 @@ class MealService(
         val recommendedFat = recommended.fat
 
         if (isPositive(
-                totalCalory, recommendedCalory,
-                totalCarbs, recommendedCarbs,
-                totalProtein, recommendedProtein,
-                totalFat, recommendedFat
+                totalCalory,
+                recommendedCalory,
+                totalCarbs,
+                recommendedCarbs,
+                totalProtein,
+                recommendedProtein,
+                totalFat,
+                recommendedFat,
             )
         ) {
-
             return DailyNutritionEvaluation.POSITIVE
         }
 
@@ -192,35 +200,35 @@ class MealService(
     }
 
     private fun isPositive(
-        totalCalory: Int, recommendedCalory: Int,
-        totalCarbs: Int, recommendedCarbs: Int,
-        totalProtein: Int, recommendedProtein: Int,
-        totalFat: Int, recommendedFat: Int
+        totalCalory: Int,
+        recommendedCalory: Int,
+        totalCarbs: Int,
+        recommendedCarbs: Int,
+        totalProtein: Int,
+        recommendedProtein: Int,
+        totalFat: Int,
+        recommendedFat: Int,
     ): Boolean = isPositiveNutrition(totalCalory, recommendedCalory) &&
-            isPositiveNutrition(totalCarbs, recommendedCarbs) &&
-            isPositiveNutrition(totalProtein, recommendedProtein) &&
-            isPositiveNutrition(totalFat, recommendedFat)
+        isPositiveNutrition(totalCarbs, recommendedCarbs) &&
+        isPositiveNutrition(totalProtein, recommendedProtein) &&
+        isPositiveNutrition(totalFat, recommendedFat)
 
-    fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
-        return recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
-    }
+    fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean =
+        recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
 
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
-
         val zone = ZoneId.of("Asia/Seoul")
         val range = MonthlyCalendarRange.calculate(YearMonth.of(year, month))
 
         val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
             userId,
             range.startDate.atStartOfDay(zone).toInstant(),
-            range.endDate.plusDays(1).atStartOfDay(zone).toInstant()
+            range.endDate.plusDays(1).atStartOfDay(zone).toInstant(),
         )
-
 
         val mealsByDate: Map<LocalDate, List<Meal>> =
             mealsByPeriod
                 .groupBy { it.mealAt.atZone(zone).toLocalDate() }
-
 
         val profile = profileRepository.getProfileByUserId(userId)
         val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.now())
@@ -228,17 +236,16 @@ class MealService(
         val days = mutableListOf<MonthlyMealDayResponse>()
         var date = range.startDate
         while (date <= range.endDate) {
-
             days.add(
                 MonthlyMealDayResponse(
                     date = date,
                     isCurrentMonth = date.year == year && date.monthValue == month,
                     dailyNutritionEvaluation = dailyNutritionEvaluationCalculator.calculateDailyNutritionEvaluation(
                         meals = mealsByDate[date] ?: emptyList(),
-                        recommended = recommended
+                        recommended = recommended,
                     ),
-                    foodIconIds = emptyList()
-                )
+                    foodIconIds = emptyList(),
+                ),
             )
             date = date.plusDays(1)
         }
@@ -246,12 +253,11 @@ class MealService(
         return MonthlyMealsResponse(
             year = year,
             month = month,
-            days = days
+            days = days,
         )
     }
 
     fun getMeal(userId: Long, mealId: Long): MealResponse {
-
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
@@ -268,13 +274,12 @@ class MealService(
                 protein = meal.protein ?: 0,
                 fat = meal.fat ?: 0,
             ),
-            imageUrl = imageUrl
+            imageUrl = imageUrl,
         )
     }
 
     @Transactional
     fun updateMeal(userId: Long, mealId: Long, name: String): MealResponse {
-
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
@@ -291,15 +296,14 @@ class MealService(
                 calory = meal.calory ?: 0,
                 carbs = meal.carbs ?: 0,
                 protein = meal.protein ?: 0,
-                fat = meal.fat ?: 0
+                fat = meal.fat ?: 0,
             ),
-            imageUrl = imageUrl
+            imageUrl = imageUrl,
         )
     }
 
     @Transactional
     fun deleteMeal(userId: Long, mealId: Long) {
-
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
@@ -308,7 +312,6 @@ class MealService(
 
     @Transactional
     fun updateStatus(mealId: Long, status: MealStatus) {
-
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
 
@@ -317,7 +320,6 @@ class MealService(
 
     @Transactional
     fun updateNutrition(mealId: Long) {
-
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
 
@@ -325,7 +327,7 @@ class MealService(
             calory = 700,
             carbs = 100,
             protein = 50,
-            fat = 20
+            fat = 20,
         )
     }
 }

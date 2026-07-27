@@ -10,12 +10,12 @@ import java.time.Instant
 // DTO -> Entity 변환 확장 함수
 fun CreateMealRequest.toEntity() = Meal(
     name = this.name,
-    status = MealStatus.ANALYSIS,
+    status = MealStatus.ANALYZING,
     imageKey = this.imageKey,
     mealAt = this.mealAt,
     createdAt = Instant.now(),
     userId = 1L,
-    iconId = 1L
+    iconId = 1L,
 )
 
 fun Meal.toGetStatusResponse() = GetStatusResponse(
@@ -25,6 +25,6 @@ fun Meal.toGetStatusResponse() = GetStatusResponse(
         calory = this.calory ?: 0,
         carbs = this.carbs ?: 0,
         protein = this.protein ?: 0,
-        fat = this.fat ?: 0
-    )
+        fat = this.fat ?: 0,
+    ),
 )

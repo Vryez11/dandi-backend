@@ -11,7 +11,6 @@ class DailyNutritionEvaluationCalculator {
         meals: List<Meal>,
         recommended: RecommendedDailyIntake,
     ): DailyNutritionEvaluation {
-
         if (meals.isEmpty()) {
             return DailyNutritionEvaluation.UNRECORDED
         }
@@ -34,12 +33,16 @@ class DailyNutritionEvaluationCalculator {
         val recommendedFat = recommended.fat
 
         if (isPositive(
-                totalCalory, recommendedCalory,
-                totalCarbs, recommendedCarbs,
-                totalProtein, recommendedProtein,
-                totalFat, recommendedFat)
+                totalCalory,
+                recommendedCalory,
+                totalCarbs,
+                recommendedCarbs,
+                totalProtein,
+                recommendedProtein,
+                totalFat,
+                recommendedFat,
+            )
         ) {
-
             return DailyNutritionEvaluation.POSITIVE
         }
 
@@ -47,16 +50,19 @@ class DailyNutritionEvaluationCalculator {
     }
 
     private fun isPositive(
-        totalCalory: Int, recommendedCalory: Int,
-        totalCarbs: Int, recommendedCarbs: Int,
-        totalProtein: Int, recommendedProtein: Int,
-        totalFat: Int, recommendedFat: Int
+        totalCalory: Int,
+        recommendedCalory: Int,
+        totalCarbs: Int,
+        recommendedCarbs: Int,
+        totalProtein: Int,
+        recommendedProtein: Int,
+        totalFat: Int,
+        recommendedFat: Int,
     ): Boolean = isPositiveNutrition(totalCalory, recommendedCalory) &&
-                isPositiveNutrition(totalCarbs, recommendedCarbs) &&
-                isPositiveNutrition(totalProtein, recommendedProtein) &&
-                isPositiveNutrition(totalFat, recommendedFat)
+        isPositiveNutrition(totalCarbs, recommendedCarbs) &&
+        isPositiveNutrition(totalProtein, recommendedProtein) &&
+        isPositiveNutrition(totalFat, recommendedFat)
 
-    fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
-        return recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
-    }
+    fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean =
+        recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
 }
