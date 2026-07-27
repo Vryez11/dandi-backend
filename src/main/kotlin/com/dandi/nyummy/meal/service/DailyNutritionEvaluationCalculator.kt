@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import org.springframework.stereotype.Component
@@ -9,7 +10,7 @@ class DailyNutritionEvaluationCalculator {
 
     fun calculateDailyNutritionEvaluation(
         meals: List<Meal>,
-        recommended: RecommendedDailyIntake,
+        recommended: Nutrition,
     ): DailyNutritionEvaluation {
 
         if (meals.isEmpty()) {

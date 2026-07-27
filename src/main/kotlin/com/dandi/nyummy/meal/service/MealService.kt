@@ -7,6 +7,7 @@ import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetDailyResponse
+import com.dandi.nyummy.meal.mapper.toGetMealResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
@@ -133,46 +134,6 @@ class MealService(
         )
     }
 
-    fun calculateDailyNutritionEvaluation(
-        meals: List<Meal>,
-        recommended: Nutrition,
-    ): DailyNutritionEvaluation {
-
-        if (meals.isEmpty()) {
-            return DailyNutritionEvaluation.UNRECORDED
-        }
-
-        var totalCalory: Int = 0
-        var totalCarbs: Int = 0
-        var totalProtein: Int = 0
-        var totalFat: Int = 0
-
-        for (meal in meals) {
-            totalCalory += meal.calory ?: 0
-            totalCarbs += meal.carbs ?: 0
-            totalProtein += meal.protein ?: 0
-            totalFat += meal.fat ?: 0
-        }
-
-        val recommendedCalory = recommended.calory
-        val recommendedCarbs = recommended.carbs
-        val recommendedProtein = recommended.protein
-        val recommendedFat = recommended.fat
-
-        if (isPositive(
-                totalCalory, recommendedCalory,
-                totalCarbs, recommendedCarbs,
-                totalProtein, recommendedProtein,
-                totalFat, recommendedFat
-            )
-        ) {
-
-            return DailyNutritionEvaluation.POSITIVE
-        }
-
-        return DailyNutritionEvaluation.NEGATIVE
-    }
-
     private fun isPositive(
         totalCalory: Int, recommendedCalory: Int,
         totalCarbs: Int, recommendedCarbs: Int,
@@ -239,19 +200,7 @@ class MealService(
 
         val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes)
 
-        return MealResponse(
-            mealId = mealId,
-            name = meal.name,
-            mealAt = meal.mealAt,
-            status = meal.status,
-            nutrition = Nutrition(
-                calory = meal.calory ?: 0,
-                carbs = meal.carbs ?: 0,
-                protein = meal.protein ?: 0,
-                fat = meal.fat ?: 0,
-            ),
-            imageUrl = imageUrl
-        )
+        return meal.toGetMealResponse(imageUrl)
     }
 
     @Transactional
@@ -264,19 +213,7 @@ class MealService(
 
         meal.updateName(name)
 
-        return MealResponse(
-            mealId = mealId,
-            name = meal.name,
-            mealAt = meal.mealAt,
-            status = meal.status,
-            nutrition = Nutrition(
-                calory = meal.calory ?: 0,
-                carbs = meal.carbs ?: 0,
-                protein = meal.protein ?: 0,
-                fat = meal.fat ?: 0
-            ),
-            imageUrl = imageUrl
-        )
+        return meal.toGetMealResponse(imageUrl)
     }
 
     @Transactional
@@ -286,28 +223,5 @@ class MealService(
             ?: throw Exception("Meal Not Found")
 
         meal.updateDeletedAt(Instant.now())
-    }
-
-    @Transactional
-    fun updateStatus(mealId: Long, status: MealStatus) {
-
-        val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
-
-        meal.updateStatus(status)
-    }
-
-    @Transactional
-    fun updateNutrition(mealId: Long) {
-
-        val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
-
-        meal.updateNutrition(
-            calory = 700,
-            carbs = 100,
-            protein = 50,
-            fat = 20
-        )
     }
 }
