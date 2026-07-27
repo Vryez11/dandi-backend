@@ -22,7 +22,7 @@ class AnalysisService(
     fun getStatus(mealId: Long): GetStatusResponse {
 
         val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
+            ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND, "Meal Not Found")
 
         return meal.toGetStatusResponse()
     }
@@ -32,8 +32,11 @@ class AnalysisService(
         val meal = mealRepository.findByIdOrNull(mealId)
 
         if (meal == null) {
+            println("check")
             throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
         }
+
+        meal.updateStatus(MealStatus.ANALYZING)
 
         CoroutineScope(Dispatchers.IO).launch {
             println("영양소 분석 시작")
@@ -58,7 +61,7 @@ class AnalysisService(
             ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
 
         if (meal.status == MealStatus.FAILED) {
-            meal.updateStatus(MealStatus.ANALYSIS)
+            meal.updateStatus(MealStatus.ANALYZING)
             analyzeNutrition(meal.id)
         }
 

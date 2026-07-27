@@ -71,7 +71,7 @@ class MealService(
             imageKey = s3KeyPath,
             uploadMethod = "PUT",
             uploadHeaders = mapOf("Content-Type" to request.contentType),
-            expiresAt = expirationInstant,
+            expiresAt = expirationInstant.toString(),
         )
     }
 
@@ -80,7 +80,7 @@ class MealService(
         val meal = request.toEntity()
         val savedMeal = mealRepository.save(meal)
 
-        savedMeal.updateStatus(MealStatus.ANALYSIS)
+        savedMeal.updateStatus(MealStatus.WAITING)
 
         analysisService.analyzeNutrition(savedMeal.id)
 
