@@ -28,6 +28,8 @@
 | 재시도 | retry | resume, redo | `retryNutritionAnalysis()` |
 | 분석 | analyze | analysis(명사를 동사 자리에 금지), analyse | `analyzeNutrition()` |
 
+※ 예외: Mapper의 변환 확장 함수는 Kotlin 관례에 따라 `toXxx`를 사용한다. Xxx는 반환 타입 이름과 일치시킨다. 예: `Meal.toNutrition()`, `CreateMealRequest.toEntity()`
+
 ## 클래스 접미사
 
 | 용도 | 접미사 | 금지 |

@@ -5,8 +5,8 @@ import com.dandi.nyummy.meal.dto.*
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toEntity
-import com.dandi.nyummy.meal.mapper.toGetDailyResponse
-import com.dandi.nyummy.meal.mapper.toGetMealResponse
+import com.dandi.nyummy.meal.mapper.toDailyMealResponse
+import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
@@ -105,7 +105,7 @@ class MealService(
         for (meal in mealsByPeriod) {
 
             meals.add(
-                meal.toGetDailyResponse()
+                meal.toDailyMealResponse()
             )
 
             totalCalory += meal.calory ?: 0
@@ -197,7 +197,7 @@ class MealService(
 
         val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes)
 
-        return meal.toGetMealResponse(imageUrl)
+        return meal.toMealResponse(imageUrl)
     }
 
     @Transactional
@@ -210,7 +210,7 @@ class MealService(
 
         meal.updateName(name)
 
-        return meal.toGetMealResponse(imageUrl)
+        return meal.toMealResponse(imageUrl)
     }
 
     @Transactional
