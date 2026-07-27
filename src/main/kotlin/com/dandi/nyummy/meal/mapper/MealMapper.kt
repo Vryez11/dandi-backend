@@ -1,6 +1,7 @@
 package com.dandi.nyummy.meal.mapper
 
 import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.DailyMealResponse
 import com.dandi.nyummy.meal.dto.GetStatusResponse
 import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
@@ -27,4 +28,15 @@ fun Meal.toGetStatusResponse() = GetStatusResponse(
         protein = this.protein ?: 0,
         fat = this.fat ?: 0
     )
+)
+
+fun Meal.toGetDailyResponse() = DailyMealResponse(
+    mealId = this.id,
+    name = this.name,
+    mealAt = this.mealAt,
+    calory = this.calory ?: 0,
+    carbs = this.carbs ?: 0,
+    protein = this.protein ?: 0,
+    fat = this.fat ?: 0,
+    status = this.status
 )

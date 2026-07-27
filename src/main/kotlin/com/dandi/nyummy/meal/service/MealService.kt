@@ -6,6 +6,7 @@ import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toEntity
+import com.dandi.nyummy.meal.mapper.toGetDailyResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
@@ -106,16 +107,7 @@ class MealService(
         for (meal in mealsByPeriod) {
 
             meals.add(
-                DailyMealResponse(
-                    mealId = meal.id,
-                    name = meal.name,
-                    mealAt = meal.mealAt,
-                    calory = meal.calory ?: 0,
-                    carbs = meal.carbs ?: 0,
-                    protein = meal.protein ?: 0,
-                    fat = meal.fat ?: 0,
-                    status = meal.status
-                )
+                meal.toGetDailyResponse()
             )
 
             totalCalory += meal.calory ?: 0
@@ -130,18 +122,8 @@ class MealService(
             nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
         val dailyNutrition = DailyNutritionResponse(
-            current = Nutrition(
-                calory = totalCalory,
-                carbs = totalCarbs,
-                protein = totalProtein,
-                fat = totalFat,
-            ),
-            target = Nutrition(
-                calory = recommended.calory,
-                carbs = recommended.carbs,
-                protein = recommended.protein,
-                fat = recommended.fat
-            )
+            current = Nutrition(totalCalory, totalCarbs, totalProtein, totalFat),
+            target = Nutrition(recommended.calory,recommended.carbs,recommended.protein,recommended.fat)
         )
 
         return DailyMealsResponse(
@@ -153,7 +135,7 @@ class MealService(
 
     fun calculateDailyNutritionEvaluation(
         meals: List<Meal>,
-        recommended: RecommendedDailyIntake,
+        recommended: Nutrition,
     ): DailyNutritionEvaluation {
 
         if (meals.isEmpty()) {

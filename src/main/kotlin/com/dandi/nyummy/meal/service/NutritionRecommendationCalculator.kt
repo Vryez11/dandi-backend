@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.profile.entity.Profile
 import org.springframework.stereotype.Component
 import java.time.LocalDate
@@ -10,7 +11,7 @@ import java.time.Period
 class NutritionRecommendationCalculator {
 
     companion object {
-        private val DEFAULT_INTAKE = RecommendedDailyIntake(
+        private val DEFAULT_INTAKE = Nutrition(
             calory = 2000,
             carbs = 250,
             protein = 100,
@@ -18,7 +19,7 @@ class NutritionRecommendationCalculator {
         )
     }
 
-    fun calculateRecommendedDailyIntake(profile: Profile?, today: LocalDate): RecommendedDailyIntake {
+    fun calculateRecommendedDailyIntake(profile: Profile?, today: LocalDate): Nutrition {
 
         val birth = profile?.birth ?: return DEFAULT_INTAKE
         val gender = profile.gender ?: return DEFAULT_INTAKE
@@ -36,7 +37,7 @@ class NutritionRecommendationCalculator {
         val bmr = (10 * weight + 6.25 * height - 5 * age + if (gender.toInt() == 0) 5 else -161)
         val calory = bmr * 1.375
 
-        return RecommendedDailyIntake(
+        return Nutrition(
             calory = calory.toInt(),
             carbs = (calory * 0.5 / 4).toInt(),
             protein = (calory * 0.2 / 4).toInt(),
@@ -49,11 +50,4 @@ class NutritionRecommendationCalculator {
         return Period.between(birth.toLocalDate(), today).years
     }
 }
-
-data class RecommendedDailyIntake(
-    val calory: Int,
-    val carbs: Int,
-    val protein: Int,
-    val fat: Int
-)
 
