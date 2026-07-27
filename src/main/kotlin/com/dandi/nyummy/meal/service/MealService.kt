@@ -1,12 +1,13 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
-import com.dandi.nyummy.meal.calculator.MonthlyCalendarRangeCalculate
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
+import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
 import com.dandi.nyummy.meal.dto.*
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
+import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
@@ -96,15 +97,15 @@ class MealService(
 
         val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
 
-        val meals = mutableListOf<DailyMealResponse>()
+        val meals = mealsByPeriod.map { it.toDailyMealResponse() }
 
         val profile = profileRepository.getProfileByUserId(userId)
 
         val recommended = calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
         val dailyNutrition = DailyNutritionResponse(
-            current = mealsByPeriod.fold(Nutrition.ZERO) {acc, meal -> acc.plus(meal.toNutrition())},
-            target = Nutrition(recommended.calory,recommended.carbs,recommended.protein,recommended.fat)
+            current = mealsByPeriod.fold(Nutrition.ZERO) { acc, meal -> acc + meal.toNutrition() },
+            target = recommended
         )
 
         return DailyMealsResponse(
@@ -117,9 +118,7 @@ class MealService(
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
 
         val zone = ZoneId.of("Asia/Seoul")
-        val range = MonthlyCalendarRangeCalculate(YearMonth.of(year, month))
-        val startDate = range[0];
-        val endDate = range[1];
+        val (startDate, endDate) = calculateMonthlyCalendarRange(YearMonth.of(year, month))
 
         val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
             userId,

@@ -80,12 +80,12 @@ class MealController(
     }
 
     @PostMapping("/{mealId}/analysis")
-    fun retryAnalysis(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse {
+    fun retryNutritionAnalysis(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse {
         return analysisService.retryNutritionAnalysis(mealId)
     }
 
     @PostMapping("/images/presigned-url")
-    fun getUploadUrl(
+    fun createUploadUrl(
         @Valid @RequestBody request: UploadImageRequest
     ): UploadImageResponse {
         return mealService.createUploadUrl(request)

@@ -11,32 +11,32 @@ import java.time.Period
 
 private val DEFAULT_INTAKE = Nutrition(calory = 2000, carbs = 250, protein = 100, fat = 70)
 
-private val NUTRIENT = listOf(
+private val NUTRIENTS = listOf(
     Nutrition::calory,
     Nutrition::carbs,
     Nutrition::protein,
     Nutrition::fat,
 )
 
-fun calculateDailyNutritionEvaluation(meals: List<Meal>, recommended: Nutrition, ): DailyNutritionEvaluation {
+fun calculateDailyNutritionEvaluation(meals: List<Meal>, recommended: Nutrition): DailyNutritionEvaluation {
 
     if (meals.isEmpty()) {
         return DailyNutritionEvaluation.UNRECORDED
     }
 
-    val totalNutrition = meals.fold(Nutrition.ZERO) {acc, meal -> acc.plus(meal.toNutrition())}
+    val totalNutrition = meals.fold(Nutrition.ZERO) { acc, meal -> acc + meal.toNutrition() }
 
-    if (isPositive(totalNutrition, recommended)) {
+    if (isPositiveNutrition(totalNutrition, recommended)) {
         return DailyNutritionEvaluation.POSITIVE
     }
 
     return DailyNutritionEvaluation.NEGATIVE
 }
 
-private fun isPositive(totalNutrition: Nutrition, recommended: Nutrition): Boolean  =
-    NUTRIENT.all {nutrient -> isPositiveNutrition(nutrient(totalNutrition), nutrient(recommended))}
+private fun isPositiveNutrition(totalNutrition: Nutrition, recommended: Nutrition): Boolean =
+    NUTRIENTS.all { nutrient -> isPositiveNutrient(nutrient(totalNutrition), nutrient(recommended)) }
 
-private fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
+private fun isPositiveNutrient(totalValue: Int, recommendedValue: Int): Boolean {
     return recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
 }
 
@@ -54,7 +54,7 @@ fun calculateRecommendedDailyIntake(profile: Profile?, today: LocalDate): Nutrit
      *  여성 : BMR = 10 * 몸무게 + 6.25 * 키 - 5 * 나이 - 161
      */
 
-    val age = getAgeByBirth(birth, today)
+    val age = calculateAge(birth, today)
     val bmr = (10 * weight + 6.25 * height - 5 * age + if (gender.toInt() == 0) 5 else -161)
     val calory = bmr * 1.375
 
@@ -66,7 +66,7 @@ fun calculateRecommendedDailyIntake(profile: Profile?, today: LocalDate): Nutrit
     )
 }
 
-private fun getAgeByBirth(birth: LocalDateTime, today: LocalDate): Int {
+private fun calculateAge(birth: LocalDateTime, today: LocalDate): Int {
 
     return Period.between(birth.toLocalDate(), today).years
 }

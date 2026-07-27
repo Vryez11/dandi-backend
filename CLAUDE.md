@@ -41,6 +41,7 @@
 | 컨트롤러 | ~Controller | ~Api, ~Resource |
 | 설정 바인딩(@ConfigurationProperties) | ~Properties | ~Config |
 | DTO-엔티티 변환 | ~Mapper | ~Converter, ~Transformer |
+| 계산 로직(최상위 함수 파일) | ~Calculator | ~Calc, ~Calculation, ~Util |
 
 ## Boolean 네이밍
 
@@ -67,11 +68,13 @@
 | 성별 | Gender | TINYINT: 0=남, 1=여 (팀 확정 전 임시 인코딩) |
 | 영양 | Nutrition | 영양 4종(calory/carbs/protein/fat) 값 객체로도 사용 (응답 current/target 공용) |
 | 하루 평가 | DailyNutritionEvaluation | POSITIVE / NEGATIVE / UNRECORDED |
-| 권장 섭취량 | RecommendedDailyIntake | Recommended(권장) + Intake(섭취량). 내부 계산용 |
+| 권장 섭취량 | RecommendedDailyIntake | Recommended(권장) + Intake(섭취량). 전용 클래스 없음 — calculateRecommendedDailyIntake()가 Nutrition을 반환 |
+| 영양소 | Nutrient | Nutrition의 개별 항목(calory/carbs/protein/fat)을 가리킬 때. 목록은 복수형 Nutrients |
 | 월간 | Monthly | 연간/주간이 생기면 Yearly/Weekly로 통일 |
 | 일일 | Daily | |
 | 캘린더 | Calendar | 주 시작 = 일요일 (프론트 확인 전 임시 가정) |
 | 기간 | Period | 시작~종료 구간. 조회는 반개구간 [start, end) |
+| 캘린더 범위 | Range | 달력 그리드의 [시작일, 종료일] 양끝 포함 구간 (calculateMonthlyCalendarRange). 조회용 반개구간은 Period |
 | 식사 상태 | MealStatus | ANALYSIS / COMPLETED / FAILED / UNKNOWN. DB status 문자열을 enum으로 변환해 응답 |
 | 현재 섭취량 | Current | 하루 영양 합계. 응답에서 Target과 쌍으로 사용 |
 | 목표 섭취량 | Target | 응답 표기용. 값은 RecommendedDailyIntake 계산 결과 |
