@@ -8,6 +8,7 @@ import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
+import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
 import jakarta.transaction.Transactional
@@ -97,30 +98,13 @@ class MealService(
 
         val meals = mutableListOf<DailyMealResponse>()
 
-        var totalCalory: Int = 0
-        var totalCarbs: Int = 0
-        var totalProtein: Int = 0
-        var totalFat: Int = 0
-
-        for (meal in mealsByPeriod) {
-
-            meals.add(
-                meal.toDailyMealResponse()
-            )
-
-            totalCalory += meal.calory ?: 0
-            totalCarbs += meal.carbs ?: 0
-            totalProtein += meal.protein ?: 0
-            totalFat += meal.fat ?: 0
-        }
-
         val profile = profileRepository.getProfileByUserId(userId)
 
         val recommended =
             nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
         val dailyNutrition = DailyNutritionResponse(
-            current = Nutrition(totalCalory, totalCarbs, totalProtein, totalFat),
+            current = mealsByPeriod.fold(Nutrition.ZERO) {acc, meal -> acc.plus(meal.toNutrition())},
             target = Nutrition(recommended.calory,recommended.carbs,recommended.protein,recommended.fat)
         )
 
