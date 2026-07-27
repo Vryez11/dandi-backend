@@ -3,9 +3,8 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
-import org.springframework.stereotype.Component
+import com.dandi.nyummy.meal.mapper.toNutrition
 
-@Component
 class DailyNutritionEvaluationCalculator {
 
     fun calculateDailyNutritionEvaluation(
@@ -17,45 +16,26 @@ class DailyNutritionEvaluationCalculator {
             return DailyNutritionEvaluation.UNRECORDED
         }
 
-        var totalCalory: Int = 0
-        var totalCarbs: Int = 0
-        var totalProtein: Int = 0
-        var totalFat: Int = 0
+        val totalNutrition = meals.fold(Nutrition.ZERO) {acc, meal -> acc.plus(meal.toNutrition())}
 
-        for (meal in meals) {
-            totalCalory += meal.calory ?: 0
-            totalCarbs += meal.carbs ?: 0
-            totalProtein += meal.protein ?: 0
-            totalFat += meal.fat ?: 0
-        }
-
-        val recommendedCalory = recommended.calory
-        val recommendedCarbs = recommended.carbs
-        val recommendedProtein = recommended.protein
-        val recommendedFat = recommended.fat
-
-        if (isPositive(
-                totalCalory, recommendedCalory,
-                totalCarbs, recommendedCarbs,
-                totalProtein, recommendedProtein,
-                totalFat, recommendedFat)
-        ) {
-
+        if (isPositive(totalNutrition, recommended)) {
             return DailyNutritionEvaluation.POSITIVE
         }
 
         return DailyNutritionEvaluation.NEGATIVE
     }
 
-    private fun isPositive(
-        totalCalory: Int, recommendedCalory: Int,
-        totalCarbs: Int, recommendedCarbs: Int,
-        totalProtein: Int, recommendedProtein: Int,
-        totalFat: Int, recommendedFat: Int
-    ): Boolean = isPositiveNutrition(totalCalory, recommendedCalory) &&
-                isPositiveNutrition(totalCarbs, recommendedCarbs) &&
-                isPositiveNutrition(totalProtein, recommendedProtein) &&
-                isPositiveNutrition(totalFat, recommendedFat)
+    companion object {
+        private val NUTRIENT = listOf(
+            Nutrition::calory,
+            Nutrition::carbs,
+            Nutrition::protein,
+            Nutrition::fat
+        )
+    }
+
+    private fun isPositive(totalNutrition: Nutrition, recommended: Nutrition): Boolean  =
+        NUTRIENT.all {nutrient -> isPositiveNutrition(nutrient(totalNutrition), nutrient(recommended))}
 
     fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
         return recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5

@@ -7,7 +7,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.Period
 
-@Component
 class NutritionRecommendationCalculator {
 
     companion object {

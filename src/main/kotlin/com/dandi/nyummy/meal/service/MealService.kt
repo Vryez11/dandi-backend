@@ -5,7 +5,6 @@ import com.dandi.nyummy.meal.dto.*
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toEntity
-import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.mapper.toNutrition
@@ -27,9 +26,7 @@ class MealService(
     private val mealRepository: MealRepository,
     private val s3Presigner: S3Presigner,
     private val clock: Clock = Clock.System,
-    private val profileRepository: ProfileRepository,
-    private val nutritionRecommendationCalculator: NutritionRecommendationCalculator,
-    private val dailyNutritionEvaluationCalculator: DailyNutritionEvaluationCalculator
+    private val profileRepository: ProfileRepository
 ) {
     companion object {
         private val PRESIGNED_PUT_URL_EXPIRATION = 10.minutes
@@ -113,20 +110,6 @@ class MealService(
             meals = meals,
             dailyNutrition = dailyNutrition
         )
-    }
-
-    private fun isPositive(
-        totalCalory: Int, recommendedCalory: Int,
-        totalCarbs: Int, recommendedCarbs: Int,
-        totalProtein: Int, recommendedProtein: Int,
-        totalFat: Int, recommendedFat: Int
-    ): Boolean = isPositiveNutrition(totalCalory, recommendedCalory) &&
-            isPositiveNutrition(totalCarbs, recommendedCarbs) &&
-            isPositiveNutrition(totalProtein, recommendedProtein) &&
-            isPositiveNutrition(totalFat, recommendedFat)
-
-    fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean {
-        return recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
     }
 
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
