@@ -21,15 +21,17 @@ fun CreateMealRequest.toEntity() = Meal(
     iconId = 1L
 )
 
+fun Meal.toGetNutrition() = Nutrition(
+    calory = this.calory ?: 0,
+    carbs = this.carbs ?: 0,
+    protein = this.protein ?: 0,
+    fat = this.fat ?: 0
+)
+
 fun Meal.toGetStatusResponse() = GetStatusResponse(
     id = this.id,
     status = this.status.name,
-    nutrition = Nutrition(
-        calory = this.calory ?: 0,
-        carbs = this.carbs ?: 0,
-        protein = this.protein ?: 0,
-        fat = this.fat ?: 0
-    )
+    nutrition = this.toGetNutrition(),
 )
 
 fun Meal.toGetDailyResponse() = DailyMealResponse(
@@ -48,11 +50,6 @@ fun Meal.toGetMealResponse(imageUrl: Url) = MealResponse(
     name = this.name,
     mealAt = this.mealAt,
     status = this.status,
-    nutrition = Nutrition(
-        calory = this.calory ?: 0,
-        carbs = this.carbs ?: 0,
-        protein = this.protein ?: 0,
-        fat = this.fat ?: 0,
-    ),
+    nutrition = this.toGetNutrition(),
     imageUrl = imageUrl
 )

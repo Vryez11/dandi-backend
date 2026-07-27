@@ -3,7 +3,6 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
 import com.dandi.nyummy.meal.dto.*
 import com.dandi.nyummy.meal.entity.Meal
-import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetDailyResponse
@@ -11,9 +10,7 @@ import com.dandi.nyummy.meal.mapper.toGetMealResponse
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
-import jakarta.persistence.EntityNotFoundException
 import jakarta.transaction.Transactional
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.LocalDate
