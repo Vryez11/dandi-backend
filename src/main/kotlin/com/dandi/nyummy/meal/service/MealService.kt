@@ -1,6 +1,7 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
+import com.dandi.nyummy.meal.calculator.MonthlyCalendarRangeCalculate
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
 import com.dandi.nyummy.meal.dto.*
@@ -116,14 +117,15 @@ class MealService(
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
 
         val zone = ZoneId.of("Asia/Seoul")
-        val range = MonthlyCalendarRange.calculate(YearMonth.of(year, month))
+        val range = MonthlyCalendarRangeCalculate(YearMonth.of(year, month))
+        val startDate = range[0];
+        val endDate = range[1];
 
         val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
             userId,
-            range.startDate.atStartOfDay(zone).toInstant(),
-            range.endDate.plusDays(1).atStartOfDay(zone).toInstant()
+            startDate.atStartOfDay(zone).toInstant(),
+            endDate.plusDays(1).atStartOfDay(zone).toInstant()
         )
-
 
         val mealsByDate: Map<LocalDate, List<Meal>> =
             mealsByPeriod
@@ -134,8 +136,8 @@ class MealService(
         val recommended = calculateRecommendedDailyIntake(profile, LocalDate.now())
 
         val days = mutableListOf<MonthlyMealDayResponse>()
-        var date = range.startDate
-        while (date <= range.endDate) {
+        var date = startDate
+        while (date <= endDate) {
 
             days.add(
                 MonthlyMealDayResponse(
