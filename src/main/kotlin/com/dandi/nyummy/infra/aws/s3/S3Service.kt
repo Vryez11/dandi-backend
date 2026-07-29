@@ -5,6 +5,7 @@ import aws.sdk.kotlin.services.s3.headObject
 import aws.sdk.kotlin.services.s3.model.CopyObjectRequest
 import aws.sdk.kotlin.services.s3.model.DeleteObjectRequest
 import aws.sdk.kotlin.services.s3.model.GetObjectRequest
+import aws.sdk.kotlin.services.s3.model.NotFound
 import aws.sdk.kotlin.services.s3.model.PutObjectRequest
 import aws.sdk.kotlin.services.s3.presigners.presignGetObject
 import aws.sdk.kotlin.services.s3.presigners.presignPutObject
@@ -12,6 +13,8 @@ import aws.smithy.kotlin.runtime.content.toByteArray
 import aws.smithy.kotlin.runtime.net.url.Url
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.infra.aws.s3.dto.S3ObjectContent
+import com.dandi.nyummy.infra.aws.s3.dto.S3UploadResult
 import kotlinx.coroutines.runBlocking
 import org.apache.tika.Tika
 import org.springframework.beans.factory.annotation.Value
@@ -33,9 +36,7 @@ class S3Service(
         private val ALLOWED_CONTENT_TYPES = setOf(
             "image/jpeg",
             "image/png",
-            "image/gif",
             "image/heic",
-            "image/heif",
             "image/webp",
         )
 
@@ -43,7 +44,6 @@ class S3Service(
             "image/jpeg" to "jpg",
             "image/png" to "png",
             "image/heic" to "heic",
-            "image/heif" to "heif",
             "image/webp" to "webp",
         )
     }
@@ -64,12 +64,11 @@ class S3Service(
             throw BusinessException(S3ErrorCode.FILE_SIZE_EXCEEDED)
         }
 
-        val today = LocalDate.now(clock)
         // TODO: 경로에 user_id 추가하기
         val tempExtension = MIME_TO_EXTENSION.getValue(contentType)
         val keyName =
             "$TEMP_PREFIX/${UUID.randomUUID()}.$tempExtension"
-        val url = presignedPutObject(keyName, contentType, expiration)
+        val url = createPresignedPutUrl(keyName, contentType, expiration)
 
         return S3UploadResult(url, keyName)
     }
@@ -79,26 +78,30 @@ class S3Service(
             throw BusinessException(S3ErrorCode.INVALID_KEY)
         }
 
-        val head = s3Client.headObject {
-            bucket = bucketName
-            key = tempKey
+        val head = try {
+            s3Client.headObject {
+                bucket = bucketName
+                key = tempKey
+            }
+        } catch (e: NotFound) {
+            throw BusinessException(S3ErrorCode.OBJECT_NOT_FOUND)
         }
 
         val actualSize = head.contentLength ?: 0L
 
         if (actualSize <= 0 || actualSize > maxFileSizeBytes) {
-            deleteObjectInternal(tempKey)
+            deleteObject(tempKey)
             throw BusinessException(S3ErrorCode.FILE_SIZE_EXCEEDED)
         }
 
-        val headerBytes = getObjectBytesInternal(tempKey, "bytes=0-1023")
+        val headerBytes = downloadObjectRange(tempKey, "bytes=0-1023")
 
         val detectedMimeType = tika.detect(headerBytes)
 
         val safeExtension = MIME_TO_EXTENSION[detectedMimeType]
             ?: run {
-                deleteObjectInternal(tempKey)
-                throw BusinessException(S3ErrorCode.INVALID_KEY)
+                deleteObject(tempKey)
+                throw BusinessException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE)
             }
 
         val today = LocalDate.now(clock)
@@ -115,11 +118,11 @@ class S3Service(
             },
         )
 
-        deleteObjectInternal(tempKey)
+        deleteObject(tempKey)
         finalKey
     }
 
-    fun getObjectUrl(keyName: String, duration: Duration): Url {
+    fun createPresignedGetUrl(keyName: String, duration: Duration): Url {
         val request = GetObjectRequest {
             bucket = bucketName
             key = keyName
@@ -127,7 +130,7 @@ class S3Service(
         return runBlocking { s3Client.presignGetObject(request, duration) }.url
     }
 
-    private fun presignedPutObject(keyName: String, contentType: String, duration: Duration): Url {
+    private fun createPresignedPutUrl(keyName: String, contentType: String, duration: Duration): Url {
         val request = PutObjectRequest {
             bucket = bucketName
             key = keyName
@@ -136,27 +139,41 @@ class S3Service(
         return runBlocking { s3Client.presignPutObject(request, duration) }.url
     }
 
-    private suspend fun getObjectBytesInternal(keyName: String, byteRange: String): ByteArray {
-        var result = ByteArray(0)
+    private suspend fun downloadObjectRange(keyName: String, byteRange: String): ByteArray {
         val request = GetObjectRequest {
             bucket = bucketName
             key = keyName
             range = byteRange
         }
 
-        s3Client.getObject(request) { response ->
-            result = response.body?.toByteArray() ?: ByteArray(0)
+        return s3Client.getObject(request) { response ->
+            response.body?.toByteArray() ?: ByteArray(0)
         }
-
-        return result
     }
 
-    private suspend fun deleteObjectInternal(key: String) {
+    private suspend fun deleteObject(key: String) {
         s3Client.deleteObject(
             DeleteObjectRequest {
                 bucket = bucketName
                 this.key = key
             },
         )
+    }
+
+    fun downloadObject(keyName: String): S3ObjectContent {
+        val request = GetObjectRequest {
+            bucket = bucketName
+            key = keyName
+        }
+
+        return runBlocking {
+            s3Client.getObject(request) { response ->
+                S3ObjectContent(
+                    bytes = response.body?.toByteArray()
+                        ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $keyName"),
+                    contentType = response.contentType,
+                )
+            }
+        }
     }
 }

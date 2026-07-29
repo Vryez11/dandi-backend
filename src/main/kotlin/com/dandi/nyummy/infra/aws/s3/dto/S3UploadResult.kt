@@ -1,4 +1,4 @@
-package com.dandi.nyummy.infra.aws.s3
+package com.dandi.nyummy.infra.aws.s3.dto
 
 import aws.smithy.kotlin.runtime.net.url.Url
 

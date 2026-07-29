@@ -12,7 +12,7 @@ import java.time.Instant
 // DTO -> Entity 변환 확장 함수
 fun CreateMealRequest.toEntity(imageKey: String) = Meal(
     name = this.name,
-    status = MealStatus.ANALYZING,
+    status = MealStatus.WAITING,
     imageKey = imageKey,
     mealAt = this.mealAt,
     createdAt = Instant.now(),

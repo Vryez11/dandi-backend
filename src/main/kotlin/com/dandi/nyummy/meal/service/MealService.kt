@@ -16,7 +16,6 @@ import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.entity.Meal
-import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
@@ -56,7 +55,7 @@ class MealService(
         return UploadImageResponse(
             uploadUrl = uploadUrl.url.toString(),
             imageKey = uploadUrl.keyName,
-            uploadMethod = "PUT",
+            uploadMethod = mealProperties.uploadMethod,
             uploadHeaders = mapOf("Content-Type" to request.contentType),
             expiresAt = expirationInstant.toString(),
         )
@@ -72,8 +71,6 @@ class MealService(
 
         val meal = request.toEntity(imageKey = finalImageKey)
         val savedMeal = mealRepository.save(meal)
-
-        savedMeal.updateStatus(MealStatus.WAITING)
 
         analysisService.analyzeNutrition(savedMeal.id)
 
@@ -151,7 +148,7 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Service.getObjectUrl(meal.imageKey, 10.minutes).toString()
+        val imageUrl = s3Service.createPresignedGetUrl(meal.imageKey, 10.minutes).toString()
 
         return meal.toMealResponse(imageUrl.toString())
     }
@@ -161,7 +158,7 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Service.getObjectUrl(meal.imageKey, 10.minutes).toString()
+        val imageUrl = s3Service.createPresignedGetUrl(meal.imageKey, 10.minutes).toString()
 
         meal.updateName(name)
 
