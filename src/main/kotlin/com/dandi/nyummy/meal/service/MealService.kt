@@ -153,7 +153,7 @@ class MealService(
 
         val imageUrl = s3Service.getObjectUrl(meal.imageKey, 10.minutes).toString()
 
-        return meal.toMealResponse(imageUrl)
+        return meal.toMealResponse(imageUrl.toString())
     }
 
     @Transactional
@@ -165,7 +165,7 @@ class MealService(
 
         meal.updateName(name)
 
-        return meal.toMealResponse(imageUrl)
+        return meal.toMealResponse(imageUrl.toString())
     }
 
     @Transactional
