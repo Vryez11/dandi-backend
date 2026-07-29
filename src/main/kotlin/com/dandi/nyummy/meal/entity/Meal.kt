@@ -1,7 +1,6 @@
 package com.dandi.nyummy.meal.entity
 
 import com.dandi.nyummy.exception.BusinessException
-import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.enum.MealStatus
@@ -100,7 +99,7 @@ class Meal(
         this.deletedAt = deletedAt
     }
 
-    fun validateOwnerShip(requestUserId: Long) {
+    fun validateOwnership(requestUserId: Long) {
         if (userId != requestUserId) {
             throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
         }

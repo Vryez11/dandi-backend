@@ -19,7 +19,7 @@ class AnalysisService(
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND, "Meal Not Found")
 
-        meal.validateOwnerShip(userId)
+        meal.validateOwnership(userId)
 
         return meal.toGetStatusResponse()
     }
@@ -28,7 +28,7 @@ class AnalysisService(
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        meal.validateOwnerShip(userId)
+        meal.validateOwnership(userId)
 
         meal.updateStatus(MealStatus.ANALYZING)
 
@@ -45,7 +45,7 @@ class AnalysisService(
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        meal.validateOwnerShip(userId)
+        meal.validateOwnership(userId)
 
         if (meal.status == MealStatus.FAILED) {
             meal.updateStatus(MealStatus.ANALYZING)
