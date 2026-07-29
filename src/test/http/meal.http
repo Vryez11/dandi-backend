@@ -3,7 +3,6 @@ POST {{url}}/api/v1/meals/images/presigned-url
 Content-Type: application/json
 
 {
-  "fileName": "돌고래.png",
   "contentType": "image/png",
   "fileSizeBytes": 1000
 }
@@ -14,7 +13,7 @@ Content-Type: application/json
 
 {
   "name": "눈알짱구",
-  "imageKey": "짱구눈알작음.png",
+  "imageKey": "temp/ede107bb-d176-469e-aa2d-8b834fa792b8.png",
   "mealAt": "2026-07-20T07:12:26Z",
   "iconId": 1
 }

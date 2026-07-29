@@ -1,9 +1,10 @@
 package com.dandi.nyummy.meal.service
 
-import com.dandi.nyummy.infra.aws.s3.S3Presigner
+import com.dandi.nyummy.infra.aws.s3.S3Service
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
 import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
+import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.DailyNutritionResponse
@@ -15,6 +16,7 @@ import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.entity.Meal
+import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
@@ -28,7 +30,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
-import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -36,47 +37,25 @@ import kotlin.time.Duration.Companion.minutes
 class MealService(
     private val analysisService: AnalysisService,
     private val mealRepository: MealRepository,
-    private val s3Presigner: S3Presigner,
+    private val s3Service: S3Service,
     private val clock: Clock = Clock.System,
     private val profileRepository: ProfileRepository,
+    private val mealProperties: MealProperties,
 ) {
-    companion object {
-        private val PRESIGNED_PUT_URL_EXPIRATION = 10.minutes
-        private val ALLOWED_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp")
-    }
 
     fun createUploadUrl(request: UploadImageRequest): UploadImageResponse {
-        val extension = request.fileName.substringAfterLast(".", missingDelimiterValue = "").lowercase()
+        val expirationInstant = clock.now() + mealProperties.presignedUrlExpirationMinutes.minutes
 
-        require(extension in ALLOWED_EXTENSIONS) {
-            "지원하지 않는 파일 형식입니다. (허용: $ALLOWED_EXTENSIONS)"
-        }
-
-        require(request.contentType.startsWith("image/")) {
-            "이미지 타입만 업로드 가능합니다."
-        }
-
-        require(0 < request.fileSizeBytes && request.fileSizeBytes <= 10_485_760) {
-            "파일 크기는 최소 0보다 크며, 최대 10MB(10_485_760 Bytes)를 초과할 수 없습니다."
-        }
-
-        val s3KeyPath = "meal/${UUID.randomUUID()}.$extension"
-        val expirationInstant = clock.now() + PRESIGNED_PUT_URL_EXPIRATION
-
-        val uploadUrl = runCatching {
-            s3Presigner.getPutObjectUrl(
-                keyName = s3KeyPath,
-                type = request.contentType,
-                duration = PRESIGNED_PUT_URL_EXPIRATION,
-            )
-        }.getOrElse {
-            println("PUT url 반환 실패")
-            throw it
-        }
+        val uploadUrl = s3Service.createUploadUrl(
+            contentType = request.contentType,
+            fileSizeBytes = request.fileSizeBytes,
+            maxFileSizeBytes = mealProperties.maxFileSizeBytes,
+            expiration = mealProperties.presignedUrlExpirationMinutes.minutes,
+        )
 
         return UploadImageResponse(
-            uploadUrl = uploadUrl.toString(),
-            imageKey = s3KeyPath,
+            uploadUrl = uploadUrl.url.toString(),
+            imageKey = uploadUrl.keyName,
             uploadMethod = "PUT",
             uploadHeaders = mapOf("Content-Type" to request.contentType),
             expiresAt = expirationInstant.toString(),
@@ -85,7 +64,17 @@ class MealService(
 
     @Transactional
     fun createMeal(request: CreateMealRequest): GetStatusResponse {
-        val savedMeal = mealRepository.save(request.toEntity())
+        val finalImageKey = s3Service.confirmUpload(
+            tempKey = request.imageKey,
+            finalKeyPrefix = "meals",
+            maxFileSizeBytes = mealProperties.maxFileSizeBytes,
+        )
+
+        val meal = request.toEntity(imageKey = finalImageKey)
+        val savedMeal = mealRepository.save(meal)
+
+        savedMeal.updateStatus(MealStatus.WAITING)
+
         analysisService.analyzeNutrition(savedMeal.id)
 
         return savedMeal.toGetStatusResponse()
@@ -162,7 +151,7 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes).toString()
+        val imageUrl = s3Service.getObjectUrl(meal.imageKey, 10.minutes).toString()
 
         return meal.toMealResponse(imageUrl)
     }
@@ -172,7 +161,7 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes).toString()
+        val imageUrl = s3Service.getObjectUrl(meal.imageKey, 10.minutes).toString()
 
         meal.updateName(name)
 

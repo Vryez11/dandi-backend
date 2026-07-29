@@ -1,0 +1,162 @@
+package com.dandi.nyummy.infra.aws.s3
+
+import aws.sdk.kotlin.services.s3.S3Client
+import aws.sdk.kotlin.services.s3.headObject
+import aws.sdk.kotlin.services.s3.model.CopyObjectRequest
+import aws.sdk.kotlin.services.s3.model.DeleteObjectRequest
+import aws.sdk.kotlin.services.s3.model.GetObjectRequest
+import aws.sdk.kotlin.services.s3.model.PutObjectRequest
+import aws.sdk.kotlin.services.s3.presigners.presignGetObject
+import aws.sdk.kotlin.services.s3.presigners.presignPutObject
+import aws.smithy.kotlin.runtime.content.toByteArray
+import aws.smithy.kotlin.runtime.net.url.Url
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import kotlinx.coroutines.runBlocking
+import org.apache.tika.Tika
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Service
+import java.time.Clock
+import java.time.LocalDate
+import java.util.*
+import kotlin.time.Duration
+
+@Service
+class S3Service(
+    private val s3Client: S3Client,
+    private val clock: Clock,
+    @Value("\${AWS_S3_BUCKET_NAME}") private val bucketName: String,
+) {
+    companion object {
+        private const val TEMP_PREFIX = "temp"
+
+        private val ALLOWED_CONTENT_TYPES = setOf(
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/heic",
+            "image/heif",
+            "image/webp",
+        )
+
+        private val MIME_TO_EXTENSION = mapOf(
+            "image/jpeg" to "jpg",
+            "image/png" to "png",
+            "image/heic" to "heic",
+            "image/heif" to "heif",
+            "image/webp" to "webp",
+        )
+    }
+
+    private val tika = Tika()
+
+    fun createUploadUrl(
+        contentType: String,
+        fileSizeBytes: Long,
+        maxFileSizeBytes: Long,
+        expiration: Duration,
+    ): S3UploadResult {
+        if (contentType !in ALLOWED_CONTENT_TYPES) {
+            throw BusinessException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE)
+        }
+
+        if (0 > fileSizeBytes || fileSizeBytes > maxFileSizeBytes) {
+            throw BusinessException(S3ErrorCode.FILE_SIZE_EXCEEDED)
+        }
+
+        val today = LocalDate.now(clock)
+        // TODO: 경로에 user_id 추가하기
+        val tempExtension = MIME_TO_EXTENSION.getValue(contentType)
+        val keyName =
+            "$TEMP_PREFIX/${UUID.randomUUID()}.$tempExtension"
+        val url = presignedPutObject(keyName, contentType, expiration)
+
+        return S3UploadResult(url, keyName)
+    }
+
+    fun confirmUpload(tempKey: String, finalKeyPrefix: String, maxFileSizeBytes: Long): String = runBlocking {
+        if (!tempKey.startsWith("$TEMP_PREFIX/")) {
+            throw BusinessException(S3ErrorCode.INVALID_KEY)
+        }
+
+        val head = s3Client.headObject {
+            bucket = bucketName
+            key = tempKey
+        }
+
+        val actualSize = head.contentLength ?: 0L
+
+        if (actualSize <= 0 || actualSize > maxFileSizeBytes) {
+            deleteObjectInternal(tempKey)
+            throw BusinessException(S3ErrorCode.FILE_SIZE_EXCEEDED)
+        }
+
+        val headerBytes = getObjectBytesInternal(tempKey, "bytes=0-1023")
+
+        val detectedMimeType = tika.detect(headerBytes)
+
+        val safeExtension = MIME_TO_EXTENSION[detectedMimeType]
+            ?: run {
+                deleteObjectInternal(tempKey)
+                throw BusinessException(S3ErrorCode.INVALID_KEY)
+            }
+
+        val today = LocalDate.now(clock)
+
+        // TODO: 경로에 user_id 추가
+        val finalKey =
+            "$finalKeyPrefix/${today.year}/${today.monthValue}/${today.dayOfMonth}/${UUID.randomUUID()}.$safeExtension"
+
+        s3Client.copyObject(
+            CopyObjectRequest {
+                bucket = bucketName
+                copySource = "$bucketName/$tempKey"
+                key = finalKey
+            },
+        )
+
+        deleteObjectInternal(tempKey)
+        finalKey
+    }
+
+    fun getObjectUrl(keyName: String, duration: Duration): Url {
+        val request = GetObjectRequest {
+            bucket = bucketName
+            key = keyName
+        }
+        return runBlocking { s3Client.presignGetObject(request, duration) }.url
+    }
+
+    private fun presignedPutObject(keyName: String, contentType: String, duration: Duration): Url {
+        val request = PutObjectRequest {
+            bucket = bucketName
+            key = keyName
+            this.contentType = contentType
+        }
+        return runBlocking { s3Client.presignPutObject(request, duration) }.url
+    }
+
+    private suspend fun getObjectBytesInternal(keyName: String, byteRange: String): ByteArray {
+        var result = ByteArray(0)
+        val request = GetObjectRequest {
+            bucket = bucketName
+            key = keyName
+            range = byteRange
+        }
+
+        s3Client.getObject(request) { response ->
+            result = response.body?.toByteArray() ?: ByteArray(0)
+        }
+
+        return result
+    }
+
+    private suspend fun deleteObjectInternal(key: String) {
+        s3Client.deleteObject(
+            DeleteObjectRequest {
+                bucket = bucketName
+                this.key = key
+            },
+        )
+    }
+}

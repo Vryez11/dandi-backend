@@ -5,9 +5,6 @@ import jakarta.validation.constraints.NotNull
 
 data class UploadImageRequest(
     @field:NotBlank()
-    val fileName: String,
-
-    @field:NotBlank()
     val contentType: String,
 
     @field:NotNull()

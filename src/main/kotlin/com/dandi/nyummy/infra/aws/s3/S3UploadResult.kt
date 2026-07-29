@@ -1,0 +1,5 @@
+package com.dandi.nyummy.infra.aws.s3
+
+import aws.smithy.kotlin.runtime.net.url.Url
+
+data class S3UploadResult(val url: Url, val keyName: String)
