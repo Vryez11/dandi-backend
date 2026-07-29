@@ -54,7 +54,7 @@ class MealService(
 
         return UploadImageResponse(
             uploadUrl = uploadUrl.url.toString(),
-            imageKey = uploadUrl.keyName,
+            imageKey = uploadUrl.key,
             uploadMethod = mealProperties.uploadMethod,
             uploadHeaders = mapOf("Content-Type" to request.contentType),
             expiresAt = expirationInstant.toString(),
@@ -63,13 +63,13 @@ class MealService(
 
     @Transactional
     fun createMeal(request: CreateMealRequest): GetStatusResponse {
-        val finalImageKey = s3Service.confirmUpload(
+        val imageKey = s3Service.confirmUpload(
             tempKey = request.imageKey,
             finalKeyPrefix = "meals",
             maxFileSizeBytes = mealProperties.maxFileSizeBytes,
         )
 
-        val meal = request.toEntity(imageKey = finalImageKey)
+        val meal = request.toEntity(imageKey = imageKey)
         val savedMeal = mealRepository.save(meal)
 
         analysisService.analyzeNutrition(savedMeal.id)

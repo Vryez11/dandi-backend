@@ -66,11 +66,11 @@ class S3Service(
 
         // TODO: 경로에 user_id 추가하기
         val tempExtension = MIME_TO_EXTENSION.getValue(contentType)
-        val keyName =
+        val key =
             "$TEMP_PREFIX/${UUID.randomUUID()}.$tempExtension"
-        val url = createPresignedPutUrl(keyName, contentType, expiration)
+        val url = createPresignedPutUrl(key, contentType, expiration)
 
-        return S3UploadResult(url, keyName)
+        return S3UploadResult(url, key)
     }
 
     fun confirmUpload(tempKey: String, finalKeyPrefix: String, maxFileSizeBytes: Long): String = runBlocking {
@@ -122,27 +122,27 @@ class S3Service(
         finalKey
     }
 
-    fun createPresignedGetUrl(keyName: String, duration: Duration): Url {
+    fun createPresignedGetUrl(key: String, duration: Duration): Url {
         val request = GetObjectRequest {
             bucket = bucketName
-            key = keyName
+            this.key = key
         }
         return runBlocking { s3Client.presignGetObject(request, duration) }.url
     }
 
-    private fun createPresignedPutUrl(keyName: String, contentType: String, duration: Duration): Url {
+    private fun createPresignedPutUrl(key: String, contentType: String, duration: Duration): Url {
         val request = PutObjectRequest {
             bucket = bucketName
-            key = keyName
+            this.key = key
             this.contentType = contentType
         }
         return runBlocking { s3Client.presignPutObject(request, duration) }.url
     }
 
-    private suspend fun downloadObjectRange(keyName: String, byteRange: String): ByteArray {
+    private suspend fun downloadObjectRange(key: String, byteRange: String): ByteArray {
         val request = GetObjectRequest {
             bucket = bucketName
-            key = keyName
+            this.key = key
             range = byteRange
         }
 
@@ -160,17 +160,17 @@ class S3Service(
         )
     }
 
-    fun downloadObject(keyName: String): S3ObjectContent {
+    fun downloadObject(key: String): S3ObjectContent {
         val request = GetObjectRequest {
             bucket = bucketName
-            key = keyName
+            this.key = key
         }
 
         return runBlocking {
             s3Client.getObject(request) { response ->
                 S3ObjectContent(
                     bytes = response.body?.toByteArray()
-                        ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $keyName"),
+                        ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $key"),
                     contentType = response.contentType,
                 )
             }
