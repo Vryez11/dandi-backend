@@ -41,7 +41,7 @@ class AnalysisService(
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        if (meal.status != MealStatus.COMPLETED) {
+        if (meal.status == MealStatus.FAILED) {
             meal.updateStatus(MealStatus.ANALYZING)
             analyzeNutrition(meal.id)
         }
