@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisClient
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
 import com.dandi.nyummy.meal.dto.*
 import com.dandi.nyummy.meal.entity.Meal
@@ -29,7 +30,8 @@ class MealService(
     private val clock: Clock = Clock.System,
     private val profileRepository: ProfileRepository,
     private val nutritionRecommendationCalculator: NutritionRecommendationCalculator,
-    private val dailyNutritionEvaluationCalculator: DailyNutritionEvaluationCalculator
+    private val dailyNutritionEvaluationCalculator: DailyNutritionEvaluationCalculator,
+    private val nutritionAnalysisClient: NutritionAnalysisClient
 ) {
     companion object {
         private val PRESIGNED_PUT_URL_EXPIRATION = 10.minutes
@@ -75,12 +77,9 @@ class MealService(
         )
     }
 
+    @Transactional
     fun createMeal(request: CreateMealRequest): GetStatusResponse {
-
-        val meal = request.toEntity()
-        val savedMeal = mealRepository.save(meal)
-
-        savedMeal.updateStatus(MealStatus.ANALYSIS)
+        val savedMeal = mealRepository.save(request.toEntity())
 
         analysisService.analyzeNutrition(savedMeal.id)
 
