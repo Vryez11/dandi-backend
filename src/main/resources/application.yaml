@@ -23,6 +23,7 @@ spring:
     restart:
       additional-exclude: "db/migration/**"
 
+<<<<<<< Updated upstream
 app:
   meal:
     max-file-size-bytes: 10485760
@@ -34,3 +35,10 @@ app:
     base-url: "https://generativelanguage.googleapis.com"
     connect-timeout: 5s
     read-timeout: 30s
+=======
+  app:
+    meal:
+      #      max-file-size-bytes: 10485760
+      max-file-size-bytes: 1048576
+      presigned-url-expiration-minutes: 10
+>>>>>>> Stashed changes

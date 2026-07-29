@@ -7,13 +7,24 @@ Content-Type: application/json
   "fileSizeBytes": 1000
 }
 
+### 발급받은 presigned url로 이미지 S3에 업로드
+PUT https://nyummy-app-bucket-455615001241-ap-northeast-2-an.s3.ap-northeast-2.amazonaws.com/temp/20d91ed8-9a8d-4a28-b29f-0d68fe537f38.png?
+    x-id=PutObject&X-Amz-Algorithm=AWS4-HMAC-SHA256&
+    X-Amz-Credential=AKIAWUFGFGKM4PNRWFHW%2F20260729%2Fap-northeast-2%2Fs3%2Faws4_request&X-Amz-Date=20260729T045722Z&
+    X-Amz-Expires=600&X-Amz-SignedHeaders=content-type%3Bhost&
+    X-Amz-Signature=307f85f743d0b6d676952bb04242d2c804463b4975510f0d442f56ba557302ac
+Content-Type: image/png
+
+< image/meat3_9.jpg
+
+
 ### 식사기록 생성 API
 POST {{url}}/api/v1/meals
 Content-Type: application/json
 
 {
-  "name": "눈알짱구",
-  "imageKey": "temp/ede107bb-d176-469e-aa2d-8b834fa792b8.png",
+  "name": "짜장면",
+  "imageKey": "temp/20d91ed8-9a8d-4a28-b29f-0d68fe537f38.png",
   "mealAt": "2026-07-20T07:12:26Z",
   "iconId": 1
 }
