@@ -30,12 +30,6 @@ fun Meal.toNutrition() = Nutrition(
 fun Meal.toGetStatusResponse() = GetStatusResponse(
     id = this.id,
     status = this.status.name,
-    nutrition = Nutrition(
-        calory = this.calory ?: 0,
-        carbs = this.carbs ?: 0,
-        protein = this.protein ?: 0,
-        fat = this.fat ?: 0,
-    ),
     nutrition = this.toNutrition(),
 )
 

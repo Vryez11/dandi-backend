@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.entity
 
+import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.enum.MealStatus
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -75,6 +76,13 @@ class Meal(
         this.carbs = carbs
         this.protein = protein
         this.fat = fat
+    }
+
+    fun updateNutrition(nutrition: Nutrition?) {
+        this.calory = nutrition?.calory ?: 0
+        this.carbs = nutrition?.carbs ?: 0
+        this.protein = nutrition?.protein ?: 0
+        this.fat = nutrition?.fat ?: 0
     }
 
     fun updateStatus(status: MealStatus) {

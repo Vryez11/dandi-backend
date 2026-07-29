@@ -51,6 +51,9 @@ dependencies {
 
     // 입력 검증
     implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // HTTP 클라이언트 (RestClient)
+    implementation("org.springframework.boot:spring-boot-starter-restclient")
 }
 
 kotlin {

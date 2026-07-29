@@ -15,7 +15,6 @@ import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.entity.Meal
-import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
@@ -84,12 +83,9 @@ class MealService(
         )
     }
 
+    @Transactional
     fun createMeal(request: CreateMealRequest): GetStatusResponse {
-        val meal = request.toEntity()
-        val savedMeal = mealRepository.save(meal)
-
-        savedMeal.updateStatus(MealStatus.ANALYZING)
-
+        val savedMeal = mealRepository.save(request.toEntity())
         analysisService.analyzeNutrition(savedMeal.id)
 
         return savedMeal.toGetStatusResponse()
