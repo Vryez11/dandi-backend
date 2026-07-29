@@ -1,8 +1,10 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.infra.aws.s3.S3Presigner
+import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
+import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
+import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
 import com.dandi.nyummy.meal.dto.CreateMealRequest
-import com.dandi.nyummy.meal.dto.DailyMealResponse
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.DailyNutritionResponse
 import com.dandi.nyummy.meal.dto.GetStatusResponse
@@ -13,15 +15,15 @@ import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.entity.Meal
-import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
+import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
+import com.dandi.nyummy.meal.mapper.toMealResponse
+import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
-import jakarta.persistence.EntityNotFoundException
 import jakarta.transaction.Transactional
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.LocalDate
@@ -38,8 +40,6 @@ class MealService(
     private val s3Presigner: S3Presigner,
     private val clock: Clock = Clock.System,
     private val profileRepository: ProfileRepository,
-    private val nutritionRecommendationCalculator: NutritionRecommendationCalculator,
-    private val dailyNutritionEvaluationCalculator: DailyNutritionEvaluationCalculator,
 ) {
     companion object {
         private val PRESIGNED_PUT_URL_EXPIRATION = 10.minutes
@@ -88,7 +88,7 @@ class MealService(
         val meal = request.toEntity()
         val savedMeal = mealRepository.save(meal)
 
-        savedMeal.updateStatus(MealStatus.WAITING)
+        savedMeal.updateStatus(MealStatus.ANALYZING)
 
         analysisService.analyzeNutrition(savedMeal.id)
 
@@ -103,51 +103,15 @@ class MealService(
 
         val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
 
-        val meals = mutableListOf<DailyMealResponse>()
-
-        var totalCalory: Int = 0
-        var totalCarbs: Int = 0
-        var totalProtein: Int = 0
-        var totalFat: Int = 0
-
-        for (meal in mealsByPeriod) {
-            meals.add(
-                DailyMealResponse(
-                    mealId = meal.id,
-                    name = meal.name,
-                    mealAt = meal.mealAt,
-                    calory = meal.calory ?: 0,
-                    carbs = meal.carbs ?: 0,
-                    protein = meal.protein ?: 0,
-                    fat = meal.fat ?: 0,
-                    status = meal.status,
-                ),
-            )
-
-            totalCalory += meal.calory ?: 0
-            totalCarbs += meal.carbs ?: 0
-            totalProtein += meal.protein ?: 0
-            totalFat += meal.fat ?: 0
-        }
+        val meals = mealsByPeriod.map { it.toDailyMealResponse() }
 
         val profile = profileRepository.getProfileByUserId(userId)
 
-        val recommended =
-            nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
+        val recommended = calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
         val dailyNutrition = DailyNutritionResponse(
-            current = Nutrition(
-                calory = totalCalory,
-                carbs = totalCarbs,
-                protein = totalProtein,
-                fat = totalFat,
-            ),
-            target = Nutrition(
-                calory = recommended.calory,
-                carbs = recommended.carbs,
-                protein = recommended.protein,
-                fat = recommended.fat,
-            ),
+            current = mealsByPeriod.fold(Nutrition.ZERO) { acc, meal -> acc + meal.toNutrition() },
+            target = recommended,
         )
 
         return DailyMealsResponse(
@@ -157,73 +121,14 @@ class MealService(
         )
     }
 
-    fun calculateDailyNutritionEvaluation(
-        meals: List<Meal>,
-        recommended: RecommendedDailyIntake,
-    ): DailyNutritionEvaluation {
-        if (meals.isEmpty()) {
-            return DailyNutritionEvaluation.UNRECORDED
-        }
-
-        var totalCalory: Int = 0
-        var totalCarbs: Int = 0
-        var totalProtein: Int = 0
-        var totalFat: Int = 0
-
-        for (meal in meals) {
-            totalCalory += meal.calory ?: 0
-            totalCarbs += meal.carbs ?: 0
-            totalProtein += meal.protein ?: 0
-            totalFat += meal.fat ?: 0
-        }
-
-        val recommendedCalory = recommended.calory
-        val recommendedCarbs = recommended.carbs
-        val recommendedProtein = recommended.protein
-        val recommendedFat = recommended.fat
-
-        if (isPositive(
-                totalCalory,
-                recommendedCalory,
-                totalCarbs,
-                recommendedCarbs,
-                totalProtein,
-                recommendedProtein,
-                totalFat,
-                recommendedFat,
-            )
-        ) {
-            return DailyNutritionEvaluation.POSITIVE
-        }
-
-        return DailyNutritionEvaluation.NEGATIVE
-    }
-
-    private fun isPositive(
-        totalCalory: Int,
-        recommendedCalory: Int,
-        totalCarbs: Int,
-        recommendedCarbs: Int,
-        totalProtein: Int,
-        recommendedProtein: Int,
-        totalFat: Int,
-        recommendedFat: Int,
-    ): Boolean = isPositiveNutrition(totalCalory, recommendedCalory) &&
-        isPositiveNutrition(totalCarbs, recommendedCarbs) &&
-        isPositiveNutrition(totalProtein, recommendedProtein) &&
-        isPositiveNutrition(totalFat, recommendedFat)
-
-    fun isPositiveNutrition(totalValue: Int, recommendedValue: Int): Boolean =
-        recommendedValue * 0.9 <= totalValue && totalValue < recommendedValue * 1.5
-
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
         val zone = ZoneId.of("Asia/Seoul")
-        val range = MonthlyCalendarRange.calculate(YearMonth.of(year, month))
+        val (startDate, endDate) = calculateMonthlyCalendarRange(YearMonth.of(year, month))
 
         val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
             userId,
-            range.startDate.atStartOfDay(zone).toInstant(),
-            range.endDate.plusDays(1).atStartOfDay(zone).toInstant(),
+            startDate.atStartOfDay(zone).toInstant(),
+            endDate.plusDays(1).atStartOfDay(zone).toInstant(),
         )
 
         val mealsByDate: Map<LocalDate, List<Meal>> =
@@ -231,16 +136,16 @@ class MealService(
                 .groupBy { it.mealAt.atZone(zone).toLocalDate() }
 
         val profile = profileRepository.getProfileByUserId(userId)
-        val recommended = nutritionRecommendationCalculator.calculateRecommendedDailyIntake(profile, LocalDate.now())
+        val recommended = calculateRecommendedDailyIntake(profile, LocalDate.now())
 
         val days = mutableListOf<MonthlyMealDayResponse>()
-        var date = range.startDate
-        while (date <= range.endDate) {
+        var date = startDate
+        while (date <= endDate) {
             days.add(
                 MonthlyMealDayResponse(
                     date = date,
                     isCurrentMonth = date.year == year && date.monthValue == month,
-                    dailyNutritionEvaluation = dailyNutritionEvaluationCalculator.calculateDailyNutritionEvaluation(
+                    dailyNutritionEvaluation = calculateDailyNutritionEvaluation(
                         meals = mealsByDate[date] ?: emptyList(),
                         recommended = recommended,
                     ),
@@ -261,21 +166,9 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes)
+        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes).toString()
 
-        return MealResponse(
-            mealId = mealId,
-            name = meal.name,
-            mealAt = meal.mealAt,
-            status = meal.status,
-            nutrition = Nutrition(
-                calory = meal.calory ?: 0,
-                carbs = meal.carbs ?: 0,
-                protein = meal.protein ?: 0,
-                fat = meal.fat ?: 0,
-            ),
-            imageUrl = imageUrl,
-        )
+        return meal.toMealResponse(imageUrl)
     }
 
     @Transactional
@@ -283,23 +176,11 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
-        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes)
+        val imageUrl = s3Presigner.getGetObjectUrl(meal.imageKey, 10.minutes).toString()
 
         meal.updateName(name)
 
-        return MealResponse(
-            mealId = mealId,
-            name = meal.name,
-            mealAt = meal.mealAt,
-            status = meal.status,
-            nutrition = Nutrition(
-                calory = meal.calory ?: 0,
-                carbs = meal.carbs ?: 0,
-                protein = meal.protein ?: 0,
-                fat = meal.fat ?: 0,
-            ),
-            imageUrl = imageUrl,
-        )
+        return meal.toMealResponse(imageUrl)
     }
 
     @Transactional
@@ -308,26 +189,5 @@ class MealService(
             ?: throw Exception("Meal Not Found")
 
         meal.updateDeletedAt(Instant.now())
-    }
-
-    @Transactional
-    fun updateStatus(mealId: Long, status: MealStatus) {
-        val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
-
-        meal.updateStatus(status)
-    }
-
-    @Transactional
-    fun updateNutrition(mealId: Long) {
-        val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
-
-        meal.updateNutrition(
-            calory = 700,
-            carbs = 100,
-            protein = 50,
-            fat = 20,
-        )
     }
 }
