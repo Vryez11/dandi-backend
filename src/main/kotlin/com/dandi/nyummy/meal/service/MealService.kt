@@ -62,17 +62,17 @@ class MealService(
     }
 
     @Transactional
-    fun createMeal(request: CreateMealRequest): GetStatusResponse {
+    fun createMeal(userId: Long, request: CreateMealRequest): GetStatusResponse {
         val imageKey = s3Service.confirmUpload(
             tempKey = request.imageKey,
             finalKeyPrefix = "meals",
             maxFileSizeBytes = mealProperties.maxFileSizeBytes,
         )
 
-        val meal = request.toEntity(imageKey = imageKey)
+        val meal = request.toEntity(userId, imageKey)
         val savedMeal = mealRepository.save(meal)
 
-        analysisService.analyzeNutrition(savedMeal.id)
+        analysisService.analyzeNutrition(userId, savedMeal.id)
 
         return savedMeal.toGetStatusResponse()
     }
