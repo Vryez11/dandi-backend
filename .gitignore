@@ -41,3 +41,4 @@ out/
 
 ### Others ###
 .env
+src/test/http/image/

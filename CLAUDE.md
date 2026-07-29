@@ -27,6 +27,8 @@
 | 변환 | convert | parse, transform, map, to | `convertMealStatus()` |
 | 재시도 | retry | resume, redo | `retryNutritionAnalysis()` |
 | 분석 | analyze | analysis(명사를 동사 자리에 금지), analyse | `analyzeNutrition()` |
+| 확정(임시→최종 승격) | confirm | finalize, promote, complete | `confirmUpload()` |
+| 바이너리 콘텐츠 조회(외부 스토리지) | download | fetch, retrieve (단, `get`은 도메인 리소스 조회 전용) | `downloadObject()`, `downloadObjectRange()` |
 
 ※ 예외: Mapper의 변환 확장 함수는 Kotlin 관례에 따라 `toXxx`를 사용한다. Xxx는 반환 타입 이름과 일치시킨다. 예: `Meal.toNutrition()`, `CreateMealRequest.toEntity()`
 
@@ -35,7 +37,7 @@
 | 용도 | 접미사 | 금지 |
 |---|---|---|
 | 요청 DTO | ~Request | ~Req, ~Command |
-| 응답 DTO | ~Response | ~Res, ~Dto, ~Result |
+| 응답 DTO | ~Response | ~Res, ~Dto, ~Result (단, 컨트롤러에 노출되지 않는 서비스 내부 반환값은 예외 — 예: `S3UploadResult`) |
 | 서비스 | ~Service | ~Manager, ~Handler |
 | 리포지토리 | ~Repository | ~Dao |
 | 컨트롤러 | ~Controller | ~Api, ~Resource |

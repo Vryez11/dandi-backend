@@ -7,7 +7,6 @@ import com.dandi.nyummy.meal.dto.GetStatusResponse
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
-import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 
@@ -40,9 +39,9 @@ class AnalysisService(
 
     fun retryNutritionAnalysis(mealId: Long): GetStatusResponse {
         val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw EntityNotFoundException("존재하지 않는 mealId 입니다.")
+            ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        if (meal.status == MealStatus.FAILED) {
+        if (meal.status != MealStatus.COMPLETED) {
             meal.updateStatus(MealStatus.ANALYZING)
             analyzeNutrition(meal.id)
         }

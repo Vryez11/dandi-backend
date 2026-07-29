@@ -52,6 +52,9 @@ dependencies {
     // 입력 검증
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
+    // Apache Tika (파일 시그니처 DB)
+    implementation("org.apache.tika:tika-core:3.3.1")
+
     // HTTP 클라이언트 (RestClient)
     implementation("org.springframework.boot:spring-boot-starter-restclient")
 }

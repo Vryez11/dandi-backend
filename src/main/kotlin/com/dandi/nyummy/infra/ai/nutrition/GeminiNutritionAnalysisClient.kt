@@ -1,21 +1,18 @@
 package com.dandi.nyummy.infra.ai.nutrition
 
 import com.dandi.nyummy.infra.ai.AiProperties
-import com.dandi.nyummy.infra.aws.s3.S3Reader
+import com.dandi.nyummy.infra.aws.s3.S3Service
 import com.dandi.nyummy.meal.dto.Nutrition
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import tools.jackson.databind.ObjectMapper
-import kotlin.collections.listOf
-import kotlin.collections.mapOf
 import kotlin.io.encoding.Base64
-import kotlin.to
 
 @Component
 class GeminiNutritionAnalysisClient(
     private val restClient: RestClient,
     private val aiProperties: AiProperties,
-    private val s3Reader: S3Reader,
+    private val s3Service: S3Service,
     private val objectMapper: ObjectMapper,
 ) : NutritionAnalysisClient {
 
@@ -36,7 +33,7 @@ class GeminiNutritionAnalysisClient(
     }
 
     override fun analyzeNutrition(imageKey: String): Nutrition {
-        val objectContent = s3Reader.getObject(imageKey)
+        val objectContent = s3Service.downloadObject(imageKey)
         val encodedContent = Base64.encode(objectContent.bytes, 0, objectContent.bytes.size)
         val mimeType = objectContent.contentType
 
