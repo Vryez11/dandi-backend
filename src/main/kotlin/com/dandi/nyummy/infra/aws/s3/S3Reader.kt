@@ -8,10 +8,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 @Component
-class S3Reader(
-    private val s3Client: S3Client,
-    @Value("\${AWS_S3_BUCKET_NAME}") private val s3BucketName: String
-) {
+class S3Reader(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_NAME}") private val s3BucketName: String) {
 
     fun getObject(keyName: String): S3ObjectContent {
         val request = GetObjectRequest {
@@ -24,14 +21,11 @@ class S3Reader(
                 S3ObjectContent(
                     bytes = response.body?.toByteArray()
                         ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $keyName"),
-                    contentType = response.contentType
+                    contentType = response.contentType,
                 )
             }
         }
     }
 }
 
-data class S3ObjectContent(
-    val bytes: ByteArray,
-    val contentType: String?
-)
+data class S3ObjectContent(val bytes: ByteArray, val contentType: String?)

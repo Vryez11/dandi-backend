@@ -14,7 +14,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 
 @RestControllerAdvice
-class GlobalExceptionHandler: ResponseEntityExceptionHandler() {
+class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
 
     companion object {
         private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
@@ -38,8 +38,13 @@ class GlobalExceptionHandler: ResponseEntityExceptionHandler() {
         log.warn("Spring MVC exception: {}", ex.message)
         return ResponseEntity
             .status(statusCode)
-            .body(ErrorResponse.of("api.common.invalidInputValue", ex.message ?:
-            statusCode.toString()))
+            .body(
+                ErrorResponse.of(
+                    "api.common.invalidInputValue",
+                    ex.message
+                        ?: statusCode.toString(),
+                ),
+            )
     }
 
     /*

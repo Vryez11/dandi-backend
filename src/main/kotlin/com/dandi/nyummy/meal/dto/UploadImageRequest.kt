@@ -11,5 +11,5 @@ data class UploadImageRequest(
     val contentType: String,
 
     @field:NotNull()
-    val fileSizeBytes: Long
+    val fileSizeBytes: Long,
 )

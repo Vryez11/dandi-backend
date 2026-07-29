@@ -12,10 +12,7 @@ import org.springframework.stereotype.Component
 import kotlin.time.Duration
 
 @Component
-class S3Presigner(
-    private val s3Client: S3Client,
-    @Value("\${AWS_S3_BUCKET_NAME}") private val bucketName: String
-) {
+class S3Presigner(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_NAME}") private val bucketName: String) {
 
     fun getPutObjectUrl(keyName: String, type: String, duration: Duration): Url {
         val unsignedRequest = PutObjectRequest {

@@ -12,8 +12,7 @@ import org.springframework.web.client.RestClient
 class AiConfig {
 
     @Bean
-    fun aiRestClient(aiProperties: AiProperties) : RestClient {
-
+    fun aiRestClient(aiProperties: AiProperties): RestClient {
         val settings = HttpClientSettings.defaults()
             .withConnectTimeout(aiProperties.connectTimeout)
             .withReadTimeout(aiProperties.readTimeout)

@@ -9,5 +9,4 @@ class NyummyApplicationTests {
     @Test
     fun contextLoads() {
     }
-
 }

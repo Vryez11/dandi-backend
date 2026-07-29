@@ -16,7 +16,7 @@ class GeminiNutritionAnalysisClient(
     private val restClient: RestClient,
     private val aiProperties: AiProperties,
     private val s3Reader: S3Reader,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
 ) : NutritionAnalysisClient {
 
     companion object {
@@ -36,20 +36,23 @@ class GeminiNutritionAnalysisClient(
     }
 
     override fun analyzeNutrition(imageKey: String): Nutrition {
-
         val objectContent = s3Reader.getObject(imageKey)
         val encodedContent = Base64.encode(objectContent.bytes, 0, objectContent.bytes.size)
         val mimeType = objectContent.contentType
 
         val requestBody = mapOf(
             "contents" to listOf(
-                mapOf("parts" to listOf(
-                    mapOf("inlineData" to mapOf(
-                        "mimeType" to mimeType,
-                        "data" to encodedContent,
-                    )),
-                    mapOf("text" to PROMPT),
-                )),
+                mapOf(
+                    "parts" to listOf(
+                        mapOf(
+                            "inlineData" to mapOf(
+                                "mimeType" to mimeType,
+                                "data" to encodedContent,
+                            ),
+                        ),
+                        mapOf("text" to PROMPT),
+                    ),
+                ),
             ),
             "generationConfig" to mapOf(
                 "responseMimeType" to "application/json",
