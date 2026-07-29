@@ -57,6 +57,9 @@ dependencies {
 
     // HTTP 클라이언트 (RestClient)
     implementation("org.springframework.boot:spring-boot-starter-restclient")
+
+    // Spring-Security
+    implementation("org.springframework.boot:spring-boot-starter-security")
 }
 
 kotlin {
