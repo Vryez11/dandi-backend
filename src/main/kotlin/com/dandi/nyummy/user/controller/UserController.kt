@@ -1,6 +1,9 @@
 package com.dandi.nyummy.user.controller
 
+import com.dandi.nyummy.auth.AuthUser
+import com.dandi.nyummy.auth.CurrentUser
 import com.dandi.nyummy.user.dto.PasswordUpdateRequest
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -11,5 +14,5 @@ import org.springframework.web.bind.annotation.RestController
 class UserController {
 
     @PatchMapping("/me/password")
-    fun updatePassword(@RequestBody request: PasswordUpdateRequest, @CurrentUser user: Auth)
+    fun updatePassword(@RequestBody request: PasswordUpdateRequest, @CurrentUser user: AuthUser) = ResponseEntity.ok()
 }
