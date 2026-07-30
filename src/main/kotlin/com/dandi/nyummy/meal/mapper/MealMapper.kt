@@ -10,13 +10,13 @@ import com.dandi.nyummy.meal.enum.MealStatus
 import java.time.Instant
 
 // DTO -> Entity 변환 확장 함수
-fun CreateMealRequest.toEntity(imageKey: String) = Meal(
+fun CreateMealRequest.toEntity(userId: Long, imageKey: String) = Meal(
     name = this.name,
     status = MealStatus.WAITING,
     imageKey = imageKey,
     mealAt = this.mealAt,
     createdAt = Instant.now(),
-    userId = 1L,
+    userId = userId,
     iconId = 1L,
 )
 

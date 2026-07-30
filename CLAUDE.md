@@ -44,6 +44,8 @@
 | 설정 바인딩(@ConfigurationProperties) | ~Properties | ~Config |
 | DTO-엔티티 변환 | ~Mapper | ~Converter, ~Transformer |
 | 계산 로직(최상위 함수 파일) | ~Calculator | ~Calc, ~Calculation, ~Util |
+| 서블릿/보안 필터 | ~Filter | ~Interceptor (인터셉터는 MVC 계층의 다른 개념) |
+| 응답 직접 직렬화(필터 단계) | ~Writer | ~Handler, ~Responder — 예: `AuthErrorResponseWriter` |
 
 ## Boolean 네이밍
 
@@ -86,6 +88,11 @@
 | 지방 | Fat | 단수형 고정 (fats 아님) |
 | 분석 | Analysis | 영양 분석. 명사 위치에 사용 (MealStatus.ANALYSIS, AnalysisMealService, retryNutritionAnalysis) |
 | 단건 | Single | 식사 단건 개념 (SingleMealService, getSingleMeal 등) |
+| 인증 | Auth | authentication 축약. 패키지명(auth), 에러코드(api.auth.*) 접두로 사용 |
+| 인증된 현재 사용자 | AuthUser | SecurityContext의 principal 타입. Principal, LoginUser, SessionUser 금지 |
+| 현재 사용자 주입 | CurrentUser | @AuthenticationPrincipal 메타 어노테이션(@CurrentUser). 인증 필수 경로의 컨트롤러 파라미터 전용 |
+| 소유권 | Ownership | 리소스가 요청 사용자 소유인지. 검증은 validateOwnership — ownership은 한 단어 (OwnerShip 금지) |
+| 임시 구현 | Stub | 프로덕션 코드의 임시 대역 접두 (예: StubAuthenticationFilter). Fake, Mock 금지 — Mock은 테스트 전용 |
 
 ## 케이스 규칙
 

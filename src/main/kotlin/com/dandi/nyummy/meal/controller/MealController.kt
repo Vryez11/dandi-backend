@@ -1,5 +1,7 @@
 package com.dandi.nyummy.meal.controller
 
+import com.dandi.nyummy.auth.AuthUser
+import com.dandi.nyummy.auth.CurrentUser
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.GetStatusResponse
@@ -19,7 +21,6 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -30,49 +31,47 @@ class MealController(private val mealService: MealService, private val analysisS
 
     @GetMapping("/monthly")
     fun getMonthlyMeals(
-        @RequestHeader("X-User-Id") userId: Long,
+        @CurrentUser user: AuthUser,
         @RequestParam year: Int,
         @RequestParam month: Int,
-    ): MonthlyMealsResponse = mealService.getMonthlyMeals(userId, year, month)
+    ): MonthlyMealsResponse = mealService.getMonthlyMeals(user.userId, year, month)
 
     @GetMapping("/daily")
     fun getDailyMeals(
-        @RequestHeader("X-User-Id") userId: Long,
+        @CurrentUser user: AuthUser,
         @RequestParam year: Int,
         @RequestParam month: Int,
         @RequestParam day: Int,
-    ): DailyMealsResponse = mealService.getDailyMeals(userId, year, month, day)
+    ): DailyMealsResponse = mealService.getDailyMeals(user.userId, year, month, day)
 
     @GetMapping("/{mealId}")
-    fun getMeal(@RequestHeader("X-User-Id") userId: Long, @PathVariable("mealId") mealId: Long): MealResponse =
-        mealService.getMeal(userId, mealId)
+    fun getMeal(@CurrentUser user: AuthUser, @PathVariable("mealId") mealId: Long): MealResponse =
+        mealService.getMeal(user.userId, mealId)
 
     @PutMapping("/{mealId}")
     fun updateMeal(
-        @RequestHeader("X-User-Id") userId: Long,
+        @CurrentUser user: AuthUser,
         @PathVariable("mealId") mealId: Long,
         @RequestParam name: String,
-    ): MealResponse = mealService.updateMeal(userId, mealId, name)
+    ): MealResponse = mealService.updateMeal(user.userId, mealId, name)
 
     @DeleteMapping("/{mealId}")
-    fun deleteMeal(
-        @RequestHeader("X-User-Id") userId: Long,
-        @PathVariable("mealId") mealId: Long,
-        response: HttpServletResponse,
-    ) {
-        mealService.deleteMeal(userId, mealId)
+    fun deleteMeal(@CurrentUser user: AuthUser, @PathVariable("mealId") mealId: Long, response: HttpServletResponse) {
+        mealService.deleteMeal(user.userId, mealId)
         response.status = HttpStatus.NO_CONTENT.value()
     }
 
     @PostMapping
-    fun createMeal(@Valid @RequestBody request: CreateMealRequest): GetStatusResponse = mealService.createMeal(request)
+    fun createMeal(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateMealRequest): GetStatusResponse =
+        mealService.createMeal(user.userId, request)
 
     @GetMapping("/{mealId}/analysis")
-    fun getStatus(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse = analysisService.getStatus(mealId)
+    fun getStatus(@CurrentUser user: AuthUser, @PathVariable @NotNull @Valid mealId: Long): GetStatusResponse =
+        analysisService.getStatus(user.userId, mealId)
 
     @PostMapping("/{mealId}/analysis")
-    fun retryAnalysis(@PathVariable @NotNull @Valid mealId: Long): GetStatusResponse =
-        analysisService.retryNutritionAnalysis(mealId)
+    fun retryAnalysis(@CurrentUser user: AuthUser, @PathVariable @NotNull @Valid mealId: Long): GetStatusResponse =
+        analysisService.retryNutritionAnalysis(user.userId, mealId)
 
     @PostMapping("/images/presigned-url")
     fun getUploadUrl(@Valid @RequestBody request: UploadImageRequest): UploadImageResponse =

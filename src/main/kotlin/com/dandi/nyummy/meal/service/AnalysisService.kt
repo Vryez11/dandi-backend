@@ -15,16 +15,20 @@ class AnalysisService(
     private val mealRepository: MealRepository,
     private val nutritionAnalysisClient: NutritionAnalysisClient,
 ) {
-    fun getStatus(mealId: Long): GetStatusResponse {
+    fun getStatus(userId: Long, mealId: Long): GetStatusResponse {
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND, "Meal Not Found")
+
+        meal.validateOwnership(userId)
 
         return meal.toGetStatusResponse()
     }
 
-    fun analyzeNutrition(mealId: Long) {
+    fun analyzeNutrition(userId: Long, mealId: Long) {
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
+
+        meal.validateOwnership(userId)
 
         meal.updateStatus(MealStatus.ANALYZING)
 
@@ -37,13 +41,15 @@ class AnalysisService(
         }
     }
 
-    fun retryNutritionAnalysis(mealId: Long): GetStatusResponse {
+    fun retryNutritionAnalysis(userId: Long, mealId: Long): GetStatusResponse {
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        if (meal.status != MealStatus.COMPLETED) {
+        meal.validateOwnership(userId)
+
+        if (meal.status == MealStatus.FAILED) {
             meal.updateStatus(MealStatus.ANALYZING)
-            analyzeNutrition(meal.id)
+            analyzeNutrition(userId, meal.id)
         }
 
         return meal.toGetStatusResponse()
