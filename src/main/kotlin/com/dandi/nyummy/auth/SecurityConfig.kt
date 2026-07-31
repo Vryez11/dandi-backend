@@ -1,5 +1,7 @@
-package com.dandi.nyummy.auth
+package com.dandi.nyummy.security
 
+import com.dandi.nyummy.security.filter.JwtAuthorizationFilter
+import com.dandi.nyummy.security.jwt.JwtProvider
 import jakarta.servlet.DispatcherType
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -11,7 +13,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.util.matcher.DispatcherTypeRequestMatcher
 
 @Configuration
-class SecurityConfig(private val authErrorResponseWriter: AuthErrorResponseWriter) {
+class SecurityConfig(
+    private val authErrorResponseWriter: AuthErrorResponseWriter,
+    private val jwtProvider: JwtProvider,
+) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -28,7 +33,7 @@ class SecurityConfig(private val authErrorResponseWriter: AuthErrorResponseWrite
                 authorize("/api/**", authenticated)
                 authorize(anyRequest, denyAll)
             }
-            addFilterBefore<UsernamePasswordAuthenticationFilter>(StubAuthenticationFilter())
+            addFilterBefore<UsernamePasswordAuthenticationFilter>(JwtAuthorizationFilter(jwtProvider))
         }
 
         return http.build()

@@ -34,3 +34,7 @@ app:
     base-url: "https://generativelanguage.googleapis.com"
     connect-timeout: 5s
     read-timeout: 30s
+  jwt:
+    secret-key: ${JWT_SECRET_KEY}
+    access-time-to-live: 30m
+    refresh-time-to-live: 15d
