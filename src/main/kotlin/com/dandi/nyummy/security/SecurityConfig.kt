@@ -1,5 +1,6 @@
 package com.dandi.nyummy.security
 
+import com.dandi.nyummy.security.filter.StubAuthenticationFilter
 import com.dandi.nyummy.security.filter.JwtAuthorizationFilter
 import com.dandi.nyummy.security.jwt.JwtProvider
 import jakarta.servlet.DispatcherType

@@ -1,4 +1,4 @@
-package com.dandi.nyummy.auth
+package com.dandi.nyummy.security
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 

@@ -1,3 +1,3 @@
-package com.dandi.nyummy.auth
+package com.dandi.nyummy.security
 
 data class AuthUser(val userId: Long)
