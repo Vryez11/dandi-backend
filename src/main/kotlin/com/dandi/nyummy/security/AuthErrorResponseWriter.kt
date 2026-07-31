@@ -1,4 +1,4 @@
-package com.dandi.nyummy.auth
+package com.dandi.nyummy.security
 
 import com.dandi.nyummy.exception.ErrorResponse
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode

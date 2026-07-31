@@ -1,7 +1,7 @@
 package com.dandi.nyummy.user.controller
 
-import com.dandi.nyummy.auth.AuthUser
-import com.dandi.nyummy.auth.CurrentUser
+import com.dandi.nyummy.security.AuthUser
+import com.dandi.nyummy.security.CurrentUser
 import com.dandi.nyummy.user.dto.PasswordUpdateRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PatchMapping

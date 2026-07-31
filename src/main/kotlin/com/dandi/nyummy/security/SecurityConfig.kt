@@ -1,5 +1,6 @@
-package com.dandi.nyummy.auth
+package com.dandi.nyummy.security
 
+import com.dandi.nyummy.security.filter.StubAuthenticationFilter
 import jakarta.servlet.DispatcherType
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
