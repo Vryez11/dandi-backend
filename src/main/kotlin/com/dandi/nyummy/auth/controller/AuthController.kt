@@ -19,17 +19,21 @@ class AuthController {
     @PostMapping("/login")
     fun login(@RequestBody request: LoginRequest): ResponseEntity<LoginResponse> = ResponseEntity.ok(
         LoginResponse(
-            redirectUrl = "",
-            accessToken = "",
-            refreshToken = "",
+            redirectUrl = "www.dandi.com/home",
+            accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcklkIjoxLCJ0eXBlIjoiYWNjZXNzIiwia" +
+                "WF0IjoxNzUzOTIwMDAwLCJleHAiOjE3NTM5MjM2MDB9.hm9KdG2zY6kA3OooLoNbUl4nwF56MJHh2ygSIq5iwHA",
+            refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcklkIjoxLCJ0eXBlIjoicmVmcmVzaCIs" +
+                "ImlhdCI6MTc1MzkyMDAwMCwiZXhwIjoxNzU1MTI5NjAwfQ.3dYJS1UPcP5ohWa4yPbdmwjd4rRwa7nSL3AadcgMFXM",
         ),
     )
 
     @PostMapping("/sigup")
     fun signup(@RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> = ResponseEntity.ok(
         SignUpResponse(
-            accessToken = "",
-            refreshToken = "",
+            accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcklkIjoxLCJ0eXBlIjoiYWNjZXNzIiwia" +
+                "WF0IjoxNzUzOTIwMDAwLCJleHAiOjE3NTM5MjM2MDB9.hm9KdG2zY6kA3OooLoNbUl4nwF56MJHh2ygSIq5iwHA",
+            refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcklkIjoxLCJ0eXBlIjoicmVmcmVzaCIs" +
+                "ImlhdCI6MTc1MzkyMDAwMCwiZXhwIjoxNzU1MTI5NjAwfQ.3dYJS1UPcP5ohWa4yPbdmwjd4rRwa7nSL3AadcgMFXM",
         ),
     )
 
