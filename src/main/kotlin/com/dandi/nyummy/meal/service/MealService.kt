@@ -170,6 +170,10 @@ class MealService(
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw Exception("Meal Not Found")
 
+        // TODO: 이미 삭제된 것을 그냥 return 하면되는 건가?
+        // TODO: 아니면 오류로 처리할 것인지 정책적으로 결정할 필요가 있다.
+        // TODO: 너무 명확한 에러가 필요할 수 도? -> 왜 두 번 날왔는지 확인해야 하면 Exception
+
         meal.updateDeletedAt(Instant.now())
     }
 }

@@ -28,7 +28,11 @@ class AnalysisService(
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
+        // TODO: ANALYZING 방어 코드, 열어줘야 할 상태와 닫아야 할 상태 구분이 필요.
+
         meal.validateOwnership(userId)
+
+        // TODO: 여기서 실패 한 번 해보기, 함수 업데이트는 다른 곳에서 매니징하는 느낌
 
         meal.updateStatus(MealStatus.ANALYZING)
 
@@ -37,6 +41,8 @@ class AnalysisService(
             meal.updateNutrition(nutrition)
             meal.updateStatus(MealStatus.COMPLETED)
         }.onFailure {
+            // TODO: 이게 안 먹음, 트랜잭션 실패에 대한 마스킹
+
             meal.updateStatus(MealStatus.FAILED)
         }
     }
