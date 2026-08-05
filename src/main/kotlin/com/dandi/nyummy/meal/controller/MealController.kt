@@ -1,7 +1,5 @@
 package com.dandi.nyummy.meal.controller
 
-import com.dandi.nyummy.auth.AuthUser
-import com.dandi.nyummy.auth.CurrentUser
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.GetStatusResponse
@@ -11,6 +9,8 @@ import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.service.AnalysisService
 import com.dandi.nyummy.meal.service.MealService
+import com.dandi.nyummy.security.AuthUser
+import com.dandi.nyummy.security.CurrentUser
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
