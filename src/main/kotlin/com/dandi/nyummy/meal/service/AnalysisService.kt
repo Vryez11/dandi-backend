@@ -7,6 +7,8 @@ import com.dandi.nyummy.meal.dto.GetStatusResponse
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
+import jakarta.transaction.Transactional
+import jakarta.transaction.Transactional.TxType
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 
@@ -24,6 +26,7 @@ class AnalysisService(
         return meal.toGetStatusResponse()
     }
 
+    @Transactional(TxType.REQUIRES_NEW)
     fun analyzeNutrition(userId: Long, mealId: Long) {
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
@@ -36,15 +39,13 @@ class AnalysisService(
 
         meal.updateStatus(MealStatus.ANALYZING)
 
-        runCatching {
-            val nutrition = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
-            meal.updateNutrition(nutrition)
-            meal.updateStatus(MealStatus.COMPLETED)
-        }.onFailure {
-            // TODO: 이게 안 먹음, 트랜잭션 실패에 대한 마스킹
+        val nutrition = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
 
-            meal.updateStatus(MealStatus.FAILED)
-        }
+        meal.updateNutrition(nutrition)
+
+        throw RuntimeException("update meal status: $meal")
+
+        meal.updateStatus(MealStatus.COMPLETED)
     }
 
     fun retryNutritionAnalysis(userId: Long, mealId: Long): GetStatusResponse {

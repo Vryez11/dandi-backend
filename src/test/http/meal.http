@@ -1,5 +1,5 @@
 ### 음식 이미지 업로드 presigned-url 생성 API
-POST {{url}}/api/v1/meals/images/presigned-url
+POST localhost:8080/api/v1/meals/images/presigned-url
 Content-Type: application/json
 
 {
@@ -8,30 +8,26 @@ Content-Type: application/json
 }
 
 ### 발급받은 presigned url로 이미지 S3에 업로드
-PUT https://nyummy-app-bucket-455615001241-ap-northeast-2-an.s3.ap-northeast-2.amazonaws.com/temp/6fc32947-0dd9-450e-a2ad-172c87d54aa5.jpg?
-    x-id=PutObject&X-Amz-Algorithm=AWS4-HMAC-SHA256&
-    X-Amz-Credential=AKIAWUFGFGKM4PNRWFHW%2F20260729%2Fap-northeast-2%2Fs3%2Faws4_request&X-Amz-Date=20260729T071208Z&
-    X-Amz-Expires=600&X-Amz-SignedHeaders=content-type%3Bhost&
-    X-Amz-Signature=e636388293cc8deb44e558a00daa5e43fdf4a1e74e4ba225e982f6e2626b8516
+PUT https://nyummy-app-bucket-455615001241-ap-northeast-2-an.s3.ap-northeast-2.amazonaws.com/temp/179d17b0-8c80-4346-a7ff-9a7f7580e26f.jpg?x-id=PutObject&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAWUFGFGKM4PNRWFHW%2F20260806%2Fap-northeast-2%2Fs3%2Faws4_request&X-Amz-Date=20260806T075403Z&X-Amz-Expires=600&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=b1b9eb534dc5e3d435b52fd9bf8e4f1885546b7c209725031ba06d9a1808d4ad
 Content-Type: image/jpeg
 
 < image/crazy_spicy.jpeg
 
 
 ### 식사기록 생성 API
-POST {{url}}/api/v1/meals
+POST localhost:8080/api/v1/meals
 Content-Type: application/json
 
 {
-  "name": "crazy_spicy",
-  "imageKey": "temp/6fc32947-0dd9-450e-a2ad-172c87d54aa5.jpg",
-  "mealAt": "2026-07-20T07:12:26Z",
+  "name": "bad case 3 / solution 1",
+  "imageKey": "temp/179d17b0-8c80-4346-a7ff-9a7f7580e26f.jpg",
+  "mealAt": "2026-08-05T07:12:26Z",
   "iconId": 1
 }
 
 ### 분석 상태 조회 API
 @mealId = 10
-GET {{url}}/api/v1/meals/{{mealId}}/analysis
+GET localhost:8080/api/v1/meals/{{mealId}}/analysis
 
 ### 재분석 요청 API
-POST {{url}}/api/v1/meals/{{mealId}}/analysis
+POST localhost:8080/api/v1/meals/{{mealId}}/analysis

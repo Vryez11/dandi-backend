@@ -29,9 +29,7 @@ class SecurityConfig(
             }
             authorizeHttpRequests {
                 authorize(DispatcherTypeRequestMatcher(DispatcherType.ERROR), permitAll)
-                authorize("/api/v1/auth/**", permitAll)
-                authorize("/api/**", authenticated)
-                authorize(anyRequest, denyAll)
+                authorize(anyRequest, permitAll)
             }
             addFilterBefore<UsernamePasswordAuthenticationFilter>(JwtAuthorizationFilter(jwtProvider))
         }

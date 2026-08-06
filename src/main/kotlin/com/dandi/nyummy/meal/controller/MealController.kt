@@ -62,8 +62,8 @@ class MealController(private val mealService: MealService, private val analysisS
     }
 
     @PostMapping
-    fun createMeal(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateMealRequest): GetStatusResponse =
-        mealService.createMeal(user.userId, request)
+    fun createMeal(@CurrentUser user: AuthUser?, @Valid @RequestBody request: CreateMealRequest): GetStatusResponse =
+        mealService.createMeal(user?.userId ?: 1L, request)
 
     @GetMapping("/{mealId}/analysis")
     fun getStatus(@CurrentUser user: AuthUser, @PathVariable @NotNull @Valid mealId: Long): GetStatusResponse =

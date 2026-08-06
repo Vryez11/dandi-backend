@@ -16,6 +16,7 @@ import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.dto.UploadImageRequest
 import com.dandi.nyummy.meal.dto.UploadImageResponse
 import com.dandi.nyummy.meal.entity.Meal
+import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
@@ -24,11 +25,13 @@ import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.util.logging.Logger
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -40,6 +43,7 @@ class MealService(
     private val clock: Clock = Clock.System,
     private val profileRepository: ProfileRepository,
     private val mealProperties: MealProperties,
+    private val logger: Logger = LoggerFactory.getLogger(MealService::class.java) as Logger
 ) {
 
     fun createUploadUrl(request: UploadImageRequest): UploadImageResponse {
@@ -62,17 +66,25 @@ class MealService(
     }
 
     @Transactional
-    fun createMeal(userId: Long, request: CreateMealRequest): GetStatusResponse {
+    fun createMeal(userId: Long? , request: CreateMealRequest): GetStatusResponse {
+        val start = clock.now()
+
         val imageKey = s3Service.confirmUpload(
             tempKey = request.imageKey,
             finalKeyPrefix = "meals",
             maxFileSizeBytes = mealProperties.maxFileSizeBytes,
         )
 
-        val meal = request.toEntity(userId, imageKey)
+        val meal = request.toEntity(userId?: 1L, imageKey)
         val savedMeal = mealRepository.save(meal)
 
-        analysisService.analyzeNutrition(userId, savedMeal.id)
+        meal.updateStatus(MealStatus.FAILED)
+
+        analysisService.analyzeNutrition(userId?: 1L, savedMeal.id)
+
+        val end = clock.now() - start
+
+        logger.info('걸린시간: ${end}')
 
         return savedMeal.toGetStatusResponse()
     }
