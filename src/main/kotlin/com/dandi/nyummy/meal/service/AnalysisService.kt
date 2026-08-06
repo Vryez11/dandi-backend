@@ -43,8 +43,6 @@ class AnalysisService(
 
         meal.updateNutrition(nutrition)
 
-        throw RuntimeException("update meal status: $meal")
-
         meal.updateStatus(MealStatus.COMPLETED)
     }
 

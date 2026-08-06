@@ -31,7 +31,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
-import java.util.logging.Logger
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -43,8 +42,11 @@ class MealService(
     private val clock: Clock = Clock.System,
     private val profileRepository: ProfileRepository,
     private val mealProperties: MealProperties,
-    private val logger: Logger = LoggerFactory.getLogger(MealService::class.java) as Logger
 ) {
+
+    companion object {
+        private val log = LoggerFactory.getLogger(MealService::class.java)
+    }
 
     fun createUploadUrl(request: UploadImageRequest): UploadImageResponse {
         val expirationInstant = clock.now() + mealProperties.presignedUrlExpirationMinutes.minutes
@@ -66,7 +68,7 @@ class MealService(
     }
 
     @Transactional
-    fun createMeal(userId: Long? , request: CreateMealRequest): GetStatusResponse {
+    fun createMeal(userId: Long?, request: CreateMealRequest): GetStatusResponse {
         val start = clock.now()
 
         val imageKey = s3Service.confirmUpload(
@@ -75,16 +77,16 @@ class MealService(
             maxFileSizeBytes = mealProperties.maxFileSizeBytes,
         )
 
-        val meal = request.toEntity(userId?: 1L, imageKey)
+        val meal = request.toEntity(userId ?: 1L, imageKey)
         val savedMeal = mealRepository.save(meal)
 
         meal.updateStatus(MealStatus.FAILED)
 
-        analysisService.analyzeNutrition(userId?: 1L, savedMeal.id)
+        analysisService.analyzeNutrition(userId ?: 1L, savedMeal.id)
 
-        val end = clock.now() - start
+        val elapsed = clock.now() - start
 
-        logger.info('걸린시간: ${end}')
+        log.info("createMeal 걸린시간: {}", elapsed)
 
         return savedMeal.toGetStatusResponse()
     }
