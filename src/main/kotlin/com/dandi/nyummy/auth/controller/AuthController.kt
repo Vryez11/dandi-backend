@@ -6,6 +6,7 @@ import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
+import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@SecurityRequirements
 class AuthController {
 
     @PostMapping("/login")
