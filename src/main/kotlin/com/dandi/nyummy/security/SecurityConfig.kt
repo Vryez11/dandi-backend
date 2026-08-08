@@ -30,6 +30,9 @@ class SecurityConfig(
             authorizeHttpRequests {
                 authorize(DispatcherTypeRequestMatcher(DispatcherType.ERROR), permitAll)
                 authorize("/api/v1/auth/**", permitAll)
+                authorize("/swagger-ui/**", permitAll)
+                authorize("/swagger-ui.html", permitAll)
+                authorize("/v3/api-docs/**", permitAll)
                 authorize("/api/**", authenticated)
                 authorize(anyRequest, denyAll)
             }
