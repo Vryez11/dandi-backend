@@ -18,7 +18,6 @@ import org.springframework.security.web.util.matcher.DispatcherTypeRequestMatche
 @Configuration
 class SecurityConfig(
     private val authErrorResponseWriter: AuthErrorResponseWriter,
-    private val argonProperties: ArgonProperties,
     private val jwtProvider: JwtProvider,
 ) {
 
@@ -45,13 +44,4 @@ class SecurityConfig(
 
         return http.build()
     }
-
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = Argon2PasswordEncoder(
-        argonProperties.saltLength,
-        argonProperties.hashLength,
-        argonProperties.parallelism,
-        argonProperties.memory,
-        argonProperties.iterations,
-    )
 }
