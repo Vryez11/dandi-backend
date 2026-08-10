@@ -63,4 +63,4 @@ fun calculateRecommendedDailyIntake(profile: Profile?, today: LocalDate): Nutrit
     )
 }
 
-private fun calculateAge(birth: LocalDateTime, today: LocalDate): Int = Period.between(birth.toLocalDate(), today).years
+private fun calculateAge(birth: LocalDate, today: LocalDate): Int = Period.between(birth, today).years
