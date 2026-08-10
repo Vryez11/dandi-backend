@@ -38,3 +38,9 @@ app:
     secret-key: ${JWT_SECRET_KEY}
     access-time-to-live: 30m
     refresh-time-to-live: 15d
+  argon2:
+    salt-length: 16
+    hash-length: 32
+    parallelism: 1
+    memory: 19456
+    iterations: 2
