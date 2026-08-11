@@ -2,9 +2,11 @@ package com.dandi.nyummy.security
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 
+@Configuration
 class ArgonProvider(private val argonProperties: ArgonProperties) {
 
     @Bean
@@ -17,7 +19,7 @@ class ArgonProvider(private val argonProperties: ArgonProperties) {
     )
 }
 
-@ConfigurationProperties("app.argon")
+@ConfigurationProperties("app.argon2")
 class ArgonProperties(
 
     val saltLength: Int,
