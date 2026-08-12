@@ -1,5 +1,7 @@
 package com.dandi.nyummy.meal.service
 
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.infra.aws.s3.S3Service
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
 import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
@@ -165,7 +167,7 @@ class MealService(
 
     fun getMeal(userId: Long, mealId: Long): MealResponse {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
-            ?: throw Exception("Meal Not Found")
+            ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         val imageUrl = s3Service.createPresignedGetUrl(meal.imageKey, 10.minutes).toString()
 
@@ -175,7 +177,7 @@ class MealService(
     @Transactional
     fun updateMeal(userId: Long, mealId: Long, name: String): MealResponse {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
-            ?: throw Exception("Meal Not Found")
+            ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         val imageUrl = s3Service.createPresignedGetUrl(meal.imageKey, 10.minutes).toString()
 
@@ -187,7 +189,7 @@ class MealService(
     @Transactional
     fun deleteMeal(userId: Long, mealId: Long) {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
-            ?: throw Exception("Meal Not Found")
+            ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         meal.updateDeletedAt(Instant.now())
     }
