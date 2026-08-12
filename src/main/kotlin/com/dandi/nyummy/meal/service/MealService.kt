@@ -25,8 +25,8 @@ import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.profile.repository.ProfileRepository
-import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -107,6 +107,7 @@ class MealService(
      * @param day 조회할 날짜의 일
      * @return 해당 날짜의 식사 목록과 [DailyNutritionResponse]를 담은 [DailyMealsResponse]
      */
+    @Transactional(readOnly = true)
     fun getDailyMeals(userId: Long, year: Int, month: Int, day: Int): DailyMealsResponse {
         val zone = ZoneId.of("Asia/Seoul")
         val date = LocalDate.of(year, month, day)
@@ -141,6 +142,7 @@ class MealService(
      * @param month 조회할 월
      * @return 캘린더 범위의 날짜별 [MonthlyMealDayResponse] 목록을 담은 [MonthlyMealsResponse]
      */
+    @Transactional(readOnly = true)
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
         val zone = ZoneId.of("Asia/Seoul")
         val (startDate, endDate) = calculateMonthlyCalendarRange(YearMonth.of(year, month))
@@ -190,6 +192,7 @@ class MealService(
      * @return 식사 정보와 이미지 URL을 담은 [MealResponse]
      * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제되었거나, 요청 사용자 소유가 아닌 경우
      */
+    @Transactional(readOnly = true)
     fun getMeal(userId: Long, mealId: Long): MealResponse {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
@@ -217,7 +220,7 @@ class MealService(
 
         meal.updateName(name)
 
-        return meal.toMealResponse(imageUrl.toString())
+        return meal.toMealResponse(imageUrl)
     }
 
     /**
