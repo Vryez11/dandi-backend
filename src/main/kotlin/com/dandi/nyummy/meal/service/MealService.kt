@@ -98,6 +98,15 @@ class MealService(
         return savedMeal.toGetStatusResponse()
     }
 
+    /**
+     * 특정 날짜의 식사 목록과 하루 영양 섭취 현황(현재/목표)을 조회한다.
+     *
+     * @param userId 조회하는 사용자 ID
+     * @param year 조회할 날짜의 연도
+     * @param month 조회할 날짜의 월
+     * @param day 조회할 날짜의 일
+     * @return 해당 날짜의 식사 목록과 [DailyNutritionResponse]를 담은 [DailyMealsResponse]
+     */
     fun getDailyMeals(userId: Long, year: Int, month: Int, day: Int): DailyMealsResponse {
         val zone = ZoneId.of("Asia/Seoul")
         val date = LocalDate.of(year, month, day)
@@ -124,6 +133,14 @@ class MealService(
         )
     }
 
+    /**
+     * 월간 캘린더 범위([calculateMonthlyCalendarRange])의 날짜별 하루 평가를 계산해 조회한다.
+     *
+     * @param userId 조회하는 사용자 ID
+     * @param year 조회할 연도
+     * @param month 조회할 월
+     * @return 캘린더 범위의 날짜별 [MonthlyMealDayResponse] 목록을 담은 [MonthlyMealsResponse]
+     */
     fun getMonthlyMeals(userId: Long, year: Int, month: Int): MonthlyMealsResponse {
         val zone = ZoneId.of("Asia/Seoul")
         val (startDate, endDate) = calculateMonthlyCalendarRange(YearMonth.of(year, month))
@@ -165,6 +182,14 @@ class MealService(
         )
     }
 
+    /**
+     * 식사 단건을 조회하고 이미지 presigned URL을 발급해 반환한다.
+     *
+     * @param userId 조회하는 사용자 ID
+     * @param mealId 조회할 식사 ID
+     * @return 식사 정보와 이미지 URL을 담은 [MealResponse]
+     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제되었거나, 요청 사용자 소유가 아닌 경우
+     */
     fun getMeal(userId: Long, mealId: Long): MealResponse {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
@@ -174,6 +199,15 @@ class MealService(
         return meal.toMealResponse(imageUrl.toString())
     }
 
+    /**
+     * 식사 이름을 수정한다.
+     *
+     * @param userId 수정하는 사용자 ID
+     * @param mealId 수정할 식사 ID
+     * @param name 변경할 식사 이름
+     * @return 수정된 식사 정보와 이미지 URL을 담은 [MealResponse]
+     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제되었거나, 요청 사용자 소유가 아닌 경우
+     */
     @Transactional
     fun updateMeal(userId: Long, mealId: Long, name: String): MealResponse {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
@@ -186,6 +220,13 @@ class MealService(
         return meal.toMealResponse(imageUrl.toString())
     }
 
+    /**
+     * 식사 기록을 소프트 삭제한다(deletedAt 기록).
+     *
+     * @param userId 삭제하는 사용자 ID
+     * @param mealId 삭제할 식사 ID
+     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 이미 삭제되었거나, 요청 사용자 소유가 아닌 경우
+     */
     @Transactional
     fun deleteMeal(userId: Long, mealId: Long) {
         val meal = mealRepository.getMealByIdAndUserIdAndDeletedAtIsNull(mealId, userId)
