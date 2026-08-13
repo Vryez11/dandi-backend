@@ -20,5 +20,5 @@ interface MealRepository : JpaRepository<Meal, Long> {
     )
     fun getMealsByUserIdAndPeriod(userId: Long, start: Instant, end: Instant): List<Meal>
 
-    fun getMealByIdAndUserIdAndDeletedAtIsNull(mealId: Long, userId: Long): Meal?
+    fun getMealByIdAndDeletedAtIsNull(mealId: Long): Meal?
 }
