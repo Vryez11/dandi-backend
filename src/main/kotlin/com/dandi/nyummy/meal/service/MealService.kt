@@ -191,7 +191,8 @@ class MealService(
      * @param userId 조회하는 사용자 ID
      * @param mealId 조회할 식사 ID
      * @return 식사 정보와 이미지 URL을 담은 [MealResponse]
-     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제되었거나, 요청 사용자 소유가 아닌 경우
+     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] mealId에 해당하는 userId가 아닌 경우
      */
     @Transactional(readOnly = true)
     fun getMeal(userId: Long, mealId: Long): MealResponse {
@@ -214,7 +215,8 @@ class MealService(
      * @param mealId 수정할 식사 ID
      * @param name 변경할 식사 이름
      * @return 수정된 식사 정보와 이미지 URL을 담은 [MealResponse]
-     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제되었거나, 요청 사용자 소유가 아닌 경우
+     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] mealId에 해당하는 userId가 아닌 경우
      */
     @Transactional
     fun updateMeal(userId: Long, mealId: Long, name: String): MealResponse {
@@ -237,7 +239,8 @@ class MealService(
      *
      * @param userId 삭제하는 사용자 ID
      * @param mealId 삭제할 식사 ID
-     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 이미 삭제되었거나, 요청 사용자 소유가 아닌 경우
+     * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] mealId에 해당하는 userId가 아닌 경우
      */
     @Transactional
     fun deleteMeal(userId: Long, mealId: Long) {
