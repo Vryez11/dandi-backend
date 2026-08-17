@@ -4,6 +4,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisClient
 import com.dandi.nyummy.meal.dto.GetStatusResponse
+import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toGetStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class AnalysisService(
+    private val updateMealService: UpdateMealService,
     private val mealRepository: MealRepository,
     private val nutritionAnalysisClient: NutritionAnalysisClient,
 ) {
@@ -34,21 +36,22 @@ class AnalysisService(
         return meal.toGetStatusResponse()
     }
 
-    fun analyzeNutrition(userId: Long, mealId: Long) {
-        val meal = mealRepository.findByIdOrNull(mealId)
-            ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
-
-        meal.validateOwnership(userId)
-
-        meal.updateStatus(MealStatus.ANALYZING)
-
-        runCatching {
-            val nutrition = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
-            meal.updateNutrition(nutrition)
-            meal.updateStatus(MealStatus.COMPLETED)
-        }.onFailure {
-            meal.updateStatus(MealStatus.FAILED)
+    fun analyzeNutrition(meal: Meal) {
+        if (meal.status == MealStatus.ANALYZING) {
+            return
         }
+
+        updateMealService.updateStatus(meal, MealStatus.ANALYZING)
+
+        var status = MealStatus.COMPLETED
+        try {
+            val nutrition = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
+            updateMealService.updateNutrition(meal, nutrition)
+        } catch (e: RuntimeException) {
+            status = MealStatus.FAILED
+        }
+
+        updateMealService.updateStatus(meal, status)
     }
 
     fun retryNutritionAnalysis(userId: Long, mealId: Long): GetStatusResponse {
@@ -57,10 +60,11 @@ class AnalysisService(
 
         meal.validateOwnership(userId)
 
-        if (meal.status == MealStatus.FAILED) {
-            meal.updateStatus(MealStatus.ANALYZING)
-            analyzeNutrition(userId, meal.id)
+        if (meal.status != MealStatus.FAILED) {
+            throw BusinessException(MealErrorCode.MEAL_NOT_RETRYABLE)
         }
+
+        analyzeNutrition(meal)
 
         return meal.toGetStatusResponse()
     }
