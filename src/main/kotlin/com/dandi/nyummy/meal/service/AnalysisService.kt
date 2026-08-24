@@ -80,7 +80,7 @@ class AnalysisService(
         meal.validateOwnership(userId)
 
         if (meal.status != MealStatus.FAILED) {
-            throw BusinessException(MealErrorCode.MEAL_NOT_RETRYABLE)
+            throw BusinessException(MealErrorCode.ANALYSIS_NOT_RETRYABLE)
         }
 
         analyzeNutrition(meal)
