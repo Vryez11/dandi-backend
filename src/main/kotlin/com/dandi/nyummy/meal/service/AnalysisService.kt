@@ -47,7 +47,7 @@ class AnalysisService(
      * @param meal 분석할 [Meal] (이미 ANALYZING 상태면 아무 작업도 하지 않는다)
      */
     fun analyzeNutrition(meal: Meal) {
-        if (meal.status == MealStatus.ANALYZING) {
+        if (meal.status in MealStatus.NON_ANALYZABLE_STATUSES) {
             return
         }
 

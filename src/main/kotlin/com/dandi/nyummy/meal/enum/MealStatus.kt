@@ -7,4 +7,9 @@ enum class MealStatus {
     COMPLETED,
     FAILED,
     UNKNOWN,
+    ;
+
+    companion object {
+        val NON_ANALYZABLE_STATUSES = setOf(WAITING, ANALYZING)
+    }
 }
