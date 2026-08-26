@@ -45,6 +45,7 @@ dependencies {
 
     // AWS SDK
     implementation("aws.sdk.kotlin:s3:1.4.0")
+    implementation("aws.sdk.kotlin:sesv2:1.4.0")
 
     // .env 파일 파싱용 라이브러리
     implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
@@ -70,9 +71,6 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
 
     runtimeOnly("org.bouncycastle:bcprov-jdk18on:1.82")
-
-    // 메일 전송
-    implementation("org.springframework.boot:spring-boot-starter-mail")
 }
 
 kotlin {
