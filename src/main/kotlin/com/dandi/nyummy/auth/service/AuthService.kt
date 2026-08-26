@@ -5,10 +5,13 @@ import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
+import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.entity.RefreshToken
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.infra.aws.ses.SesService
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.repository.UserRepository
@@ -22,6 +25,8 @@ class AuthService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
     private val tokenService: TokenService,
+    private val codeService: CodeService,
+    private val sesService: SesService,
     private val authProperties: AuthProperties,
 ) {
 
@@ -113,5 +118,17 @@ class AuthService(
             ?: return
 
         refreshTokenRepository.delete(refreshToken)
+    }
+
+    fun sendAuthCode(request: SendAuthCodeRequest): SendAuthCodeResponse {
+        val email = request.email
+
+        val authCode = codeService.createCodeByEmail(email)
+
+        sesService.sendAuthCode(email, authCode)
+
+        val emailChallengeToken = tokenService.createEmailChallengeToken(email)
+
+        return SendAuthCodeResponse(emailChallengeToken)
     }
 }

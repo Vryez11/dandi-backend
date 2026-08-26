@@ -7,19 +7,18 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.Instant
 
 @Entity
-@Table(name = "email_verification")
+@Table(name = "code")
 @EntityListeners(AuditingEntityListener::class)
-class Mail(
+class Code(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
-    val id: Long = 0,
+    val id: Long = 0L,
 
     @Column(name = "email", nullable = false, unique = true)
     val email: String,
@@ -27,10 +26,26 @@ class Mail(
     @Column(name = "code", nullable = false)
     var code: String,
 
-    @Column(name = "is_verified", nullable = false)
-    var isVerified: Boolean = false,
+    @Column(name = "attempt_count", nullable = false)
+    var attemptCount: Int = 0,
 
-    @CreatedDate
+    @Column(name = "send_count", nullable = false)
+    var sendCount: Int = 0,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
-)
+) {
+
+    fun updateCode(code: String) {
+        this.code = code
+    }
+
+    fun resetSendWindow() {
+        this.sendCount = 0
+        this.createdAt = Instant.now()
+    }
+
+    fun increaseSendCount() {
+        this.sendCount += 1
+    }
+}
