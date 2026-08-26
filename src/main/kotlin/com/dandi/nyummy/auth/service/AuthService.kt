@@ -120,6 +120,14 @@ class AuthService(
         refreshTokenRepository.delete(refreshToken)
     }
 
+    /**
+     * 이메일로 6자리 인증 코드를 발급·발송하고, 인증 세션 식별용 emailChallengeToken을 발급한다.
+     *
+     * @param request 인증 코드 발송 요청 정보를 담은 [SendAuthCodeRequest] (이메일)
+     * @return 발급된 emailChallengeToken을 담은 [SendAuthCodeResponse]
+     * @throws BusinessException [AuthErrorCode.MAIL_TOO_MANY_REQUEST] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
+     * @throws BusinessException [SesErrorCode.SEND_FAILED] SES 이메일 발송이 실패한 경우
+     */
     fun sendAuthCode(request: SendAuthCodeRequest): SendAuthCodeResponse {
         val email = request.email
 

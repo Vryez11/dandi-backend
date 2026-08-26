@@ -25,6 +25,13 @@ class SesService(
         val log = LoggerFactory.getLogger(SesService::class.java)
     }
 
+    /**
+     * 인증 코드를 본문에 담아 SES로 이메일을 발송한다.
+     *
+     * @param email 수신자 이메일 주소
+     * @param code 발송할 6자리 인증 코드
+     * @throws BusinessException [SesErrorCode.SEND_FAILED] SES 발송 요청이 실패한 경우
+     */
     fun sendAuthCode(email: String, code: String) {
         val request = SendEmailRequest {
             fromEmailAddress = fromAddress

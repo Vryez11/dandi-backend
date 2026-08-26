@@ -20,6 +20,14 @@ class CodeService(
         private val random = SecureRandom()
     }
 
+    /**
+     * 이메일에 대한 6자리 인증 코드를 생성해 저장한다.
+     * 기존 코드가 있으면 새 코드로 교체하고, 발송 윈도우(TTL)가 지났으면 발송 횟수를 초기화한다.
+     *
+     * @param email 인증 코드를 발급할 이메일
+     * @return 생성된 6자리 인증 코드
+     * @throws BusinessException [AuthErrorCode.MAIL_TOO_MANY_REQUEST] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
+     */
     @Transactional
     fun createCodeByEmail(email: String): String {
         var code = codeRepository.findByEmail(email)
