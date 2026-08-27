@@ -164,7 +164,7 @@ class AuthService(
         val email = try {
             tokenService.getEmail(challengeToken, TokenType.EMAIL_CHALLENGE)
         } catch (e: ExpiredJwtException) {
-            throw BusinessException(AuthErrorCode.MAIL_CODE_EXPIRED)
+            throw BusinessException(AuthErrorCode.EMAIL_CODE_EXPIRED)
         } catch (e: JwtException) {
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
