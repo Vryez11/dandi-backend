@@ -54,10 +54,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: dummy
           AWS_REGION: ap-northeast-2
           AWS_S3_BUCKET_NAME: dummy
+          AWS_SES_FROM_ADDRESS: test@dandi.com
           GEMINI_API_KEY: i'msohungryandangry
           JWT_SECRET_KEY: c83mV3J9dm3u1nGB93mdHgHbZTE3mciNNc93nMvfi3m=
-          MAIL_USERNAME: test@dandi.com
-          MAIL_PASSWORD: test
         run: ./gradlew clean build
 
       - name: AWS 자격 증명 설정

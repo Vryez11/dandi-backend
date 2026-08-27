@@ -5,10 +5,13 @@ import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
+import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.entity.RefreshToken
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.infra.aws.ses.SesService
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.repository.UserRepository
@@ -22,6 +25,8 @@ class AuthService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
     private val tokenService: TokenService,
+    private val codeService: CodeService,
+    private val sesService: SesService,
     private val authProperties: AuthProperties,
 ) {
 
@@ -113,5 +118,25 @@ class AuthService(
             ?: return
 
         refreshTokenRepository.delete(refreshToken)
+    }
+
+    /**
+     * 이메일로 6자리 인증 코드를 발급·발송하고, 인증 세션 식별용 emailChallengeToken을 발급한다.
+     *
+     * @param request 인증 코드 발송 요청 정보를 담은 [SendAuthCodeRequest] (이메일)
+     * @return 발급된 emailChallengeToken을 담은 [SendAuthCodeResponse]
+     * @throws BusinessException [AuthErrorCode.MAIL_TOO_MANY_REQUEST] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
+     * @throws BusinessException [SesErrorCode.SEND_FAILED] SES 이메일 발송이 실패한 경우
+     */
+    fun sendAuthCode(request: SendAuthCodeRequest): SendAuthCodeResponse {
+        val email = request.email
+
+        val authCode = codeService.createCodeByEmail(email)
+
+        sesService.sendAuthCode(email, authCode)
+
+        val emailChallengeToken = tokenService.createEmailChallengeToken(email)
+
+        return SendAuthCodeResponse(emailChallengeToken)
     }
 }

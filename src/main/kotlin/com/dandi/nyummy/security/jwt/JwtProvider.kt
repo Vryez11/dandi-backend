@@ -9,6 +9,7 @@ import io.jsonwebtoken.io.Decoders
 import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
 import java.time.Clock
+import java.time.Duration
 import java.util.*
 import javax.crypto.SecretKey
 
@@ -35,10 +36,7 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
     private fun createToken(userId: Long, type: TokenType): String {
         val now = clock.instant()
 
-        val timeToLive = when (type) {
-            TokenType.ACCESS -> jwtProperties.accessTimeToLive
-            TokenType.REFRESH -> jwtProperties.refreshTimeToLive
-        }
+        val timeToLive = getTimeToLive(type)
 
         return Jwts.builder()
             .subject(userId.toString())
@@ -48,6 +46,31 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
             .signWith(secretKey)
             .compact()
     }
+
+    private fun createToken(email: String, type: TokenType): String {
+        val now = clock.instant()
+
+        val timeToLive = getTimeToLive(type)
+
+        return Jwts.builder()
+            .subject(email)
+            .claim("type", type.value)
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(now.plus(timeToLive)))
+            .signWith(secretKey)
+            .compact()
+    }
+
+    private fun getTimeToLive(type: TokenType): Duration = when (type) {
+        TokenType.ACCESS -> jwtProperties.accessTimeToLive
+        TokenType.REFRESH -> jwtProperties.refreshTimeToLive
+        TokenType.EMAIL_CHALLENGE -> jwtProperties.emailChallengeTimeToLive
+        TokenType.EMAIL_VERIFIED -> jwtProperties.emailVerifiedTimeToLive
+    }
+
+    fun createEmailChallengeToken(email: String): String = createToken(email, TokenType.EMAIL_CHALLENGE)
+
+    fun createEmailVerifiedToken(email: String): String = createToken(email, TokenType.EMAIL_VERIFIED)
 
     fun createAccessToken(userId: Long): String = createToken(userId, TokenType.ACCESS)
 

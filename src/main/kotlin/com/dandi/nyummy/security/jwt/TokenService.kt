@@ -21,6 +21,10 @@ class TokenService(private val jwtProvider: JwtProvider) {
         return Pair(access, refresh)
     }
 
+    fun createEmailChallengeToken(email: String): String = jwtProvider.createEmailChallengeToken(email)
+
+    fun createEmailVerifiedToken(email: String): String = jwtProvider.createEmailVerifiedToken(email)
+
     fun getUserId(token: String, type: TokenType): Long = jwtProvider.getUserId(token, type)
 
     fun getExpiration(token: String, type: TokenType): Date = jwtProvider.getExpiration(token, type)

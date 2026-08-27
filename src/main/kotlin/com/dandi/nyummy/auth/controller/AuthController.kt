@@ -1,15 +1,15 @@
 package com.dandi.nyummy.auth.controller
 
 import com.dandi.nyummy.auth.dto.EmailVerificationConfirmRequest
-import com.dandi.nyummy.auth.dto.EmailVerificationRequest
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
+import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.service.AuthService
-import com.dandi.nyummy.auth.service.MailService
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -28,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/auth")
 @SecurityRequirements
-class AuthController(private val mailService: MailService, private val authService: AuthService) {
+class AuthController(private val authService: AuthService) {
 
     @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인하고 AccessToken(30분)과 RefreshToken(15일)을 발급받는다.")
     @ApiResponse(responseCode = "401", description = "이메일 또는 비밀번호가 올바르지 않습니다.")
@@ -53,23 +54,20 @@ class AuthController(private val mailService: MailService, private val authServi
 
     @Operation(summary = "이메일 인증 코드 발송", description = "입력한 이메일 주소로 인증 코드를 발송한다.")
     @PostMapping("/email-verification")
-    fun emailVerification(@Valid @RequestBody request: EmailVerificationRequest): ResponseEntity<Void> {
-        mailService.sendEmail(request.email)
+    fun sendAuthCode(@Valid @RequestBody request: SendAuthCodeRequest): ResponseEntity<SendAuthCodeResponse> {
+        val response = authService.sendAuthCode(request)
 
         return ResponseEntity
-            .noContent()
-            .build()
+            .status(HttpStatus.CREATED)
+            .body(response)
     }
 
     @Operation(summary = "이메일 인증 코드 확인", description = "이메일로 받은 인증 코드가 유효한지 검증한다.")
     @PostMapping("/email-verification/confirm")
-    fun emailVerificationConfirm(@Valid @RequestBody request: EmailVerificationConfirmRequest): ResponseEntity<Void> {
-        mailService.confirm(request.email, request.verificationCode)
-
-        return ResponseEntity
+    fun emailVerificationConfirm(@Valid @RequestBody request: EmailVerificationConfirmRequest): ResponseEntity<Void> =
+        ResponseEntity
             .noContent()
             .build()
-    }
 
     @Operation(
         summary = "로그아웃",

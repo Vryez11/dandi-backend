@@ -1,0 +1,10 @@
+DROP TABLE email_verification;
+
+CREATE TABLE code (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    code VARCHAR(6) NOT NULL,
+    attempt_count INT NOT NULL DEFAULT 0,
+    send_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
