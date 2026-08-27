@@ -58,7 +58,7 @@ class SesService(
             sesV2Client.sendEmail(request)
         } catch (e: SdkBaseException) {
             log.error("이메일 발송이 실패했습니다. ${e.message}")
-            throw BusinessException(SesErrorCode.SEND_FAILED)
+            throw BusinessException(SesErrorCode.EMAIL_SEND_FAILED)
         }
     }
 }

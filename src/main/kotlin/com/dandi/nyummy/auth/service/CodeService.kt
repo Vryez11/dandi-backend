@@ -16,7 +16,7 @@ import java.time.Instant
 class CodeService(
     private val codeRepository: CodeRepository,
     private val clock: Clock,
-    @Value("\${app.jwt.email-challenge-time-to-live}") private val timeToLive: Duration,
+    @Value("\${app.jwt.email-challenge-time-to-live}") private val challengeTimeToLive: Duration,
 ) {
     companion object {
         private val random = SecureRandom()
@@ -32,32 +32,30 @@ class CodeService(
      */
     @Transactional
     fun createCodeByEmail(email: String): String {
-        var code = codeRepository.findByEmail(email)
         val newCode = createRandomCode()
-        val expiresAt = Instant.now(clock).plus(timeToLive)
+        val expiresAt = Instant.now(clock).plus(challengeTimeToLive)
 
-        if (code == null) {
-            code = Code(
+        val code = codeRepository.findByEmail(email)
+            ?: Code(
                 email = email,
                 code = newCode,
                 expiresAt = expiresAt,
             )
-        } else {
-            if (code.expiresAt < Instant.now(clock)) {
-                code.resetSendCount()
-                code.updateExpiresAt(expiresAt)
-            }
 
-            code.updateCode(newCode)
+        if (code.expiresAt < Instant.now(clock)) {
+            code.resetSendCount()
+            code.updateExpiresAt(expiresAt)
         }
 
+        if (code.sendCount >= 5) {
+            throw BusinessException(AuthErrorCode.EMAIL_SEND_RATE_LIMITED)
+        }
+
+        code.updateCode(newCode)
         code.increaseSendCount()
 
-        if (code.sendCount > 5) {
-            throw BusinessException(AuthErrorCode.MAIL_TOO_MANY_REQUEST)
-        }
-
-        return codeRepository.save(code).code
+        codeRepository.save(code)
+        return code.code
     }
 
     private fun createRandomCode(): String = "%06d".format(random.nextInt(1_000_000))
