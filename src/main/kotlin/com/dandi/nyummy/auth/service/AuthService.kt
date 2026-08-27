@@ -144,6 +144,19 @@ class AuthService(
         return SendAuthCodeResponse(emailChallengeToken)
     }
 
+    /**
+     * emailChallengeToken과 인증 코드를 검증하고, 성공 시 emailVerifiedToken을 발급한다.
+     *
+     * 인증 코드의 유효 시간은 emailChallengeToken의 만료(exp)가 유일한 기준이며, DB에서 시간 계산은 하지 않는다.
+     *
+     * @param request 인증 코드 확인 요청 정보를 담은 [ConfirmAuthCodeRequest] (인증 코드, emailChallengeToken)
+     * @return 발급된 emailVerifiedToken을 담은 [ConfirmAuthCodeResponse]
+     * @throws BusinessException [AuthErrorCode.MAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
+     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않은 경우
+     * @throws BusinessException [AuthErrorCode.MAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
+     * @throws BusinessException [AuthErrorCode.MAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
+     * @throws BusinessException [AuthErrorCode.MAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
+     */
     fun confirmAuthCode(request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse {
         val challengeToken = request.emailChallengeToken
         val challengeCode = request.authCode
