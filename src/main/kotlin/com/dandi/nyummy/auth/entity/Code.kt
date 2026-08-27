@@ -45,7 +45,15 @@ class Code(
         this.sendCount = 0
     }
 
+    fun resetAttemptCount() {
+        this.attemptCount = 0
+    }
+
     fun increaseSendCount() {
         this.sendCount += 1
+    }
+
+    fun increaseAttemptCount() {
+        this.attemptCount += 1
     }
 }
