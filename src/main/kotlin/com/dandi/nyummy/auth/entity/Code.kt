@@ -2,17 +2,14 @@ package com.dandi.nyummy.auth.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EntityListeners
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.Instant
 
 @Entity
 @Table(name = "code")
-@EntityListeners(AuditingEntityListener::class)
 class Code(
 
     @Id
@@ -32,17 +29,20 @@ class Code(
     @Column(name = "send_count", nullable = false)
     var sendCount: Int = 0,
 
-    @Column(name = "created_at", nullable = false)
-    var createdAt: Instant = Instant.now(),
+    @Column(name = "expires_at", nullable = false)
+    var expiresAt: Instant,
 ) {
 
     fun updateCode(code: String) {
         this.code = code
     }
 
-    fun resetSendWindow() {
+    fun updateExpiresAt(expiresAt: Instant) {
+        this.expiresAt = expiresAt
+    }
+
+    fun resetSendCount() {
         this.sendCount = 0
-        this.createdAt = Instant.now()
     }
 
     fun increaseSendCount() {

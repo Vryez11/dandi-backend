@@ -8,12 +8,14 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.security.SecureRandom
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
 @Service
 class CodeService(
     private val codeRepository: CodeRepository,
+    private val clock: Clock,
     @Value("\${app.jwt.email-challenge-time-to-live}") private val timeToLive: Duration,
 ) {
     companion object {
@@ -32,15 +34,18 @@ class CodeService(
     fun createCodeByEmail(email: String): String {
         var code = codeRepository.findByEmail(email)
         val newCode = createRandomCode()
+        val expiresAt = Instant.now(clock).plus(timeToLive)
 
         if (code == null) {
             code = Code(
                 email = email,
                 code = newCode,
+                expiresAt = expiresAt,
             )
         } else {
-            if (code.createdAt.plus(timeToLive) < Instant.now()) {
-                code.resetSendWindow()
+            if (code.expiresAt < Instant.now(clock)) {
+                code.resetSendCount()
+                code.updateExpiresAt(expiresAt)
             }
 
             code.updateCode(newCode)

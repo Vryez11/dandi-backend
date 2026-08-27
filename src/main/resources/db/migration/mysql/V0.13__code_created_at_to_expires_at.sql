@@ -1,0 +1,5 @@
+DELETE FROM code;
+
+ALTER TABLE code DROP COLUMN created_at;
+
+ALTER TABLE code ADD COLUMN expires_at TIMESTAMP NOT NULL;
