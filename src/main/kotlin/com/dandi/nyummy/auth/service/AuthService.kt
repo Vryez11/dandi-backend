@@ -1,6 +1,8 @@
 package com.dandi.nyummy.auth.service
 
 import com.dandi.nyummy.auth.config.AuthProperties
+import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
+import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.RefreshRequest
@@ -15,6 +17,8 @@ import com.dandi.nyummy.infra.aws.ses.SesService
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.repository.UserRepository
+import io.jsonwebtoken.ExpiredJwtException
+import io.jsonwebtoken.JwtException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -138,5 +142,24 @@ class AuthService(
         val emailChallengeToken = tokenService.createEmailChallengeToken(email)
 
         return SendAuthCodeResponse(emailChallengeToken)
+    }
+
+    fun confirmAuthCode(request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse {
+        val challengeToken = request.emailChallengeToken
+        val challengeCode = request.authCode
+
+        val email = try {
+            tokenService.getEmail(challengeToken, TokenType.EMAIL_CHALLENGE)
+        } catch (e: ExpiredJwtException) {
+            throw BusinessException(AuthErrorCode.MAIL_CODE_EXPIRED)
+        } catch (e: JwtException) {
+            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+        }
+
+        codeService.confirmAuthCodeByEmail(challengeCode, email)
+
+        val emailVerifiedToken = tokenService.createEmailVerifiedToken(email)
+
+        return ConfirmAuthCodeResponse(emailVerifiedToken)
     }
 }

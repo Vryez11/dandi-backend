@@ -58,5 +58,23 @@ class CodeService(
         return code.code
     }
 
+    @Transactional(noRollbackFor = [BusinessException::class])
+    fun confirmAuthCodeByEmail(challengeCode: String, email: String) {
+        val existingCode = codeRepository.findByEmail(email)
+            ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
+
+        val attemptCount = existingCode.attemptCount
+        if (attemptCount >= 5) {
+            throw BusinessException(AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED)
+        }
+
+        if (existingCode.code != challengeCode) {
+            existingCode.increaseAttemptCount()
+            throw BusinessException(AuthErrorCode.EMAIL_CODE_MISMATCH)
+        }
+
+        codeRepository.delete(existingCode)
+    }
+
     private fun createRandomCode(): String = "%06d".format(random.nextInt(1_000_000))
 }
