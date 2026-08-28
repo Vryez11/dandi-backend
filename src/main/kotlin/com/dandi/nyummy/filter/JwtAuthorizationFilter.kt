@@ -1,4 +1,4 @@
-package com.dandi.nyummy.security.filter
+package com.dandi.nyummy.filter
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode

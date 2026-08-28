@@ -1,6 +1,6 @@
 package com.dandi.nyummy.security
 
-import com.dandi.nyummy.security.filter.JwtAuthorizationFilter
+import com.dandi.nyummy.filter.JwtAuthorizationFilter
 import com.dandi.nyummy.security.jwt.TokenService
 import jakarta.servlet.DispatcherType
 import org.springframework.context.annotation.Bean

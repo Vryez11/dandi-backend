@@ -2,7 +2,7 @@ package com.dandi.nyummy.security
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
-import com.dandi.nyummy.security.filter.JwtAuthorizationFilter
+import com.dandi.nyummy.filter.JwtAuthorizationFilter
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Qualifier
