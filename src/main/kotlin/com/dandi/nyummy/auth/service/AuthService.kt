@@ -9,16 +9,22 @@ import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
+import com.dandi.nyummy.auth.dto.SignUpRequest
+import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.entity.RefreshToken
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
+import com.dandi.nyummy.profile.entity.Profile
+import com.dandi.nyummy.profile.repository.ProfileRepository
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
+import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -26,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AuthService(
     private val userRepository: UserRepository,
+    private val profileRepository: ProfileRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val passwordEncoder: PasswordEncoder,
     private val tokenService: TokenService,
@@ -73,6 +80,65 @@ class AuthService(
         val redirectUrl = authProperties.loginRedirectUrl
 
         return LoginResponse(redirectUrl, newAccessToken, newRefreshToken)
+    }
+
+    @Transactional
+    fun signup(request: SignUpRequest): SignUpResponse {
+        val email = try {
+            tokenService.getEmail(request.emailVerifiedToken, TokenType.EMAIL_VERIFIED)
+        } catch (e: ExpiredJwtException) {
+            throw BusinessException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED)
+        } catch (e: JwtException) {
+            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+        }
+
+        val encodedPassword = checkNotNull(passwordEncoder.encode(request.password)) {
+            "PasswordEncoder가 null을 반환했습니다."
+        }
+
+        val newUser = try {
+            userRepository.save(
+                User(
+                    email = email,
+                    password = encodedPassword,
+                ),
+            )
+        } catch (e: DataIntegrityViolationException) {
+            throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+        }
+
+        val userId = newUser.id
+
+        profileRepository.save(
+            Profile(
+                nickname = request.nickname,
+                birth = request.birth,
+                gender = request.gender,
+                height = request.height,
+                weight = request.weight,
+                userId = userId,
+            ),
+        )
+
+        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+        val newExpiresAt = tokenService.getExpiration(refreshToken, TokenType.REFRESH).toInstant()
+
+        refreshTokenRepository.save(
+            RefreshToken(
+                refreshToken = refreshToken,
+                userId = userId,
+                expiresAt = newExpiresAt,
+            ),
+        )
+
+        return SignUpResponse(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+        )
     }
 
     /**
