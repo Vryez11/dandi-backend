@@ -52,6 +52,7 @@ class CodeService(
         }
 
         code.updateCode(newCode)
+        code.resetAttemptCount()
         code.increaseSendCount()
 
         codeRepository.save(code)
