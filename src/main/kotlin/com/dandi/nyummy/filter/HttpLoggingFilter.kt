@@ -22,11 +22,11 @@ class HttpLoggingFilter : OncePerRequestFilter() {
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        val startTime = System.currentTimeMillis()
+        val startTime = System.nanoTime()
         try {
             filterChain.doFilter(request, response)
         } finally {
-            val elapsed = System.currentTimeMillis() - startTime
+            val elapsed = (System.nanoTime() - startTime) / 1_000_000
             log.info("{} {} status={} elapsed={}ms", request.method, request.requestURI, response.status, elapsed)
         }
     }
