@@ -67,9 +67,9 @@ class CodeService(
      *
      * @param challengeCode 사용자가 입력한 6자리 인증 코드
      * @param email 인증 코드를 대조할 이메일
-     * @throws BusinessException [AuthErrorCode.MAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
-     * @throws BusinessException [AuthErrorCode.MAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
-     * @throws BusinessException [AuthErrorCode.MAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
      */
     @Transactional(noRollbackFor = [BusinessException::class])
     fun confirmAuthCodeByEmail(challengeCode: String, email: String) {

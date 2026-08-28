@@ -129,8 +129,8 @@ class AuthService(
      *
      * @param request 인증 코드 발송 요청 정보를 담은 [SendAuthCodeRequest] (이메일)
      * @return 발급된 emailChallengeToken을 담은 [SendAuthCodeResponse]
-     * @throws BusinessException [AuthErrorCode.MAIL_TOO_MANY_REQUEST] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
-     * @throws BusinessException [SesErrorCode.SEND_FAILED] SES 이메일 발송이 실패한 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_SEND_RATE_LIMITED] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
+     * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] SES 이메일 발송이 실패한 경우
      */
     fun sendAuthCode(request: SendAuthCodeRequest): SendAuthCodeResponse {
         val email = request.email
@@ -151,11 +151,11 @@ class AuthService(
      *
      * @param request 인증 코드 확인 요청 정보를 담은 [ConfirmAuthCodeRequest] (인증 코드, emailChallengeToken)
      * @return 발급된 emailVerifiedToken을 담은 [ConfirmAuthCodeResponse]
-     * @throws BusinessException [AuthErrorCode.MAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
      * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않은 경우
-     * @throws BusinessException [AuthErrorCode.MAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
-     * @throws BusinessException [AuthErrorCode.MAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
-     * @throws BusinessException [AuthErrorCode.MAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
      */
     fun confirmAuthCode(request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse {
         val challengeToken = request.emailChallengeToken
