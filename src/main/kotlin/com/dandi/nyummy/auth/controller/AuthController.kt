@@ -65,7 +65,7 @@ class AuthController(private val authService: AuthService) {
 
     @Operation(summary = "이메일 인증 코드 확인", description = "이메일로 받은 인증 코드가 유효한지 검증한다.")
     @PostMapping("/email-verification/confirm")
-    fun emailVerificationConfirm(@Valid @RequestBody request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse =
+    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse =
         authService.confirmAuthCode(request)
 
     @Operation(
