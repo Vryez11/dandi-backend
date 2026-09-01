@@ -100,7 +100,7 @@ class AuthService(
             "PasswordEncoder가 null을 반환했습니다."
         }
 
-        val newUser = try {
+        val savedUser = try {
             userRepository.save(
                 User(
                     email = email,
@@ -111,7 +111,7 @@ class AuthService(
             throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
-        val userId = newUser.id
+        val userId = savedUser.id
 
         profileRepository.save(
             Profile(
