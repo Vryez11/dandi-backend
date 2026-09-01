@@ -1,7 +1,7 @@
 ### 비밀번호 변경 API
 PATCH {{url}}/api/v1/users/me/password
 Content-Type: application/json
-X-User-Id: 1
+Authorization: Bearer {{accessToken}}
 
 {
   "password": "abcd",
