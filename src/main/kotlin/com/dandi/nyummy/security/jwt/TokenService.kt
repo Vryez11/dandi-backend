@@ -27,5 +27,7 @@ class TokenService(private val jwtProvider: JwtProvider) {
 
     fun getUserId(token: String, type: TokenType): Long = jwtProvider.getUserId(token, type)
 
+    fun getEmail(token: String, type: TokenType): String = jwtProvider.getEmail(token, type)
+
     fun getExpiration(token: String, type: TokenType): Date = jwtProvider.getExpiration(token, type)
 }

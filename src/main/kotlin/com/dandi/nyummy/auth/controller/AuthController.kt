@@ -1,6 +1,7 @@
 package com.dandi.nyummy.auth.controller
 
-import com.dandi.nyummy.auth.dto.EmailVerificationConfirmRequest
+import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
+import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.RefreshRequest
@@ -64,10 +65,8 @@ class AuthController(private val authService: AuthService) {
 
     @Operation(summary = "이메일 인증 코드 확인", description = "이메일로 받은 인증 코드가 유효한지 검증한다.")
     @PostMapping("/email-verification/confirm")
-    fun emailVerificationConfirm(@Valid @RequestBody request: EmailVerificationConfirmRequest): ResponseEntity<Void> =
-        ResponseEntity
-            .noContent()
-            .build()
+    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse =
+        authService.confirmAuthCode(request)
 
     @Operation(
         summary = "로그아웃",

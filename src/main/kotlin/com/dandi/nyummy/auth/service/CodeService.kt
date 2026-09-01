@@ -52,10 +52,41 @@ class CodeService(
         }
 
         code.updateCode(newCode)
+        code.resetAttemptCount()
         code.increaseSendCount()
 
         codeRepository.save(code)
         return code.code
+    }
+
+    /**
+     * 이메일로 발급된 인증 코드와 입력 코드를 대조하고, 성공 시 코드를 삭제해 재사용을 막는다.
+     *
+     * 오답은 attemptCount로 기록하며, 5회 누적되면 이후 시도는 정답이어도 차단한다.
+     * 오답 예외가 나가도 attemptCount 증가가 커밋되도록 [BusinessException]은 롤백하지 않는다.
+     *
+     * @param challengeCode 사용자가 입력한 6자리 인증 코드
+     * @param email 인증 코드를 대조할 이메일
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
+     */
+    @Transactional(noRollbackFor = [BusinessException::class])
+    fun confirmAuthCodeByEmail(challengeCode: String, email: String) {
+        val existingCode = codeRepository.findByEmail(email)
+            ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
+
+        val attemptCount = existingCode.attemptCount
+        if (attemptCount >= 5) {
+            throw BusinessException(AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED)
+        }
+
+        if (existingCode.code != challengeCode) {
+            existingCode.increaseAttemptCount()
+            throw BusinessException(AuthErrorCode.EMAIL_CODE_MISMATCH)
+        }
+
+        codeRepository.delete(existingCode)
     }
 
     private fun createRandomCode(): String = "%06d".format(random.nextInt(1_000_000))

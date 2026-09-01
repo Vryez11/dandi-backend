@@ -14,7 +14,12 @@ enum class AuthErrorCode(override val status: HttpStatus, override val code: Str
         "인증 코드 발송 시간이 일정 시간 지나지 않았습니다.",
     ),
     EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "api.auth.emailNotFound", "해당 이메일로 발송된 인증 코드가 없습니다."),
-    EMAIL_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "api.auth.emailCodeExpired", "인증 코드 유효 시간이 지났습니다. 코드를 재발송 받으세요."),
+    EMAIL_CODE_ATTEMPT_EXCEEDED(
+        HttpStatus.TOO_MANY_REQUESTS,
+        "api.auth.emailCodeAttemptExceeded",
+        "이메일 검증 횟수를 초과했습니다. 코드를 재발송 받으세요.",
+    ),
     EMAIL_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "api.auth.emailCodeMismatch", "인증 코드가 일치하지 않습니다."),
+    EMAIL_CODE_EXPIRED(HttpStatus.UNAUTHORIZED, "api.auth.emailCodeExpired", "인증 시간이 지났습니다. 재발송 받으세요."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "api.auth.invalidRefreshToken", "유효하지 않은 리프레시 토큰입니다."),
 }

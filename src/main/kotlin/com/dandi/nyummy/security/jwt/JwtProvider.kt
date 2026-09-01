@@ -79,5 +79,8 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
     fun getUserId(token: String, type: TokenType): Long = getClaims(token, type).subject?.toLongOrNull()
         ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
 
+    fun getEmail(token: String, type: TokenType): String = getClaims(token, type).subject
+        ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+
     fun getExpiration(token: String, type: TokenType): Date = getClaims(token, type).expiration
 }
