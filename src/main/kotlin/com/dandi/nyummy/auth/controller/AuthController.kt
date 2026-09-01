@@ -37,16 +37,20 @@ class AuthController(private val authService: AuthService) {
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): LoginResponse = authService.login(request)
 
-    @Operation(summary = "회원가입", description = "이메일·비밀번호·닉네임과 신체 정보로 회원가입하고 AccessToken과 RefreshToken을 발급받는다.")
-    @PostMapping("/signup")
-    fun signup(@RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> = ResponseEntity.ok(
-        SignUpResponse(
-            accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcklkIjoxLCJ0eXBlIjoiYWNjZXNzIiwia" +
-                "WF0IjoxNzUzOTIwMDAwLCJleHAiOjE3NTM5MjM2MDB9.hm9KdG2zY6kA3OooLoNbUl4nwF56MJHh2ygSIq5iwHA",
-            refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcklkIjoxLCJ0eXBlIjoicmVmcmVzaCIs" +
-                "ImlhdCI6MTc1MzkyMDAwMCwiZXhwIjoxNzU1MTI5NjAwfQ.3dYJS1UPcP5ohWa4yPbdmwjd4rRwa7nSL3AadcgMFXM",
-        ),
+    @Operation(
+        summary = "회원가입",
+        description = "이메일 인증 토큰(emailVerifiedToken)과 비밀번호·닉네임으로 회원가입하고 " +
+            "AccessToken과 RefreshToken을 발급받는다. 신체 정보(gender·birth·height·weight)는 선택 입력이다.",
     )
+    @ApiResponse(responseCode = "409", description = "이미 가입된 이메일입니다.")
+    @PostMapping("/signup")
+    fun signup(@Valid @RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> {
+        val response = authService.signup(request)
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response)
+    }
 
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰을 검증하고 AccessToken·RefreshToken을 새로 발급한다(rotate).")
     @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰입니다.")
