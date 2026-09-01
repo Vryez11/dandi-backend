@@ -24,6 +24,9 @@ spring:
     restart:
       additional-exclude: "db/migration/**"
 
+server:
+  forward-headers-strategy: framework
+
 app:
   meal:
     upload-method: "PUT"
