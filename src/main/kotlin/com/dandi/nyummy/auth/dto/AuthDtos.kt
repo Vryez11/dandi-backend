@@ -2,6 +2,7 @@ package com.dandi.nyummy.auth.dto
 
 import com.dandi.nyummy.profile.enum.Gender
 import jakarta.validation.constraints.AssertTrue
+import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Past
 import jakarta.validation.constraints.Pattern
@@ -41,3 +42,47 @@ data class SignUpRequest(
     val isPasswordConfirmed: Boolean
         get() = password == confirmPassword
 }
+
+data class SignUpResponse(val accessToken: String, val refreshToken: String)
+
+data class LoginRequest(
+
+    @field:NotBlank
+    @field:Email
+    val email: String,
+
+    @field:NotBlank
+    val password: String,
+)
+
+data class LoginResponse(val redirectUrl: String, val accessToken: String, val refreshToken: String)
+
+data class RefreshRequest(
+
+    @field:NotBlank
+    val refreshToken: String,
+
+)
+
+data class RefreshResponse(val accessToken: String, val refreshToken: String)
+
+data class SendAuthCodeRequest(
+
+    @field:Email
+    @field:NotBlank
+    val email: String,
+)
+
+data class SendAuthCodeResponse(val emailChallengeToken: String)
+
+data class ConfirmAuthCodeRequest(
+
+    @field:NotBlank
+    @field:Pattern(regexp = "^\\d{6}$")
+    val authCode: String,
+
+    @field:NotBlank
+    val emailChallengeToken: String,
+)
+
+data class ConfirmAuthCodeResponse(val emailVerifiedToken: String)
