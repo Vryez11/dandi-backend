@@ -217,14 +217,19 @@ class MealService(
     }
 
     private fun pickFoodIconIds(meals: List<Meal>): List<Long> {
-        val shuffledIconIds = meals.map { it.iconId }.shuffled()
-        val distinctIconIds = shuffledIconIds.distinct()
-
-        if (distinctIconIds.size >= 2) {
-            return distinctIconIds.take(2)
+        val iconIdsByMealAt = meals.sortedBy { it.mealAt }.map { it.iconId }
+        if (iconIdsByMealAt.size <= 2) {
+            return iconIdsByMealAt
         }
 
-        return shuffledIconIds.take(2)
+        val distinctIconIds = iconIdsByMealAt.distinct()
+
+        if (distinctIconIds.size < 2) {
+            return iconIdsByMealAt.take(2)
+        }
+
+        val pickedIconIds = distinctIconIds.shuffled().take(2).toSet()
+        return distinctIconIds.filter { it in pickedIconIds }
     }
 
     /**
