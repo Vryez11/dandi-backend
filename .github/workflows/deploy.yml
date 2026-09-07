@@ -57,6 +57,7 @@ jobs:
           AWS_SES_FROM_ADDRESS: test@dandi.com
           GEMINI_API_KEY: i'msohungryandangry
           JWT_SECRET_KEY: c83mV3J9dm3u1nGB93mdHgHbZTE3mciNNc93nMvfi3m=
+          JWT_ENCRYPTION_KEY: 50Vnh94kKrp9/+/v1woFnggXrPXNP3bvnsgbGK/quD0=
         run: ./gradlew clean build
 
       - name: AWS 자격 증명 설정
