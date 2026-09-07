@@ -12,19 +12,32 @@ import java.time.Clock
 import java.time.Duration
 import java.util.*
 import javax.crypto.SecretKey
+import javax.crypto.spec.SecretKeySpec
 
 @Component
 class JwtProvider(private val jwtProperties: JwtProperties, private val clock: Clock) {
 
     private val secretKey: SecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secretKey))
-    private val parser: JwtParser = Jwts.parser()
+    private val encryptionKey: SecretKey = SecretKeySpec(Decoders.BASE64.decode(jwtProperties.encryptionKey), "AES")
+
+    private val jwsParser: JwtParser = Jwts.parser()
         .verifyWith(secretKey)
         .clockSkewSeconds(60)
         .clock { Date.from(clock.instant()) }
         .build()
 
+    private val jweParser: JwtParser = Jwts.parser()
+        .decryptWith(encryptionKey)
+        .clockSkewSeconds(60)
+        .clock { Date.from(clock.instant()) }
+        .build()
+
     private fun getClaims(token: String, type: TokenType): Claims {
-        val claims = parser.parseSignedClaims(token).payload
+        val claims = if (type.isEncrypted) {
+            jweParser.parseEncryptedClaims(token).payload
+        } else {
+            jwsParser.parseSignedClaims(token).payload
+        }
 
         if (claims["type"] != type.value) {
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
@@ -57,7 +70,7 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
             .claim("type", type.value)
             .issuedAt(Date.from(now))
             .expiration(Date.from(now.plus(timeToLive)))
-            .signWith(secretKey)
+            .encryptWith(encryptionKey, Jwts.ENC.A256GCM)
             .compact()
     }
 
