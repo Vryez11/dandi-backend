@@ -8,6 +8,8 @@ class JwtProperties(
 
     val secretKey: String,
 
+    val encryptionKey: String,
+
     val accessTimeToLive: Duration,
 
     val refreshTimeToLive: Duration,

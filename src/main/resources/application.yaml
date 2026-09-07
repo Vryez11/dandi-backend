@@ -43,6 +43,7 @@ app:
     login-redirect-url: "dandi://home"
   jwt:
     secret-key: ${JWT_SECRET_KEY}
+    encryption-key: ${JWT_ENCRYPTION_KEY}
     access-time-to-live: 30m
     refresh-time-to-live: 15d
     email-challenge-time-to-live: 5m

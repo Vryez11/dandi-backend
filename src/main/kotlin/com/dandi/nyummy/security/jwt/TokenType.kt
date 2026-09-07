@@ -1,8 +1,8 @@
 package com.dandi.nyummy.security.jwt
 
-enum class TokenType(val value: String) {
-    ACCESS("access"),
-    REFRESH("refresh"),
-    EMAIL_CHALLENGE("emailChallenge"),
-    EMAIL_VERIFIED("emailVerified"),
+enum class TokenType(val value: String, val isEncrypted: Boolean) {
+    ACCESS("access", false),
+    REFRESH("refresh", false),
+    EMAIL_CHALLENGE("emailChallenge", true),
+    EMAIL_VERIFIED("emailVerified", true),
 }
