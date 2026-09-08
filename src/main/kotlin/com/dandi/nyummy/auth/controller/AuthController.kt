@@ -73,10 +73,21 @@ class AuthController(private val authService: AuthService) {
             .body(response)
     }
 
-    @Operation(summary = "이메일 인증 코드 확인", description = "이메일로 받은 인증 코드가 유효한지 검증한다.")
+    @Operation(
+        summary = "이메일 인증 코드 확인",
+        description = "이메일로 받은 인증 코드가 유효한지 검증한다. " +
+            "SIGNUP 용도면 emailVerifiedToken을 응답하고, " +
+            "RESET_PASSWORD 용도면 임시 비밀번호로 교체 후 이메일로 발송한다.",
+    )
+    @ApiResponse(responseCode = "200", description = "emailVerifiedToken 발급 (SIGNUP)")
+    @ApiResponse(responseCode = "204", description = "임시 비밀번호 발송 완료 (RESET_PASSWORD)")
     @PostMapping("/email-verification/confirm")
-    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse =
-        authService.confirmAuthCode(request)
+    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ResponseEntity<ConfirmAuthCodeResponse> {
+        val response = authService.confirmAuthCode(request)
+            ?: return ResponseEntity.noContent().build()
+
+        return ResponseEntity.ok(response)
+    }
 
     @Operation(
         summary = "로그아웃",
