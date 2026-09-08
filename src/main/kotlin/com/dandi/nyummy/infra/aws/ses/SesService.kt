@@ -53,6 +53,34 @@ class SesService(
         }
     }
 
+    /**
+     * 임시 비밀번호를 본문에 담아 SES로 이메일을 발송한다.
+     *
+     * @param email 수신자 이메일 주소
+     * @param tempPassword 발송할 평문 임시 비밀번호
+     * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] SES 발송 요청이 실패한 경우
+     */
+    fun sendTempPassword(email: String, tempPassword: String) {
+        val request = SendEmailRequest {
+            fromEmailAddress = fromAddress
+            destination = Destination {
+                toAddresses = listOf(email)
+            }
+            content = EmailContent {
+                simple = Message {
+                    subject = Content { data = "[Nyummy] 임시 비밀번호" }
+                    body = Body {
+                        text = Content { data = "임시 비밀번호는 $tempPassword 입니다. 로그인 후 비밀번호를 변경해 주세요." }
+                    }
+                }
+            }
+        }
+
+        runBlocking {
+            sendEmail(request)
+        }
+    }
+
     private suspend fun sendEmail(request: SendEmailRequest) {
         try {
             sesV2Client.sendEmail(request)
