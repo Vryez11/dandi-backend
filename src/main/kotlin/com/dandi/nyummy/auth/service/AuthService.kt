@@ -23,10 +23,10 @@ import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
+import com.dandi.nyummy.user.service.PasswordService
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
 import org.springframework.dao.DataIntegrityViolationException
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -35,10 +35,10 @@ class AuthService(
     private val userRepository: UserRepository,
     private val profileRepository: ProfileRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val passwordEncoder: PasswordEncoder,
     private val tokenService: TokenService,
     private val codeService: CodeService,
     private val sesService: SesService,
+    private val passwordService: PasswordService,
     private val authProperties: AuthProperties,
 ) {
 
@@ -55,7 +55,7 @@ class AuthService(
         val user = userRepository.findByEmail(request.email)
             ?: throw BusinessException(AuthErrorCode.INVALID_CREDENTIALS)
 
-        if (!passwordEncoder.matches(request.password, user.password)) {
+        if (!passwordService.matchesPassword(request.password, user.password)) {
             throw BusinessException(AuthErrorCode.INVALID_CREDENTIALS)
         }
 
@@ -97,9 +97,7 @@ class AuthService(
             throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
-        val encodedPassword = checkNotNull(passwordEncoder.encode(request.password)) {
-            "PasswordEncoder가 null을 반환했습니다."
-        }
+        val encodedPassword = passwordService.encodePassword(request.password)
 
         val savedUser = try {
             userRepository.save(
