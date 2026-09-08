@@ -1,5 +1,6 @@
 package com.dandi.nyummy.security.jwt
 
+import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import io.jsonwebtoken.Claims
@@ -60,14 +61,20 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
             .compact()
     }
 
-    private fun createToken(email: String, type: TokenType): String {
+    private fun createToken(email: String, type: TokenType, purpose: AuthPurpose? = null): String {
         val now = clock.instant()
 
         val timeToLive = getTimeToLive(type)
 
-        return Jwts.builder()
+        val builder = Jwts.builder()
             .subject(email)
             .claim("type", type.value)
+
+        if (purpose != null) {
+            builder.claim("purpose", purpose.name)
+        }
+
+        return builder
             .issuedAt(Date.from(now))
             .expiration(Date.from(now.plus(timeToLive)))
             .encryptWith(encryptionKey, Jwts.ENC.A256GCM)
@@ -81,7 +88,8 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
         TokenType.EMAIL_VERIFIED -> jwtProperties.emailVerifiedTimeToLive
     }
 
-    fun createEmailChallengeToken(email: String): String = createToken(email, TokenType.EMAIL_CHALLENGE)
+    fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
+        createToken(email, TokenType.EMAIL_CHALLENGE, purpose)
 
     fun createEmailVerifiedToken(email: String): String = createToken(email, TokenType.EMAIL_VERIFIED)
 
@@ -94,6 +102,14 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
 
     fun getEmail(token: String, type: TokenType): String = getClaims(token, type).subject
         ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+
+    fun getPurpose(token: String, type: TokenType): AuthPurpose {
+        val purpose = getClaims(token, type)["purpose"] as? String
+            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+
+        return AuthPurpose.entries.find { it.name == purpose }
+            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+    }
 
     fun getExpiration(token: String, type: TokenType): Date = getClaims(token, type).expiration
 }

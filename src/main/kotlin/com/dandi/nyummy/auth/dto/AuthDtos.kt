@@ -1,5 +1,6 @@
 package com.dandi.nyummy.auth.dto
 
+import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.profile.enum.Gender
 import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Email
@@ -71,6 +72,8 @@ data class SendAuthCodeRequest(
     @field:Email
     @field:NotBlank
     val email: String,
+
+    val purpose: AuthPurpose,
 )
 
 data class SendAuthCodeResponse(val emailChallengeToken: String)

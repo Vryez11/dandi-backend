@@ -1,5 +1,6 @@
 package com.dandi.nyummy.security.jwt
 
+import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.security.AuthUser
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
@@ -21,9 +22,12 @@ class TokenService(private val jwtProvider: JwtProvider) {
         return Pair(access, refresh)
     }
 
-    fun createEmailChallengeToken(email: String): String = jwtProvider.createEmailChallengeToken(email)
+    fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
+        jwtProvider.createEmailChallengeToken(email, purpose)
 
     fun createEmailVerifiedToken(email: String): String = jwtProvider.createEmailVerifiedToken(email)
+
+    fun getPurpose(token: String, type: TokenType): AuthPurpose = jwtProvider.getPurpose(token, type)
 
     fun getUserId(token: String, type: TokenType): Long = jwtProvider.getUserId(token, type)
 

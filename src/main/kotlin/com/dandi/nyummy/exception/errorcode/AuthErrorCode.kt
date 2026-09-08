@@ -23,6 +23,7 @@ enum class AuthErrorCode(override val status: HttpStatus, override val code: Str
     EMAIL_CODE_EXPIRED(HttpStatus.UNAUTHORIZED, "api.auth.emailCodeExpired", "인증 시간이 지났습니다. 재발송 받으세요."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "api.auth.invalidRefreshToken", "유효하지 않은 리프레시 토큰입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "api.auth.emailAlreadyExists", "이미 가입된 이메일입니다."),
+    EMAIL_NOT_REGISTERED(HttpStatus.NOT_FOUND, "api.auth.emailNotRegistered", "가입되지 않은 이메일입니다."),
     EMAIL_VERIFICATION_EXPIRED(
         HttpStatus.UNAUTHORIZED,
         "api.auth.emailVerificationExpired",

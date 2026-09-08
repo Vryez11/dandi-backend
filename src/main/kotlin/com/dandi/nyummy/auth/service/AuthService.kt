@@ -12,6 +12,7 @@ import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.entity.RefreshToken
+import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
@@ -193,19 +194,35 @@ class AuthService(
     /**
      * 이메일로 6자리 인증 코드를 발급·발송하고, 인증 세션 식별용 emailChallengeToken을 발급한다.
      *
-     * @param request 인증 코드 발송 요청 정보를 담은 [SendAuthCodeRequest] (이메일)
+     * 용도별 전제조건을 먼저 검사한다: 회원가입은 미가입 이메일이어야 하고, 비밀번호 찾기는 가입된 이메일이어야 한다.
+     * 용도는 emailChallengeToken의 클레임에 실려 confirm까지 전달된다.
+     *
+     * @param request 인증 코드 발송 요청 정보를 담은 [SendAuthCodeRequest] (이메일, 용도)
      * @return 발급된 emailChallengeToken을 담은 [SendAuthCodeResponse]
+     * @throws BusinessException [AuthErrorCode.EMAIL_ALREADY_EXISTS] 회원가입 용도인데 이미 가입된 이메일인 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_REGISTERED] 비밀번호 찾기 용도인데 가입되지 않은 이메일인 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_SEND_RATE_LIMITED] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
      * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] SES 이메일 발송이 실패한 경우
      */
     fun sendAuthCode(request: SendAuthCodeRequest): SendAuthCodeResponse {
         val email = request.email
+        val purpose = request.purpose
+
+        when (purpose) {
+            AuthPurpose.SIGNUP -> if (userRepository.existsByEmail(email)) {
+                throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+            }
+
+            AuthPurpose.RESET_PASSWORD -> if (!userRepository.existsByEmail(email)) {
+                throw BusinessException(AuthErrorCode.EMAIL_NOT_REGISTERED)
+            }
+        }
 
         val authCode = codeService.createCodeByEmail(email)
 
         sesService.sendAuthCode(email, authCode)
 
-        val emailChallengeToken = tokenService.createEmailChallengeToken(email)
+        val emailChallengeToken = tokenService.createEmailChallengeToken(email, purpose)
 
         return SendAuthCodeResponse(emailChallengeToken)
     }

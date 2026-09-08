@@ -57,7 +57,13 @@ class AuthController(private val authService: AuthService) {
     @PostMapping("/refresh")
     fun refresh(@Valid @RequestBody request: RefreshRequest): RefreshResponse = authService.refresh(request)
 
-    @Operation(summary = "이메일 인증 코드 발송", description = "입력한 이메일 주소로 인증 코드를 발송한다.")
+    @Operation(
+        summary = "이메일 인증 코드 발송",
+        description = "입력한 이메일 주소로 인증 코드를 발송한다. " +
+            "purpose가 SIGNUP이면 미가입 이메일, RESET_PASSWORD면 가입된 이메일이어야 한다.",
+    )
+    @ApiResponse(responseCode = "409", description = "이미 가입된 이메일입니다. (SIGNUP)")
+    @ApiResponse(responseCode = "404", description = "가입되지 않은 이메일입니다. (RESET_PASSWORD)")
     @PostMapping("/email-verification")
     fun sendAuthCode(@Valid @RequestBody request: SendAuthCodeRequest): ResponseEntity<SendAuthCodeResponse> {
         val response = authService.sendAuthCode(request)
