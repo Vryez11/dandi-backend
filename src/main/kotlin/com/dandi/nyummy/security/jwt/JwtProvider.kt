@@ -91,7 +91,8 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
     fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
         createToken(email, TokenType.EMAIL_CHALLENGE, purpose)
 
-    fun createEmailVerifiedToken(email: String): String = createToken(email, TokenType.EMAIL_VERIFIED)
+    fun createEmailVerifiedToken(email: String, purpose: AuthPurpose): String =
+        createToken(email, TokenType.EMAIL_VERIFIED, purpose)
 
     fun createAccessToken(userId: Long): String = createToken(userId, TokenType.ACCESS)
 

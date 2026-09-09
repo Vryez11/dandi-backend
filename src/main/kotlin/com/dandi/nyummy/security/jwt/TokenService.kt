@@ -25,7 +25,8 @@ class TokenService(private val jwtProvider: JwtProvider) {
     fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
         jwtProvider.createEmailChallengeToken(email, purpose)
 
-    fun createEmailVerifiedToken(email: String): String = jwtProvider.createEmailVerifiedToken(email)
+    fun createEmailVerifiedToken(email: String, purpose: AuthPurpose): String =
+        jwtProvider.createEmailVerifiedToken(email, purpose)
 
     fun getPurpose(token: String, type: TokenType): AuthPurpose = jwtProvider.getPurpose(token, type)
 

@@ -4,6 +4,7 @@ import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
 import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
+import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
@@ -76,17 +77,30 @@ class AuthController(private val authService: AuthService) {
     @Operation(
         summary = "이메일 인증 코드 확인",
         description = "이메일로 받은 인증 코드가 유효한지 검증한다. " +
-            "SIGNUP 용도면 emailVerifiedToken을 응답하고, " +
-            "RESET_PASSWORD 용도면 임시 비밀번호로 교체 후 이메일로 발송한다.",
+            "검증 후 각 용도에 맞는 emailVerifiedToken을 응답한다.",
     )
-    @ApiResponse(responseCode = "200", description = "emailVerifiedToken 발급 (SIGNUP)")
-    @ApiResponse(responseCode = "204", description = "임시 비밀번호 발송 완료 (RESET_PASSWORD)")
+    @ApiResponse(responseCode = "200", description = "emailVerifiedToken 발급")
     @PostMapping("/email-verification/confirm")
     fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ResponseEntity<ConfirmAuthCodeResponse> {
         val response = authService.confirmAuthCode(request)
-            ?: return ResponseEntity.noContent().build()
 
         return ResponseEntity.ok(response)
+    }
+
+    @Operation(
+        summary = "비밀번호 재설정",
+        description = "비밀번호 찾기 용도의 emailVerifiedToken을 검증하고, " +
+            "임시 비밀번호로 교체한 뒤 이메일로 발송한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "임시 비밀번호 발송 완료")
+    @ApiResponse(responseCode = "401", description = "토큰이 유효하지 않거나 비밀번호 찾기 용도가 아닙니다.")
+    @PostMapping("/password/reset")
+    fun resetPassword(@Valid @RequestBody request: PasswordResetRequest): ResponseEntity<Void> {
+        authService.resetPassword(request)
+
+        return ResponseEntity
+            .noContent()
+            .build()
     }
 
     @Operation(

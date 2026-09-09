@@ -89,3 +89,9 @@ data class ConfirmAuthCodeRequest(
 )
 
 data class ConfirmAuthCodeResponse(val emailVerifiedToken: String)
+
+data class PasswordResetRequest(
+
+    @field:NotBlank
+    val emailVerifiedToken: String,
+)
