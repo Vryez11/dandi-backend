@@ -84,6 +84,17 @@ class AuthService(
         return LoginResponse(redirectUrl, newAccessToken, newRefreshToken)
     }
 
+    /**
+     * 회원가입 용도의 emailVerifiedToken을 검증하고 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
+     *
+     * 이메일 중복은 사전 조회로 검사하고, 동시 가입 경합은 DB 유니크 제약 위반을 같은 에러로 매핑해 방어한다.
+     *
+     * @param request 회원가입 요청 정보를 담은 [SignUpRequest] (emailVerifiedToken, 비밀번호, 닉네임, 신체 정보)
+     * @return 발급된 AccessToken·RefreshToken을 담은 [SignUpResponse]
+     * @throws BusinessException [AuthErrorCode.EMAIL_VERIFICATION_EXPIRED] emailVerifiedToken이 만료된 경우
+     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않거나 회원가입 용도가 아닌 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_ALREADY_EXISTS] 이미 가입된 이메일인 경우
+     */
     @Transactional
     fun signup(request: SignUpRequest): SignUpResponse {
         val emailVerifiedToken = request.emailVerifiedToken
