@@ -28,12 +28,12 @@ class PasswordService(private val userRepository: UserRepository, private val pa
      *
      * @param email 비밀번호를 교체할 사용자의 이메일
      * @return 생성된 평문 임시 비밀번호
-     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_REGISTERED] 이메일에 해당하는 사용자가 없는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 이메일에 해당하는 사용자가 없는 경우
      */
     @Transactional
     fun createTempPasswordByEmail(email: String): String {
         val user = userRepository.findByEmail(email)
-            ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_REGISTERED)
+            ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
 
         val tempPassword = createRandomTempPassword()
 

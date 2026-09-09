@@ -198,7 +198,7 @@ class AuthService(
      * @param request 인증 코드 발송 요청 정보를 담은 [SendAuthCodeRequest] (이메일, 용도)
      * @return 발급된 emailChallengeToken을 담은 [SendAuthCodeResponse]
      * @throws BusinessException [AuthErrorCode.EMAIL_ALREADY_EXISTS] 회원가입 용도인데 이미 가입된 이메일인 경우
-     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_REGISTERED] 비밀번호 찾기 용도인데 가입되지 않은 이메일인 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 비밀번호 찾기 용도인데 가입되지 않은 이메일인 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_SEND_RATE_LIMITED] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
      * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] SES 이메일 발송이 실패한 경우
      */
@@ -212,7 +212,7 @@ class AuthService(
             }
 
             AuthPurpose.RESET_PASSWORD -> if (!userRepository.existsByEmail(email)) {
-                throw BusinessException(AuthErrorCode.EMAIL_NOT_REGISTERED)
+                throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
             }
         }
 
@@ -239,10 +239,10 @@ class AuthService(
      * @return 회원가입 용도면 emailVerifiedToken을 담은 [ConfirmAuthCodeResponse], 비밀번호 찾기 용도면 null
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
      * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입·용도가 유효하지 않은 경우
-     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 해당 이메일로 발급된 인증 코드가 없는 경우
+     * @throws BusinessException [AuthErrorCode.INCORRECT_EMAIL] 해당 이메일로 발급된 인증 코드가 없는 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
-     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_REGISTERED] 비밀번호 찾기 용도인데 가입된 사용자가 없는 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 비밀번호 찾기 용도인데 가입된 사용자가 없는 경우
      * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
      */
     fun confirmAuthCode(request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse? {
