@@ -25,8 +25,6 @@ import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
 import com.dandi.nyummy.user.service.PasswordService
-import io.jsonwebtoken.ExpiredJwtException
-import io.jsonwebtoken.JwtException
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -99,16 +97,7 @@ class AuthService(
     fun signup(request: SignUpRequest): SignUpResponse {
         val emailVerifiedToken = request.emailVerifiedToken
 
-        val (email, purpose) = try {
-            Pair(
-                tokenService.getEmail(emailVerifiedToken, TokenType.EMAIL_VERIFIED),
-                tokenService.getPurpose(emailVerifiedToken, TokenType.EMAIL_VERIFIED),
-            )
-        } catch (e: ExpiredJwtException) {
-            throw BusinessException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED)
-        } catch (e: JwtException) {
-            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
-        }
+        val (email, purpose) = tokenService.getEmailAndPurpose(emailVerifiedToken, TokenType.EMAIL_VERIFIED)
 
         if (purpose != AuthPurpose.SIGNUP) {
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
@@ -255,16 +244,7 @@ class AuthService(
         val challengeToken = request.emailChallengeToken
         val challengeCode = request.authCode
 
-        val (email, purpose) = try {
-            Pair(
-                tokenService.getEmail(challengeToken, TokenType.EMAIL_CHALLENGE),
-                tokenService.getPurpose(challengeToken, TokenType.EMAIL_CHALLENGE),
-            )
-        } catch (e: ExpiredJwtException) {
-            throw BusinessException(AuthErrorCode.EMAIL_CODE_EXPIRED)
-        } catch (e: JwtException) {
-            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
-        }
+        val (email, purpose) = tokenService.getEmailAndPurpose(challengeToken, TokenType.EMAIL_CHALLENGE)
 
         codeService.confirmAuthCodeByEmail(challengeCode, email)
 
@@ -288,16 +268,7 @@ class AuthService(
 
         val emailVerifiedToken = request.emailVerifiedToken
 
-        val (email, purpose) = try {
-            Pair(
-                tokenService.getEmail(emailVerifiedToken, TokenType.EMAIL_VERIFIED),
-                tokenService.getPurpose(emailVerifiedToken, TokenType.EMAIL_VERIFIED),
-            )
-        } catch (e: ExpiredJwtException) {
-            throw BusinessException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED)
-        } catch (e: JwtException) {
-            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
-        }
+        val (email, purpose) = tokenService.getEmailAndPurpose(emailVerifiedToken, TokenType.EMAIL_VERIFIED)
 
         if (purpose != AuthPurpose.RESET_PASSWORD) {
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
