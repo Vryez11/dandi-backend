@@ -18,6 +18,7 @@ import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
 import com.dandi.nyummy.profile.entity.Profile
 import com.dandi.nyummy.profile.repository.ProfileRepository
+import com.dandi.nyummy.security.jwt.JwtProperties
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.entity.User
@@ -28,6 +29,8 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.Instant
 
 @Service
 class AuthService(
@@ -39,11 +42,16 @@ class AuthService(
     private val codeService: CodeService,
     private val sesService: SesService,
     private val authProperties: AuthProperties,
+    private val jwtProperties: JwtProperties,
+    private val clock: Clock,
 ) {
 
     /**
      * 이메일과 비밀번호로 사용자를 인증하고 AccessToken·RefreshToken을 발급한다.
-     * 기존에 발급된 RefreshToken이 있으면 새 토큰으로 교체(rotate)하고, 없으면 새로 저장한다.
+     *
+     * 로그인은 새 세션의 시작이므로 절대 만료(absoluteExpiresAt)를
+     * app.jwt.refresh-absolute-time-to-live 만큼 뒤로 새로 찍는다.
+     * 기존에 발급된 RefreshToken이 있으면 그 행을 재사용해 갱신(restart)하고, 없으면 새로 저장한다.
      *
      * @param request 로그인 요청 정보를 담은 [LoginRequest] (이메일, 비밀번호)
      * @return 리다이렉트 URL과 AccessToken·RefreshToken을 담은 [LoginResponse]
@@ -61,18 +69,19 @@ class AuthService(
         val userId = user.id
 
         val (newAccessToken, newRefreshToken) = tokenService.createTokenPair(userId)
-        val newExpiresAt = tokenService.getExpiration(newRefreshToken, TokenType.REFRESH).toInstant()
 
         val existingToken = refreshTokenRepository.findByUserId(userId)
 
+        val absoluteExpiresAt = Instant.now(clock).plus(jwtProperties.refreshAbsoluteTimeToLive)
+
         if (existingToken != null) {
-            existingToken.rotate(newRefreshToken, newExpiresAt)
+            existingToken.restart(newRefreshToken, absoluteExpiresAt)
         } else {
             refreshTokenRepository.save(
                 RefreshToken(
                     refreshToken = newRefreshToken,
+                    absoluteExpiresAt = absoluteExpiresAt,
                     userId = userId,
-                    expiresAt = newExpiresAt,
                 ),
             )
         }
@@ -125,13 +134,13 @@ class AuthService(
         )
 
         val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
-        val newExpiresAt = tokenService.getExpiration(refreshToken, TokenType.REFRESH).toInstant()
+        val absoluteExpiresAt = Instant.now(clock).plus(jwtProperties.refreshAbsoluteTimeToLive)
 
         refreshTokenRepository.save(
             RefreshToken(
                 refreshToken = refreshToken,
+                absoluteExpiresAt = absoluteExpiresAt,
                 userId = userId,
-                expiresAt = newExpiresAt,
             ),
         )
 
@@ -144,10 +153,17 @@ class AuthService(
     /**
      * 리프레시 토큰을 검증하고 새 AccessToken·RefreshToken을 발급한다(rotate).
      *
+     * 재발급은 토큰만 교체할 뿐 절대 만료(absoluteExpiresAt)를 연장하지 않는다.
+     * 따라서 재발급을 아무리 반복해도 로그인 시점으로부터 app.jwt.refresh-absolute-time-to-live가 지나면
+     * 이 API가 막히고 다시 로그인해야 한다.
+     *
+     * 절대 만료 검사는 이 API에서만 한다. 인증이 필요한 모든 요청에서 확인하면 요청마다 DB 조회가 늘어나므로,
+     * 절대 만료 직후에도 이미 발급된 AccessToken은 남은 수명(app.jwt.access-time-to-live) 동안 유효하다.
+     *
      * @param request 리프레시 요청 정보를 담은 [RefreshRequest] (리프레시 토큰)
      * @return 새로 발급된 AccessToken·RefreshToken을 담은 [RefreshResponse]
      * @throws BusinessException [AuthErrorCode.INVALID_REFRESH_TOKEN] 토큰이 유효하지 않거나(서명·만료·타입 불일치),
-     * 저장된 리프레시 토큰이 없거나, 이미 교체(rotate)된 토큰인 경우
+     * 저장된 리프레시 토큰이 없거나, 절대 만료가 지났거나, 이미 교체(rotate)된 토큰인 경우
      */
     @Transactional
     fun refresh(request: RefreshRequest): RefreshResponse {
@@ -160,14 +176,17 @@ class AuthService(
         val existingToken = refreshTokenRepository.findByUserId(userId)
             ?: throw BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN)
 
+        if (existingToken.isAbsoluteExpired(Instant.now(clock))) {
+            throw BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN)
+        }
+
         if (existingToken.refreshToken != request.refreshToken) {
             throw BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN)
         }
 
         val (newAccessToken, newRefreshToken) = tokenService.createTokenPair(userId)
-        val newExpiresAt = tokenService.getExpiration(newRefreshToken, TokenType.REFRESH).toInstant()
 
-        existingToken.rotate(newRefreshToken, newExpiresAt)
+        existingToken.rotate(newRefreshToken)
 
         return RefreshResponse(newAccessToken, newRefreshToken)
     }
