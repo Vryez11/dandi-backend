@@ -20,7 +20,7 @@ class User(
     val email: String,
 
     @Column(name = "password", nullable = false, length = 255)
-    val password: String,
+    var password: String,
 ) {
 
     @Id
@@ -28,7 +28,15 @@ class User(
     @Column(name = "id", nullable = false)
     val id: Long = 0L
 
+    @Column(name = "is_temp_password", nullable = false)
+    var isTempPassword: Boolean = false
+
     @CreatedDate
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
+
+    fun updateTempPassword(password: String) {
+        this.password = password
+        this.isTempPassword = true
+    }
 }

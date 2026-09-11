@@ -4,6 +4,7 @@ import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
 import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
+import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
@@ -57,7 +58,13 @@ class AuthController(private val authService: AuthService) {
     @PostMapping("/refresh")
     fun refresh(@Valid @RequestBody request: RefreshRequest): RefreshResponse = authService.refresh(request)
 
-    @Operation(summary = "이메일 인증 코드 발송", description = "입력한 이메일 주소로 인증 코드를 발송한다.")
+    @Operation(
+        summary = "이메일 인증 코드 발송",
+        description = "입력한 이메일 주소로 인증 코드를 발송한다. " +
+            "purpose가 SIGNUP이면 미가입 이메일, RESET_PASSWORD면 가입된 이메일이어야 한다.",
+    )
+    @ApiResponse(responseCode = "409", description = "이미 가입된 이메일입니다. (SIGNUP)")
+    @ApiResponse(responseCode = "404", description = "가입되지 않은 이메일입니다. (RESET_PASSWORD)")
     @PostMapping("/email-verification")
     fun sendAuthCode(@Valid @RequestBody request: SendAuthCodeRequest): ResponseEntity<SendAuthCodeResponse> {
         val response = authService.sendAuthCode(request)
@@ -67,10 +74,34 @@ class AuthController(private val authService: AuthService) {
             .body(response)
     }
 
-    @Operation(summary = "이메일 인증 코드 확인", description = "이메일로 받은 인증 코드가 유효한지 검증한다.")
+    @Operation(
+        summary = "이메일 인증 코드 확인",
+        description = "이메일로 받은 인증 코드가 유효한지 검증한다. " +
+            "검증 후 각 용도에 맞는 emailVerifiedToken을 응답한다.",
+    )
+    @ApiResponse(responseCode = "200", description = "emailVerifiedToken 발급")
     @PostMapping("/email-verification/confirm")
-    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse =
-        authService.confirmAuthCode(request)
+    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ResponseEntity<ConfirmAuthCodeResponse> {
+        val response = authService.confirmAuthCode(request)
+
+        return ResponseEntity.ok(response)
+    }
+
+    @Operation(
+        summary = "비밀번호 재설정",
+        description = "비밀번호 찾기 용도의 emailVerifiedToken을 검증하고, " +
+            "임시 비밀번호로 교체한 뒤 이메일로 발송한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "임시 비밀번호 발송 완료")
+    @ApiResponse(responseCode = "401", description = "토큰이 유효하지 않거나 비밀번호 찾기 용도가 아닙니다.")
+    @PostMapping("/password/reset")
+    fun resetPassword(@Valid @RequestBody request: PasswordResetRequest): ResponseEntity<Void> {
+        authService.resetPassword(request)
+
+        return ResponseEntity
+            .noContent()
+            .build()
+    }
 
     @Operation(
         summary = "로그아웃",

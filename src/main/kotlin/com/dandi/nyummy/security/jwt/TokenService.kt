@@ -1,6 +1,11 @@
 package com.dandi.nyummy.security.jwt
 
+import com.dandi.nyummy.auth.enum.AuthPurpose
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.security.AuthUser
+import io.jsonwebtoken.ExpiredJwtException
+import io.jsonwebtoken.JwtException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Service
@@ -21,9 +26,21 @@ class TokenService(private val jwtProvider: JwtProvider) {
         return Pair(access, refresh)
     }
 
-    fun createEmailChallengeToken(email: String): String = jwtProvider.createEmailChallengeToken(email)
+    fun getEmailAndPurpose(token: String, type: TokenType): Pair<String, AuthPurpose> = try {
+        Pair(jwtProvider.getEmail(token, type), jwtProvider.getPurpose(token, type))
+    } catch (e: ExpiredJwtException) {
+        throw BusinessException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED)
+    } catch (e: JwtException) {
+        throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+    }
 
-    fun createEmailVerifiedToken(email: String): String = jwtProvider.createEmailVerifiedToken(email)
+    fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
+        jwtProvider.createEmailChallengeToken(email, purpose)
+
+    fun createEmailVerifiedToken(email: String, purpose: AuthPurpose): String =
+        jwtProvider.createEmailVerifiedToken(email, purpose)
+
+    fun getPurpose(token: String, type: TokenType): AuthPurpose = jwtProvider.getPurpose(token, type)
 
     fun getUserId(token: String, type: TokenType): Long = jwtProvider.getUserId(token, type)
 
