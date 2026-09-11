@@ -259,7 +259,7 @@ class AuthService(
 
         validateEmailForPurpose(purpose, email)
 
-        val authCode = codeService.createCodeByEmail(email)
+        val authCode = codeService.createCodeByEmail(email, purpose)
 
         sesService.sendAuthCode(email, authCode)
 
@@ -277,7 +277,7 @@ class AuthService(
      * @return 발급된 emailVerifiedToken을 담은 [ConfirmAuthCodeResponse]
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
      * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입·용도가 유효하지 않은 경우
-     * @throws BusinessException [AuthErrorCode.INCORRECT_EMAIL] 해당 이메일로 발급된 인증 코드가 없는 경우
+     * @throws BusinessException [AuthErrorCode.INCORRECT_EMAIL] 해당 이메일·용도로 발급된 인증 코드가 없는 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
      */
@@ -287,7 +287,7 @@ class AuthService(
 
         val (email, purpose) = tokenService.getEmailAndPurpose(challengeToken, TokenType.EMAIL_CHALLENGE)
 
-        codeService.confirmAuthCodeByEmail(challengeCode, email)
+        codeService.confirmAuthCodeByEmail(challengeCode, email, purpose)
 
         return ConfirmAuthCodeResponse(tokenService.createEmailVerifiedToken(email, purpose))
     }
