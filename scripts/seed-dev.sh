@@ -48,5 +48,6 @@ docker exec -i "$CONTAINER" \
 
 echo "[seed] 완료. 로그인 계정은 dev1@dandi.com ~ dev5@dandi.com / 비밀번호는 모두 Password123! 입니다."
 echo "[seed] dev4@dandi.com만 is_temp_password=1 (임시 비밀번호 상태)입니다."
-echo "[seed] 이메일 인증 코드는 verify1@dandi.com ~ verify5@dandi.com / 코드는 각각 111111 ~ 555555 입니다."
+echo "[seed] 이메일 인증 코드(SIGNUP)는 verify1@dandi.com ~ verify5@dandi.com / 코드는 각각 111111 ~ 555555 입니다."
+echo "[seed] 비밀번호 재설정 코드(RESET_PASSWORD)는 dev1@dandi.com / 코드는 666666 입니다."
 echo "[seed] 아이콘 캐시(@Cacheable(\"icons\"))가 남아 있을 수 있으니 앱이 떠 있었다면 재시작하세요."
