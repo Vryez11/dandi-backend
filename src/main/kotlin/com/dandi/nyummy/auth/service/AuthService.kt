@@ -227,15 +227,7 @@ class AuthService(
         val email = request.email
         val purpose = request.purpose
 
-        when (purpose) {
-            AuthPurpose.SIGNUP -> if (userRepository.existsByEmail(email)) {
-                throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
-            }
-
-            AuthPurpose.RESET_PASSWORD -> if (!userRepository.existsByEmail(email)) {
-                throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
-            }
-        }
+        validateEmailForPurpose(purpose, email)
 
         val authCode = codeService.createCodeByEmail(email)
 
@@ -314,5 +306,17 @@ class AuthService(
         val tempPassword = passwordService.createTempPasswordByEmail(email)
 
         sesService.sendTempPassword(email, tempPassword)
+    }
+
+    fun validateEmailForPurpose(purpose: AuthPurpose, email: String) {
+        when (purpose) {
+            AuthPurpose.SIGNUP -> if (userRepository.existsByEmail(email)) {
+                throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+            }
+
+            AuthPurpose.RESET_PASSWORD -> if (!userRepository.existsByEmail(email)) {
+                throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
+            }
+        }
     }
 }
