@@ -15,6 +15,7 @@ import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.entity.RefreshToken
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
+import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
@@ -26,6 +27,10 @@ import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
 import com.dandi.nyummy.user.service.PasswordService
+import io.jsonwebtoken.ExpiredJwtException
+import io.jsonwebtoken.JwtException
+import org.slf4j.LoggerFactory
+import org.springframework.dao.DataAccessException
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -44,7 +49,11 @@ class AuthService(
     private val authProperties: AuthProperties,
     private val jwtProperties: JwtProperties,
     private val clock: Clock,
+    private val tokenInvalidationRepository: TokenInvalidationRepository,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(AuthService::class.java)
+    }
 
     /**
      * 이메일과 비밀번호로 사용자를 인증하고 AccessToken·RefreshToken을 발급한다.
@@ -201,21 +210,34 @@ class AuthService(
     }
 
     /**
-     * 사용자의 RefreshToken을 삭제해 로그아웃 처리한다.
+     * 사용자의 세션을 끊어 로그아웃 처리한다.
      *
-     * 저장된 RefreshToken이 없어도 이미 로그아웃된 상태로 보고 정상 처리한다(멱등).
+     * RefreshToken 행을 지워 재발급을 막고, 무효화 기준 시각을 남겨 이미 발급된 AccessToken도 끊는다.
+     * AccessToken은 서명만으로 검증되는 stateless 토큰이라 회수할 방법이 없으므로,
+     * "이 시각 이전에 발급된 토큰은 거부"를 기록해두고 [TokenService]가 요청마다 확인하게 한다.
+     *
+     * 저장된 RefreshToken이 없으면 이미 로그아웃된 상태로 보고 정상 처리한다(멱등).
+     *
+     * RefreshToken 삭제를 먼저 하는 이유는, 무효화 기록만 성공하고 삭제가 롤백되면
+     * 사용자가 재발급으로 iat가 새로운 AccessToken을 받아 무효화를 그대로 빠져나가기 때문이다.
+     *
+     * Redis 쓰기 실패는 로그만 남기고 삼킨다. 예외를 올리면 트랜잭션이 롤백되어 RefreshToken까지 되살아나
+     * 로그아웃이 통째로 실패하는데, 삼키면 재발급 경로는 이미 끊긴 채 AccessToken 잔여 수명만 남기 때문이다.
      *
      * @param userId 로그아웃할 사용자 ID
-     * @param accessToken 블랙리스트 등록에 사용할 AccessToken (Redis 도입 전까지 미사용)
      */
     @Transactional
-    fun logout(userId: Long, accessToken: String) {
-        // TODO: accessToken 레디스 블랙리스트에 저장
-
+    fun logout(userId: Long) {
         val refreshToken = refreshTokenRepository.findByUserId(userId)
             ?: return
 
         refreshTokenRepository.delete(refreshToken)
+
+        try {
+            tokenInvalidationRepository.createInvalidatedAt(userId, Instant.now(clock))
+        } catch (e: DataAccessException) {
+            logger.error("토큰 무효화 기록 실패: userId={}", userId, e)
+        }
     }
 
     /**
@@ -273,7 +295,10 @@ class AuthService(
     /**
      * 비밀번호 찾기 용도의 emailVerifiedToken을 검증하고, 임시 비밀번호로 교체한 뒤 이메일로 발송한다.
      *
-     * 토큰 파싱(트랜잭션 없음) → 비밀번호 교체([PasswordService] 트랜잭션) → 이메일 발송(트랜잭션 밖) 순으로
+     * 비밀번호가 바뀌면 이전에 발급된 AccessToken도 무효화한다(로그아웃과 같은 메커니즘).
+     * Redis 기록 실패는 로그만 남기고 진행한다 — 이미 커밋된 비밀번호 교체를 되돌릴 수 없기 때문이다.
+     *
+     * 토큰 파싱(트랜잭션 없음) → 비밀번호 교체([PasswordService] 트랜잭션) → 토큰 무효화 → 이메일 발송 순으로
      * 순차 실행된다 — 발송이 실패하면 사용자는 코드 발송부터 플로우를 재시작해야 한다.
      *
      * @param request 비밀번호 재설정 요청 정보를 담은 [PasswordResetRequest] (emailVerifiedToken)
@@ -293,7 +318,16 @@ class AuthService(
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
 
+        val user = userRepository.findByEmail(email)
+            ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
+
         val tempPassword = passwordService.createTempPasswordByEmail(email)
+
+        try {
+            tokenInvalidationRepository.createInvalidatedAt(user.id, Instant.now(clock))
+        } catch (e: DataAccessException) {
+            logger.error("토큰 무효화 기록 실패: userId={}", user.id, e)
+        }
 
         sesService.sendTempPassword(email, tempPassword)
     }
