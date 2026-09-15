@@ -31,7 +31,7 @@ class CodeService(
      * @param email 인증 코드를 발급할 이메일
      * @param type 인증 코드의 발급 용도
      * @return 생성된 6자리 인증 코드
-     * @throws BusinessException [AuthErrorCode.MAIL_TOO_MANY_REQUEST] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
+     * @throws BusinessException [AuthErrorCode.EMAIL_SEND_RATE_LIMITED] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
      */
     @Transactional
     fun createCodeByEmail(email: String, type: AuthPurpose): String {
