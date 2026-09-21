@@ -40,10 +40,11 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
-      interval: 5s
-      timeout: 3s
+      test: [ "CMD-SHELL", "mysql --protocol=tcp -h 127.0.0.1 -u \"$$MYSQL_USER\" --password=\"$$MYSQL_PASSWORD\" -e 'SELECT 1' >/dev/null" ]
+      interval: 10s
+      timeout: 5s
       retries: 10
+      start_period: 40s
 
   redis:
     image: valkey/valkey:9.1-alpine
