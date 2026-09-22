@@ -18,7 +18,7 @@ spring:
       connect-timeout: 1s
 
   flyway:
-    enabled: true
+    enabled: false
 
   jpa:
     show-sql: false
