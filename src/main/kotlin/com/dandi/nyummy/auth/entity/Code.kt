@@ -1,7 +1,10 @@
 package com.dandi.nyummy.auth.entity
 
+import com.dandi.nyummy.auth.enum.AuthPurpose
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -20,6 +23,10 @@ class Code(
 
     @Column(name = "expires_at", nullable = false)
     var expiresAt: Instant,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    var type: AuthPurpose,
 ) {
 
     @Id
@@ -39,6 +46,10 @@ class Code(
 
     fun updateExpiresAt(expiresAt: Instant) {
         this.expiresAt = expiresAt
+    }
+
+    fun updateType(type: AuthPurpose) {
+        this.type = type
     }
 
     fun resetSendCount() {
