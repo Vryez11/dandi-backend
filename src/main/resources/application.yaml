@@ -35,6 +35,13 @@ app:
     read-timeout: 30s
   auth:
     login-redirect-url: "dandi://home"
+  oauth:
+    kakao:
+      issuer: "https://kauth.kakao.com"
+      jwk-set-uri: "https://kauth.kakao.com/.well-known/jwks.json"
+      app-key: ${KAKAO_NATIVE_APP_KEY}
+      connect-timeout: 5s
+      read-timeout: 5s
   jwt:
     secret-key: ${JWT_SECRET_KEY}
     encryption-key: ${JWT_ENCRYPTION_KEY}
