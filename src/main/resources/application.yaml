@@ -35,6 +35,7 @@ app:
     read-timeout: 30s
   auth:
     login-redirect-url: "dandi://home"
+    signup-redirect-url: "dandi://signup"
   oauth:
     kakao:
       issuer: "https://kauth.kakao.com"
