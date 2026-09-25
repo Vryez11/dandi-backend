@@ -12,7 +12,6 @@ import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
-import com.dandi.nyummy.auth.entity.RefreshToken
 import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
@@ -22,7 +21,6 @@ import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
 import com.dandi.nyummy.profile.entity.Profile
 import com.dandi.nyummy.profile.repository.ProfileRepository
-import com.dandi.nyummy.security.jwt.JwtProperties
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.entity.User
@@ -41,12 +39,12 @@ class AuthService(
     private val userRepository: UserRepository,
     private val profileRepository: ProfileRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val refreshTokenService: RefreshTokenService,
     private val tokenService: TokenService,
     private val codeService: CodeService,
     private val sesService: SesService,
     private val passwordService: PasswordService,
     private val authProperties: AuthProperties,
-    private val jwtProperties: JwtProperties,
     private val clock: Clock,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
 ) {
@@ -59,9 +57,7 @@ class AuthService(
      *
      * 조회는 EMAIL 계정으로 한정한다 — 같은 이메일의 소셜 계정은 다른 사용자이며 비밀번호 로그인 대상이 아니다.
      *
-     * 로그인은 새 세션의 시작이므로 절대 만료(absoluteExpiresAt)를
-     * app.jwt.refresh-absolute-time-to-live 만큼 뒤로 새로 찍는다.
-     * 기존에 발급된 RefreshToken이 있으면 그 행을 재사용해 갱신(restart)하고, 없으면 새로 저장한다.
+     * 로그인은 새 세션의 시작이므로 RefreshToken 저장은 [RefreshTokenService.createOrRestart]에 맡긴다.
      *
      * @param request 로그인 요청 정보를 담은 [LoginRequest] (이메일, 비밀번호)
      * @return 리다이렉트 URL과 AccessToken·RefreshToken을 담은 [LoginResponse]
@@ -83,21 +79,7 @@ class AuthService(
 
         val (newAccessToken, newRefreshToken) = tokenService.createTokenPair(userId)
 
-        val existingToken = refreshTokenRepository.findByUserId(userId)
-
-        val absoluteExpiresAt = Instant.now(clock).plus(jwtProperties.refreshAbsoluteTimeToLive)
-
-        if (existingToken != null) {
-            existingToken.restart(newRefreshToken, absoluteExpiresAt)
-        } else {
-            refreshTokenRepository.save(
-                RefreshToken(
-                    refreshToken = newRefreshToken,
-                    absoluteExpiresAt = absoluteExpiresAt,
-                    userId = userId,
-                ),
-            )
-        }
+        refreshTokenService.createOrRestart(userId, newRefreshToken)
 
         val redirectUrl = authProperties.loginRedirectUrl
 
@@ -157,15 +139,8 @@ class AuthService(
         )
 
         val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
-        val absoluteExpiresAt = Instant.now(clock).plus(jwtProperties.refreshAbsoluteTimeToLive)
 
-        refreshTokenRepository.save(
-            RefreshToken(
-                refreshToken = refreshToken,
-                absoluteExpiresAt = absoluteExpiresAt,
-                userId = userId,
-            ),
-        )
+        refreshTokenService.createOrRestart(userId, refreshToken)
 
         return SignUpResponse(
             accessToken = accessToken,
