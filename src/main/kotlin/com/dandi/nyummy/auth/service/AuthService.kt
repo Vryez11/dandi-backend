@@ -5,6 +5,9 @@ import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
 import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
+import com.dandi.nyummy.auth.dto.OAuthLoginRequest
+import com.dandi.nyummy.auth.dto.OAuthLoginResponse
+import com.dandi.nyummy.auth.dto.OAuthSignUpRequest
 import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
@@ -19,6 +22,7 @@ import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
+import com.dandi.nyummy.infra.oauth.OAuthClient
 import com.dandi.nyummy.profile.entity.Profile
 import com.dandi.nyummy.profile.repository.ProfileRepository
 import com.dandi.nyummy.security.jwt.TokenService
@@ -47,10 +51,13 @@ class AuthService(
     private val authProperties: AuthProperties,
     private val clock: Clock,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
+    oauthClients: List<OAuthClient>,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AuthService::class.java)
     }
+
+    private val oauthClients: Map<AuthProvider, OAuthClient> = oauthClients.associateBy { it.provider }
 
     /**
      * 이메일과 비밀번호로 사용자를 인증하고 AccessToken·RefreshToken을 발급한다.
@@ -123,6 +130,112 @@ class AuthService(
             )
         } catch (e: DataIntegrityViolationException) {
             throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+        }
+
+        val userId = savedUser.id
+
+        profileRepository.save(
+            Profile(
+                nickname = request.nickname,
+                birth = request.birth,
+                gender = request.gender,
+                height = request.height,
+                weight = request.weight,
+                userId = userId,
+            ),
+        )
+
+        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+
+        refreshTokenService.createOrRestart(userId, refreshToken)
+
+        return SignUpResponse(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+        )
+    }
+
+    /**
+     * 소셜 제공자의 ID 토큰을 검증하고, 기존 회원이면 로그인 처리하고 신규면 가입 대기 토큰을 발급한다.
+     *
+     * 회원 식별은 (provider, providerUserId)로만 한다 — 이메일이 같아도 다른 제공자의 계정은 다른 사용자다.
+     * 두 경우 모두 200이며 redirectUrl로 다음 화면을 알린다: 기존 회원은 홈(+AccessToken·RefreshToken),
+     * 신규는 프로필 입력 화면(+oauthVerifiedToken). 신규 경로는 DB에 아무것도 쓰지 않는다 — 사용자 생성은 [oauthSignup]에서.
+     *
+     * 트랜잭션을 걸지 않는다. ID 토큰 검증은 외부 I/O(공개키 조회)를 수반하므로 DB 커넥션을 잡은 채 하지 않고,
+     * 기존 회원의 RefreshToken 저장만 [RefreshTokenService]가 자체 트랜잭션으로 처리한다.
+     *
+     * @param request 소셜 로그인 요청 정보를 담은 [OAuthLoginRequest] (제공자, ID 토큰, nonce)
+     * @return 리다이렉트 URL과 토큰을 담은 [OAuthLoginResponse]
+     * @throws BusinessException [AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER] 소셜 로그인 클라이언트가 없는 제공자인 경우
+     * @throws BusinessException [AuthErrorCode.INVALID_OAUTH_TOKEN] ID 토큰의 서명·발급자·대상·만료·nonce가 유효하지 않은 경우
+     * @throws BusinessException [AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE] 제공자 공개키를 조회할 수 없는 경우
+     */
+    fun oauthLogin(request: OAuthLoginRequest): OAuthLoginResponse {
+        val oauthClient = oauthClients[request.provider]
+            ?: throw BusinessException(AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER)
+
+        val userInfo = oauthClient.getUserInfo(request.idToken, request.nonce)
+
+        val user = userRepository.findByProviderAndProviderUserId(userInfo.provider, userInfo.providerUserId)
+
+        if (user == null) {
+            val oauthVerifiedToken = tokenService.createOAuthVerifiedToken(
+                provider = userInfo.provider,
+                providerUserId = userInfo.providerUserId,
+                email = userInfo.email,
+            )
+
+            return OAuthLoginResponse(
+                redirectUrl = authProperties.signupRedirectUrl,
+                oauthVerifiedToken = oauthVerifiedToken,
+            )
+        }
+
+        val userId = user.id
+
+        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+
+        refreshTokenService.createOrRestart(userId, refreshToken)
+
+        return OAuthLoginResponse(
+            redirectUrl = authProperties.loginRedirectUrl,
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+        )
+    }
+
+    /**
+     * oauthVerifiedToken을 검증하고 소셜 계정 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
+     *
+     * 이메일 회원가입([signup])과 같은 흐름이되, 비밀번호 대신 토큰의 (provider, providerUserId)로 사용자를 만든다.
+     * 중복은 사전 조회로 검사하고, 동시 가입 경합은 DB 유니크 제약 위반을 같은 에러로 매핑해 방어한다.
+     * 가입이 끝난 뒤 같은 토큰을 다시 쓰면 이 중복 검사에 걸리므로, 토큰의 일회성은 별도 저장 없이 보장된다.
+     *
+     * @param request 소셜 회원가입 요청 정보를 담은 [OAuthSignUpRequest] (oauthVerifiedToken, 닉네임, 신체 정보)
+     * @return 발급된 AccessToken·RefreshToken을 담은 [SignUpResponse]
+     * @throws BusinessException [AuthErrorCode.OAUTH_VERIFICATION_EXPIRED] oauthVerifiedToken이 만료된 경우
+     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않은 경우
+     * @throws BusinessException [AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS] 이미 가입된 소셜 계정인 경우
+     */
+    @Transactional
+    fun oauthSignup(request: OAuthSignUpRequest): SignUpResponse {
+        val (provider, providerUserId, email) = tokenService.getOAuthVerifiedClaims(request.oauthVerifiedToken)
+
+        if (userRepository.findByProviderAndProviderUserId(provider, providerUserId) != null) {
+            throw BusinessException(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS)
+        }
+
+        val savedUser = try {
+            userRepository.save(
+                User(
+                    provider = provider,
+                    providerUserId = providerUserId,
+                    email = email,
+                ),
+            )
+        } catch (e: DataIntegrityViolationException) {
+            throw BusinessException(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS)
         }
 
         val userId = savedUser.id

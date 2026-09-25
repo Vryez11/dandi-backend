@@ -35,6 +35,8 @@ enum class AuthErrorCode(override val status: HttpStatus, override val code: Str
         "api.auth.oauthVerificationExpired",
         "소셜 로그인 인증이 만료되었습니다. 다시 소셜 로그인을 해주세요.",
     ),
+    OAUTH_ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT, "api.auth.oauthAccountAlreadyExists", "이미 가입된 소셜 계정입니다."),
+    UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "api.auth.unsupportedOAuthProvider", "지원하지 않는 소셜 로그인 제공자입니다."),
     OAUTH_PROVIDER_UNAVAILABLE(
         HttpStatus.SERVICE_UNAVAILABLE,
         "api.auth.oauthProviderUnavailable",
