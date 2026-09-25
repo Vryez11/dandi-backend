@@ -50,6 +50,7 @@ app:
     refresh-absolute-time-to-live: 90d
     email-challenge-time-to-live: 5m
     email-verified-time-to-live: 30m
+    oauth-verified-time-to-live: 30m
   argon2:
     salt-length: 16
     hash-length: 32
