@@ -13,6 +13,7 @@ import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.entity.RefreshToken
+import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
@@ -27,8 +28,6 @@ import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
 import com.dandi.nyummy.user.service.PasswordService
-import io.jsonwebtoken.ExpiredJwtException
-import io.jsonwebtoken.JwtException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.dao.DataIntegrityViolationException
@@ -58,6 +57,8 @@ class AuthService(
     /**
      * 이메일과 비밀번호로 사용자를 인증하고 AccessToken·RefreshToken을 발급한다.
      *
+     * 조회는 EMAIL 계정으로 한정한다 — 같은 이메일의 소셜 계정은 다른 사용자이며 비밀번호 로그인 대상이 아니다.
+     *
      * 로그인은 새 세션의 시작이므로 절대 만료(absoluteExpiresAt)를
      * app.jwt.refresh-absolute-time-to-live 만큼 뒤로 새로 찍는다.
      * 기존에 발급된 RefreshToken이 있으면 그 행을 재사용해 갱신(restart)하고, 없으면 새로 저장한다.
@@ -68,10 +69,13 @@ class AuthService(
      */
     @Transactional
     fun login(request: LoginRequest): LoginResponse {
-        val user = userRepository.findByEmail(request.email)
+        val user = userRepository.findByProviderAndEmail(AuthProvider.EMAIL, request.email)
             ?: throw BusinessException(AuthErrorCode.INVALID_CREDENTIALS)
 
-        if (!passwordService.matchesPassword(request.password, user.password)) {
+        val encodedPassword = user.password
+            ?: throw BusinessException(AuthErrorCode.INVALID_CREDENTIALS)
+
+        if (!passwordService.matchesPassword(request.password, encodedPassword)) {
             throw BusinessException(AuthErrorCode.INVALID_CREDENTIALS)
         }
 
@@ -121,7 +125,7 @@ class AuthService(
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
 
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email)) {
             throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
@@ -130,6 +134,7 @@ class AuthService(
         val savedUser = try {
             userRepository.save(
                 User(
+                    provider = AuthProvider.EMAIL,
                     email = email,
                     password = encodedPassword,
                 ),
@@ -318,7 +323,7 @@ class AuthService(
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
 
-        val user = userRepository.findByEmail(email)
+        val user = userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email)
             ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
 
         val tempPassword = passwordService.createTempPasswordByEmail(email)
@@ -332,13 +337,17 @@ class AuthService(
         sesService.sendTempPassword(email, tempPassword)
     }
 
+    /**
+     * 이메일 인증 용도별 전제조건을 검사한다. 이메일 인증은 EMAIL 계정 전용이므로 조회를 EMAIL로 한정한다 —
+     * 같은 이메일의 소셜 계정이 있어도 회원가입은 가능하고, 비밀번호 찾기 대상은 되지 않는다.
+     */
     fun validateEmailForPurpose(purpose: AuthPurpose, email: String) {
         when (purpose) {
-            AuthPurpose.SIGNUP -> if (userRepository.existsByEmail(email)) {
+            AuthPurpose.SIGNUP -> if (userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email)) {
                 throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
             }
 
-            AuthPurpose.RESET_PASSWORD -> if (!userRepository.existsByEmail(email)) {
+            AuthPurpose.RESET_PASSWORD -> if (!userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email)) {
                 throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)
             }
         }
