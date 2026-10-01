@@ -5,8 +5,6 @@ import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
 import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
-import com.dandi.nyummy.auth.dto.OAuthLoginRequest
-import com.dandi.nyummy.auth.dto.OAuthLoginResponse
 import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
@@ -21,7 +19,6 @@ import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
-import com.dandi.nyummy.infra.oauth.OAuthClient
 import com.dandi.nyummy.profile.entity.Profile
 import com.dandi.nyummy.profile.repository.ProfileRepository
 import com.dandi.nyummy.security.jwt.TokenService
@@ -51,13 +48,10 @@ class AuthService(
     private val authProperties: AuthProperties,
     private val clock: Clock,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
-    oauthClients: List<OAuthClient>,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AuthService::class.java)
     }
-
-    private val oauthClients: Map<AuthProvider, OAuthClient> = oauthClients.associateBy { it.provider }
 
     /**
      * 이메일과 비밀번호로 사용자를 인증하고 AccessToken·RefreshToken을 발급한다.
@@ -96,7 +90,7 @@ class AuthService(
     /**
      * 회원가입 용도의 verifiedToken을 검증하고 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
      *
-     * 이메일 인증([confirmAuthCode])과 소셜 로그인([oauthLogin])이 발급한 verifiedToken을 같은 경로로 받는다.
+     * 이메일 인증([confirmAuthCode])과 소셜 로그인([OAuthService.login])이 발급한 verifiedToken을 같은 경로로 받는다.
      * 토큰의 provider에 따라 달라지는 것은 둘뿐이다 — 신원 키의 중복 검사와 비밀번호 필수 여부.
      * 비밀번호는 EMAIL 계정의 속성이므로 소셜 가입 요청에 비밀번호가 실려 와도 무시한다.
      *
@@ -119,22 +113,23 @@ class AuthService(
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
 
-        val alreadyExistsError = when (claims.provider) {
-            AuthProvider.EMAIL -> AuthErrorCode.EMAIL_ALREADY_EXISTS
-            AuthProvider.KAKAO -> AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS
+        val alreadyExistsError = if (claims.provider.isSocial) {
+            AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS
+        } else {
+            AuthErrorCode.EMAIL_ALREADY_EXISTS
         }
 
         if (existsUser(claims)) {
             throw BusinessException(alreadyExistsError)
         }
 
-        val encodedPassword = if (claims.provider == AuthProvider.EMAIL) {
+        val encodedPassword = if (claims.provider.isSocial) {
+            null
+        } else {
             val password = request.password
                 ?: throw BusinessException(AuthErrorCode.PASSWORD_REQUIRED)
 
             passwordService.encodePassword(password)
-        } else {
-            null
         }
 
         val savedUser = try {
@@ -177,68 +172,15 @@ class AuthService(
      * provider별 신원 키로 가입 여부를 본다 — EMAIL은 이메일, 소셜은 providerUserId.
      * 신원 키 클레임이 없는 토큰은 서버가 발급한 모양이 아니므로 거부한다.
      */
-    private fun existsUser(claims: VerifiedClaims): Boolean = when (claims.provider) {
-        AuthProvider.EMAIL -> userRepository.existsByProviderAndEmail(
-            claims.provider,
-            claims.email ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
-        )
-
-        AuthProvider.KAKAO -> userRepository.existsByProviderAndProviderUserId(
+    private fun existsUser(claims: VerifiedClaims): Boolean = if (claims.provider.isSocial) {
+        userRepository.existsByProviderAndProviderUserId(
             claims.provider,
             claims.providerUserId ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
         )
-    }
-
-    /**
-     * 소셜 제공자의 ID 토큰을 검증하고, 기존 회원이면 로그인 처리하고 신규면 가입 대기 토큰을 발급한다.
-     *
-     * 회원 식별은 (provider, providerUserId)로만 한다 — 이메일이 같아도 다른 제공자의 계정은 다른 사용자다.
-     * 두 경우 모두 200이며 redirectUrl로 다음 화면을 알린다: 기존 회원은 홈(+AccessToken·RefreshToken),
-     * 신규는 프로필 입력 화면(+verifiedToken). 신규 경로는 DB에 아무것도 쓰지 않는다 — 사용자 생성은 [signup]에서.
-     *
-     * 트랜잭션을 걸지 않는다. ID 토큰 검증은 외부 I/O(공개키 조회)를 수반하므로 DB 커넥션을 잡은 채 하지 않고,
-     * 기존 회원의 RefreshToken 저장만 [RefreshTokenService]가 자체 트랜잭션으로 처리한다.
-     *
-     * @param request 소셜 로그인 요청 정보를 담은 [OAuthLoginRequest] (제공자, ID 토큰, nonce)
-     * @return 리다이렉트 URL과 토큰을 담은 [OAuthLoginResponse]
-     * @throws BusinessException [AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER] 소셜 로그인 클라이언트가 없는 제공자인 경우
-     * @throws BusinessException [AuthErrorCode.INVALID_OAUTH_TOKEN] ID 토큰의 서명·발급자·대상·만료·nonce가 유효하지 않은 경우
-     * @throws BusinessException [AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE] 제공자 공개키를 조회할 수 없는 경우
-     */
-    fun oauthLogin(request: OAuthLoginRequest): OAuthLoginResponse {
-        val oauthClient = oauthClients[request.provider]
-            ?: throw BusinessException(AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER)
-
-        val userInfo = oauthClient.getUserInfo(request.idToken, request.nonce)
-
-        val user = userRepository.findByProviderAndProviderUserId(userInfo.provider, userInfo.providerUserId)
-
-        if (user == null) {
-            val verifiedToken = tokenService.createVerifiedToken(
-                VerifiedClaims(
-                    provider = userInfo.provider,
-                    providerUserId = userInfo.providerUserId,
-                    email = userInfo.email,
-                    purpose = AuthPurpose.SIGNUP,
-                ),
-            )
-
-            return OAuthLoginResponse(
-                redirectUrl = authProperties.signupRedirectUrl,
-                verifiedToken = verifiedToken,
-            )
-        }
-
-        val userId = user.id
-
-        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
-
-        refreshTokenService.createOrRestart(userId, refreshToken)
-
-        return OAuthLoginResponse(
-            redirectUrl = authProperties.loginRedirectUrl,
-            accessToken = accessToken,
-            refreshToken = refreshToken,
+    } else {
+        userRepository.existsByProviderAndEmail(
+            claims.provider,
+            claims.email ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
         )
     }
 

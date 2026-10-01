@@ -17,16 +17,22 @@ class KakaoOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
         private val logger = LoggerFactory.getLogger(KakaoOAuthClient::class.java)
 
         private const val CLAIM_NONCE = "nonce"
-        private const val CLAIM_EMAIL = "email"
-        private const val CLAIM_NICKNAME = "nickname"
     }
 
     override val provider: AuthProvider = AuthProvider.KAKAO
 
-    override fun getUserInfo(idToken: String, nonce: String): OAuthUserInfoResult {
-        val jwt = decode(idToken)
+    /**
+     * Kakao OIDC ID 토큰을 검증한다. 서명·발급자·대상·만료는 [jwtDecoder]가, nonce는 여기서 대조한다.
+     *
+     * nonce가 없으면 토큰을 이 앱 세션에 묶을 수 없으므로 검증 전에 거절한다 — 다른 경로에서 얻은 ID 토큰 주입을 막는다.
+     */
+    override fun getUserInfo(token: String, nonce: String?): OAuthUserInfoResult {
+        val expectedNonce = nonce
+            ?: throw BusinessException(AuthErrorCode.OAUTH_NONCE_REQUIRED)
 
-        if (jwt.getClaimAsString(CLAIM_NONCE) != nonce) {
+        val jwt = decode(token)
+
+        if (jwt.getClaimAsString(CLAIM_NONCE) != expectedNonce) {
             logger.warn("Kakao ID 토큰 nonce 불일치")
             throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)
         }
@@ -37,13 +43,11 @@ class KakaoOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
         return OAuthUserInfoResult(
             provider = provider,
             providerUserId = providerUserId,
-            email = jwt.getClaimAsString(CLAIM_EMAIL),
-            nickname = jwt.getClaimAsString(CLAIM_NICKNAME),
         )
     }
 
-    private fun decode(idToken: String): Jwt = try {
-        jwtDecoder.decode(idToken)
+    private fun decode(token: String): Jwt = try {
+        jwtDecoder.decode(token)
     } catch (e: BadJwtException) {
         logger.warn("Kakao ID 토큰 검증 실패: {}", e.message)
         throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)

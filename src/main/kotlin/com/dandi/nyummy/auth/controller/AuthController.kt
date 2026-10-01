@@ -14,6 +14,7 @@ import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.service.AuthService
+import com.dandi.nyummy.auth.service.OAuthService
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
@@ -33,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/auth")
 @SecurityRequirements
-class AuthController(private val authService: AuthService) {
+class AuthController(private val authService: AuthService, private val oauthService: OAuthService) {
 
     @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인하고 AccessToken(30분)과 RefreshToken(15일)을 발급받는다.")
     @ApiResponse(responseCode = "401", description = "이메일 또는 비밀번호가 올바르지 않습니다.")
@@ -60,19 +61,20 @@ class AuthController(private val authService: AuthService) {
 
     @Operation(
         summary = "소셜 로그인",
-        description = "앱 SDK로 받은 소셜 제공자의 ID 토큰을 검증한다. 기존 회원이면 AccessToken·RefreshToken을 발급하고 " +
-            "redirectUrl은 홈, 신규 회원이면 verifiedToken을 발급하고 redirectUrl은 프로필 입력 화면이다. " +
-            "nonce는 앱이 SDK 로그인 시 전달한 값 그대로 보낸다.",
+        description = "앱 SDK로 받은 소셜 제공자의 토큰(OIDC 제공자는 ID 토큰, 그 외는 access token)을 검증한다. " +
+            "기존 회원이면 AccessToken·RefreshToken을 발급하고 redirectUrl은 홈, " +
+            "신규 회원이면 verifiedToken을 발급하고 redirectUrl은 프로필 입력 화면이다. " +
+            "nonce는 OIDC 제공자(KAKAO)에서 필수이며 앱이 SDK 로그인 시 전달한 값 그대로 보낸다.",
     )
     @ApiResponse(
         responseCode = "200",
         description = "기존 회원: accessToken·refreshToken / 신규 회원: verifiedToken (회원가입 API로 전달)",
     )
-    @ApiResponse(responseCode = "400", description = "지원하지 않는 소셜 로그인 제공자입니다.")
+    @ApiResponse(responseCode = "400", description = "지원하지 않는 소셜 로그인 제공자이거나 nonce가 없습니다.")
     @ApiResponse(responseCode = "401", description = "유효하지 않은 소셜 로그인 토큰입니다.")
     @ApiResponse(responseCode = "503", description = "소셜 로그인 제공자와 통신할 수 없습니다.")
     @PostMapping("/oauth/login")
-    fun oauthLogin(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = authService.oauthLogin(request)
+    fun oauthLogin(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = oauthService.login(request)
 
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰을 검증하고 AccessToken·RefreshToken을 새로 발급한다(rotate).")
     @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰입니다.")

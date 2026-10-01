@@ -101,15 +101,18 @@ data class PasswordResetRequest(
     val verifiedToken: String,
 )
 
+/**
+ * 소셜 로그인 요청. token의 의미는 제공자에 따라 다르다 — OIDC 제공자(Kakao·Google·Apple)는 ID 토큰,
+ * Naver처럼 OIDC가 없는 제공자는 access token. nonce는 OIDC 제공자에서 필수(앱이 SDK 로그인 때 넘긴 값)이고 그 외엔 생략한다.
+ */
 data class OAuthLoginRequest(
 
     val provider: AuthProvider,
 
     @field:NotBlank
-    val idToken: String,
+    val token: String,
 
-    @field:NotBlank
-    val nonce: String,
+    val nonce: String? = null,
 )
 
 data class OAuthLoginResponse(

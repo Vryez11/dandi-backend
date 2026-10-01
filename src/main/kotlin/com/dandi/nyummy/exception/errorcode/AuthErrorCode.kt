@@ -33,6 +33,7 @@ enum class AuthErrorCode(override val status: HttpStatus, override val code: Str
     INVALID_OAUTH_TOKEN(HttpStatus.UNAUTHORIZED, "api.auth.invalidOAuthToken", "유효하지 않은 소셜 로그인 토큰입니다."),
     OAUTH_ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT, "api.auth.oauthAccountAlreadyExists", "이미 가입된 소셜 계정입니다."),
     UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "api.auth.unsupportedOAuthProvider", "지원하지 않는 소셜 로그인 제공자입니다."),
+    OAUTH_NONCE_REQUIRED(HttpStatus.BAD_REQUEST, "api.auth.oauthNonceRequired", "이 소셜 로그인 제공자는 nonce가 필요합니다."),
     OAUTH_PROVIDER_UNAVAILABLE(
         HttpStatus.SERVICE_UNAVAILABLE,
         "api.auth.oauthProviderUnavailable",
