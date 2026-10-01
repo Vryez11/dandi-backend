@@ -1,5 +1,6 @@
 package com.dandi.nyummy.security.jwt
 
+import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
@@ -13,7 +14,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Service
 import java.time.Instant
-import java.util.*
 
 @Service
 class TokenService(
@@ -47,27 +47,37 @@ class TokenService(
         return Pair(access, refresh)
     }
 
-    fun getEmailAndPurpose(token: String, type: TokenType): Pair<String, AuthPurpose> = try {
-        Pair(jwtProvider.getEmail(token, type), jwtProvider.getPurpose(token, type))
+    fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
+        jwtProvider.createEmailChallengeToken(email, purpose)
+
+    fun getEmailChallengeClaims(token: String): EmailChallengeClaims = try {
+        jwtProvider.getEmailChallengeClaims(token)
     } catch (e: ExpiredJwtException) {
-        throw BusinessException(AuthErrorCode.EMAIL_VERIFICATION_EXPIRED)
+        throw BusinessException(AuthErrorCode.EMAIL_CODE_EXPIRED)
     } catch (e: JwtException) {
         throw BusinessException(AuthErrorCode.UNAUTHORIZED)
     }
 
-    fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
-        jwtProvider.createEmailChallengeToken(email, purpose)
+    fun createVerifiedToken(claims: VerifiedClaims): String = jwtProvider.createVerifiedToken(claims)
 
-    fun createEmailVerifiedToken(email: String, purpose: AuthPurpose): String =
-        jwtProvider.createEmailVerifiedToken(email, purpose)
-
-    fun getPurpose(token: String, type: TokenType): AuthPurpose = jwtProvider.getPurpose(token, type)
+    fun getVerifiedClaims(token: String): VerifiedClaims = try {
+        jwtProvider.getVerifiedClaims(token)
+    } catch (e: ExpiredJwtException) {
+        throw BusinessException(AuthErrorCode.VERIFICATION_EXPIRED)
+    } catch (e: JwtException) {
+        throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+    }
 
     fun getUserId(token: String, type: TokenType): Long = jwtProvider.getUserId(token, type)
-
-    fun getEmail(token: String, type: TokenType): String = jwtProvider.getEmail(token, type)
-
-    fun getExpiration(token: String, type: TokenType): Date = jwtProvider.getExpiration(token, type)
 }
 
 data class AccessTokenClaims(val userId: Long, val issuedAt: Instant)
+
+data class EmailChallengeClaims(val email: String, val purpose: AuthPurpose)
+
+data class VerifiedClaims(
+    val provider: AuthProvider,
+    val providerUserId: String? = null,
+    val email: String? = null,
+    val purpose: AuthPurpose,
+)
