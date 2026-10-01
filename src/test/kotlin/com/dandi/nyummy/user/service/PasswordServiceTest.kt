@@ -1,5 +1,6 @@
 package com.dandi.nyummy.user.service
 
+import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.user.entity.User
@@ -23,7 +24,7 @@ class PasswordServiceTest {
     private val passwordEncoder = mockk<PasswordEncoder>()
     private val passwordService = PasswordService(userRepository, passwordEncoder)
 
-    private fun createUser() = User(email = email, password = "encoded:old")
+    private fun createUser() = User(provider = AuthProvider.EMAIL, email = email, password = "encoded:old")
 
     private fun stubEncoder() {
         every { passwordEncoder.encode(any()) } answers { "encoded:" + firstArg<String>() }
@@ -31,7 +32,7 @@ class PasswordServiceTest {
 
     @Test
     fun `이메일에 해당하는 사용자가 없으면 EMAIL_NOT_FOUND다`() {
-        every { userRepository.findByEmail(email) } returns null
+        every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns null
 
         val exception = assertFailsWith<BusinessException> {
             passwordService.createTempPasswordByEmail(email)
@@ -43,7 +44,7 @@ class PasswordServiceTest {
     @Test
     fun `임시 비밀번호를 인코딩해 교체하고 임시 상태로 표시한 뒤 평문을 반환한다`() {
         val user = createUser()
-        every { userRepository.findByEmail(email) } returns user
+        every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns user
         stubEncoder()
 
         val tempPassword = passwordService.createTempPasswordByEmail(email)
@@ -56,7 +57,7 @@ class PasswordServiceTest {
 
     @Test
     fun `임시 비밀번호는 항상 비밀번호 정책을 만족한다`() {
-        every { userRepository.findByEmail(email) } returns createUser()
+        every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns createUser()
         stubEncoder()
 
         repeat(200) {

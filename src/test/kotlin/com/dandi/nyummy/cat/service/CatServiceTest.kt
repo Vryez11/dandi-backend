@@ -2,6 +2,7 @@ package com.dandi.nyummy.cat.service
 
 import com.dandi.nyummy.cat.config.CatProperties
 import com.dandi.nyummy.cat.entity.Cat
+import com.dandi.nyummy.cat.enum.CatWeight
 import com.dandi.nyummy.cat.repository.CatAnimationLoader
 import com.dandi.nyummy.cat.repository.CatRepository
 import com.dandi.nyummy.exception.BusinessException
