@@ -24,17 +24,13 @@ enum class AuthErrorCode(override val status: HttpStatus, override val code: Str
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "api.auth.invalidRefreshToken", "유효하지 않은 리프레시 토큰입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "api.auth.emailAlreadyExists", "이미 가입된 이메일입니다."),
     EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "api.auth.emailNotFound", "가입되지 않은 이메일입니다."),
-    EMAIL_VERIFICATION_EXPIRED(
+    VERIFICATION_EXPIRED(
         HttpStatus.UNAUTHORIZED,
-        "api.auth.emailVerificationExpired",
-        "이메일 인증이 만료되었습니다. 다시 이메일 인증을 해주세요.",
+        "api.auth.verificationExpired",
+        "인증이 만료되었습니다. 처음부터 다시 인증해주세요.",
     ),
+    PASSWORD_REQUIRED(HttpStatus.BAD_REQUEST, "api.auth.passwordRequired", "이메일 회원가입에는 비밀번호가 필요합니다."),
     INVALID_OAUTH_TOKEN(HttpStatus.UNAUTHORIZED, "api.auth.invalidOAuthToken", "유효하지 않은 소셜 로그인 토큰입니다."),
-    OAUTH_VERIFICATION_EXPIRED(
-        HttpStatus.UNAUTHORIZED,
-        "api.auth.oauthVerificationExpired",
-        "소셜 로그인 인증이 만료되었습니다. 다시 소셜 로그인을 해주세요.",
-    ),
     OAUTH_ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT, "api.auth.oauthAccountAlreadyExists", "이미 가입된 소셜 계정입니다."),
     UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "api.auth.unsupportedOAuthProvider", "지원하지 않는 소셜 로그인 제공자입니다."),
     OAUTH_PROVIDER_UNAVAILABLE(

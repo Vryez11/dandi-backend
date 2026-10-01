@@ -12,18 +12,22 @@ import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
 import java.time.LocalDate
 
+/**
+ * 이메일·소셜 공용 회원가입 요청. 신원은 verifiedToken에서 꺼내므로 이메일 필드가 없다.
+ *
+ * password·confirmPassword는 이메일 가입 전용이다 — 소셜 가입은 비워 보낸다.
+ * 비밀번호 필수 여부는 토큰 안의 provider를 봐야 알 수 있어 서비스에서 검사한다(`@Size`·`@Pattern`은 null을 통과시킨다).
+ */
 data class SignUpRequest(
 
     @field:NotBlank
-    val emailVerifiedToken: String,
+    val verifiedToken: String,
 
-    @field:NotBlank
     @field:Size(min = 8, max = 64)
     @field:Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).*$", message = "비밀번호는 영문과 숫자를 모두 포함해야 합니다.")
-    val password: String,
+    val password: String? = null,
 
-    @field:NotBlank
-    val confirmPassword: String,
+    val confirmPassword: String? = null,
 
     @field:NotBlank
     @field:Size(max = 100)
@@ -89,12 +93,12 @@ data class ConfirmAuthCodeRequest(
     val emailChallengeToken: String,
 )
 
-data class ConfirmAuthCodeResponse(val emailVerifiedToken: String)
+data class ConfirmAuthCodeResponse(val verifiedToken: String)
 
 data class PasswordResetRequest(
 
     @field:NotBlank
-    val emailVerifiedToken: String,
+    val verifiedToken: String,
 )
 
 data class OAuthLoginRequest(
@@ -112,26 +116,5 @@ data class OAuthLoginResponse(
     val redirectUrl: String,
     val accessToken: String? = null,
     val refreshToken: String? = null,
-    val oauthVerifiedToken: String? = null,
-)
-
-data class OAuthSignUpRequest(
-
-    @field:NotBlank
-    val oauthVerifiedToken: String,
-
-    @field:NotBlank
-    @field:Size(max = 100)
-    val nickname: String,
-
-    val gender: Gender? = null,
-
-    @field:Past
-    val birth: LocalDate? = null,
-
-    @field:Positive
-    val height: Int? = null,
-
-    @field:Positive
-    val weight: Int? = null,
+    val verifiedToken: String? = null,
 )

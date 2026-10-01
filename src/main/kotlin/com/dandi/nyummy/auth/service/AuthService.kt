@@ -7,7 +7,6 @@ import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.OAuthLoginRequest
 import com.dandi.nyummy.auth.dto.OAuthLoginResponse
-import com.dandi.nyummy.auth.dto.OAuthSignUpRequest
 import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
@@ -27,6 +26,7 @@ import com.dandi.nyummy.profile.entity.Profile
 import com.dandi.nyummy.profile.repository.ProfileRepository
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
+import com.dandi.nyummy.security.jwt.VerifiedClaims
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
 import com.dandi.nyummy.user.service.PasswordService
@@ -94,42 +94,60 @@ class AuthService(
     }
 
     /**
-     * 회원가입 용도의 emailVerifiedToken을 검증하고 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
+     * 회원가입 용도의 verifiedToken을 검증하고 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
      *
-     * 이메일 중복은 사전 조회로 검사하고, 동시 가입 경합은 DB 유니크 제약 위반을 같은 에러로 매핑해 방어한다.
+     * 이메일 인증([confirmAuthCode])과 소셜 로그인([oauthLogin])이 발급한 verifiedToken을 같은 경로로 받는다.
+     * 토큰의 provider에 따라 달라지는 것은 둘뿐이다 — 신원 키의 중복 검사와 비밀번호 필수 여부.
+     * 비밀번호는 EMAIL 계정의 속성이므로 소셜 가입 요청에 비밀번호가 실려 와도 무시한다.
      *
-     * @param request 회원가입 요청 정보를 담은 [SignUpRequest] (emailVerifiedToken, 비밀번호, 닉네임, 신체 정보)
+     * 중복은 사전 조회로 검사하고, 동시 가입 경합은 DB 유니크 제약 위반을 같은 에러로 매핑해 방어한다.
+     * 가입이 끝난 뒤 같은 토큰을 다시 쓰면 이 중복 검사에 걸리므로, 토큰의 일회성은 별도 저장 없이 보장된다.
+     *
+     * @param request 회원가입 요청 정보를 담은 [SignUpRequest] (verifiedToken, 비밀번호(이메일 가입만), 닉네임, 신체 정보)
      * @return 발급된 AccessToken·RefreshToken을 담은 [SignUpResponse]
-     * @throws BusinessException [AuthErrorCode.EMAIL_VERIFICATION_EXPIRED] emailVerifiedToken이 만료된 경우
-     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않거나 회원가입 용도가 아닌 경우
+     * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
+     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입·클레임이 유효하지 않거나 회원가입 용도가 아닌 경우
+     * @throws BusinessException [AuthErrorCode.PASSWORD_REQUIRED] 이메일 가입인데 비밀번호가 없는 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_ALREADY_EXISTS] 이미 가입된 이메일인 경우
+     * @throws BusinessException [AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS] 이미 가입된 소셜 계정인 경우
      */
     @Transactional
     fun signup(request: SignUpRequest): SignUpResponse {
-        val emailVerifiedToken = request.emailVerifiedToken
+        val claims = tokenService.getVerifiedClaims(request.verifiedToken)
 
-        val (email, purpose) = tokenService.getEmailAndPurpose(emailVerifiedToken, TokenType.EMAIL_VERIFIED)
-
-        if (purpose != AuthPurpose.SIGNUP) {
+        if (claims.purpose != AuthPurpose.SIGNUP) {
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
 
-        if (userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email)) {
-            throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+        val alreadyExistsError = when (claims.provider) {
+            AuthProvider.EMAIL -> AuthErrorCode.EMAIL_ALREADY_EXISTS
+            AuthProvider.KAKAO -> AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS
         }
 
-        val encodedPassword = passwordService.encodePassword(request.password)
+        if (existsUser(claims)) {
+            throw BusinessException(alreadyExistsError)
+        }
+
+        val encodedPassword = if (claims.provider == AuthProvider.EMAIL) {
+            val password = request.password
+                ?: throw BusinessException(AuthErrorCode.PASSWORD_REQUIRED)
+
+            passwordService.encodePassword(password)
+        } else {
+            null
+        }
 
         val savedUser = try {
             userRepository.save(
                 User(
-                    provider = AuthProvider.EMAIL,
-                    email = email,
+                    provider = claims.provider,
+                    providerUserId = claims.providerUserId,
+                    email = claims.email,
                     password = encodedPassword,
                 ),
             )
         } catch (e: DataIntegrityViolationException) {
-            throw BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS)
+            throw BusinessException(alreadyExistsError)
         }
 
         val userId = savedUser.id
@@ -156,11 +174,27 @@ class AuthService(
     }
 
     /**
+     * provider별 신원 키로 가입 여부를 본다 — EMAIL은 이메일, 소셜은 providerUserId.
+     * 신원 키 클레임이 없는 토큰은 서버가 발급한 모양이 아니므로 거부한다.
+     */
+    private fun existsUser(claims: VerifiedClaims): Boolean = when (claims.provider) {
+        AuthProvider.EMAIL -> userRepository.existsByProviderAndEmail(
+            claims.provider,
+            claims.email ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
+        )
+
+        AuthProvider.KAKAO -> userRepository.existsByProviderAndProviderUserId(
+            claims.provider,
+            claims.providerUserId ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
+        )
+    }
+
+    /**
      * 소셜 제공자의 ID 토큰을 검증하고, 기존 회원이면 로그인 처리하고 신규면 가입 대기 토큰을 발급한다.
      *
      * 회원 식별은 (provider, providerUserId)로만 한다 — 이메일이 같아도 다른 제공자의 계정은 다른 사용자다.
      * 두 경우 모두 200이며 redirectUrl로 다음 화면을 알린다: 기존 회원은 홈(+AccessToken·RefreshToken),
-     * 신규는 프로필 입력 화면(+oauthVerifiedToken). 신규 경로는 DB에 아무것도 쓰지 않는다 — 사용자 생성은 [oauthSignup]에서.
+     * 신규는 프로필 입력 화면(+verifiedToken). 신규 경로는 DB에 아무것도 쓰지 않는다 — 사용자 생성은 [signup]에서.
      *
      * 트랜잭션을 걸지 않는다. ID 토큰 검증은 외부 I/O(공개키 조회)를 수반하므로 DB 커넥션을 잡은 채 하지 않고,
      * 기존 회원의 RefreshToken 저장만 [RefreshTokenService]가 자체 트랜잭션으로 처리한다.
@@ -180,15 +214,18 @@ class AuthService(
         val user = userRepository.findByProviderAndProviderUserId(userInfo.provider, userInfo.providerUserId)
 
         if (user == null) {
-            val oauthVerifiedToken = tokenService.createOAuthVerifiedToken(
-                provider = userInfo.provider,
-                providerUserId = userInfo.providerUserId,
-                email = userInfo.email,
+            val verifiedToken = tokenService.createVerifiedToken(
+                VerifiedClaims(
+                    provider = userInfo.provider,
+                    providerUserId = userInfo.providerUserId,
+                    email = userInfo.email,
+                    purpose = AuthPurpose.SIGNUP,
+                ),
             )
 
             return OAuthLoginResponse(
                 redirectUrl = authProperties.signupRedirectUrl,
-                oauthVerifiedToken = oauthVerifiedToken,
+                verifiedToken = verifiedToken,
             )
         }
 
@@ -200,62 +237,6 @@ class AuthService(
 
         return OAuthLoginResponse(
             redirectUrl = authProperties.loginRedirectUrl,
-            accessToken = accessToken,
-            refreshToken = refreshToken,
-        )
-    }
-
-    /**
-     * oauthVerifiedToken을 검증하고 소셜 계정 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
-     *
-     * 이메일 회원가입([signup])과 같은 흐름이되, 비밀번호 대신 토큰의 (provider, providerUserId)로 사용자를 만든다.
-     * 중복은 사전 조회로 검사하고, 동시 가입 경합은 DB 유니크 제약 위반을 같은 에러로 매핑해 방어한다.
-     * 가입이 끝난 뒤 같은 토큰을 다시 쓰면 이 중복 검사에 걸리므로, 토큰의 일회성은 별도 저장 없이 보장된다.
-     *
-     * @param request 소셜 회원가입 요청 정보를 담은 [OAuthSignUpRequest] (oauthVerifiedToken, 닉네임, 신체 정보)
-     * @return 발급된 AccessToken·RefreshToken을 담은 [SignUpResponse]
-     * @throws BusinessException [AuthErrorCode.OAUTH_VERIFICATION_EXPIRED] oauthVerifiedToken이 만료된 경우
-     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않은 경우
-     * @throws BusinessException [AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS] 이미 가입된 소셜 계정인 경우
-     */
-    @Transactional
-    fun oauthSignup(request: OAuthSignUpRequest): SignUpResponse {
-        val (provider, providerUserId, email) = tokenService.getOAuthVerifiedClaims(request.oauthVerifiedToken)
-
-        if (userRepository.findByProviderAndProviderUserId(provider, providerUserId) != null) {
-            throw BusinessException(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS)
-        }
-
-        val savedUser = try {
-            userRepository.save(
-                User(
-                    provider = provider,
-                    providerUserId = providerUserId,
-                    email = email,
-                ),
-            )
-        } catch (e: DataIntegrityViolationException) {
-            throw BusinessException(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS)
-        }
-
-        val userId = savedUser.id
-
-        profileRepository.save(
-            Profile(
-                nickname = request.nickname,
-                birth = request.birth,
-                gender = request.gender,
-                height = request.height,
-                weight = request.weight,
-                userId = userId,
-            ),
-        )
-
-        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
-
-        refreshTokenService.createOrRestart(userId, refreshToken)
-
-        return SignUpResponse(
             accessToken = accessToken,
             refreshToken = refreshToken,
         )
@@ -362,12 +343,12 @@ class AuthService(
     }
 
     /**
-     * emailChallengeToken과 인증 코드를 검증하고, 토큰의 용도를 승계한 emailVerifiedToken을 발급한다.
+     * emailChallengeToken과 인증 코드를 검증하고, 토큰의 용도를 승계한 verifiedToken을 발급한다.
      *
      * 인증 코드의 유효 시간은 emailChallengeToken의 만료(exp)가 유일한 기준이며, DB에서 시간 계산은 하지 않는다.
      *
      * @param request 인증 코드 확인 요청 정보를 담은 [ConfirmAuthCodeRequest] (인증 코드, emailChallengeToken)
-     * @return 발급된 emailVerifiedToken을 담은 [ConfirmAuthCodeResponse]
+     * @return 발급된 verifiedToken을 담은 [ConfirmAuthCodeResponse]
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
      * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입·용도가 유효하지 않은 경우
      * @throws BusinessException [AuthErrorCode.INCORRECT_EMAIL] 해당 이메일·용도로 발급된 인증 코드가 없는 경우
@@ -378,15 +359,22 @@ class AuthService(
         val challengeToken = request.emailChallengeToken
         val challengeCode = request.authCode
 
-        val (email, purpose) = tokenService.getEmailAndPurpose(challengeToken, TokenType.EMAIL_CHALLENGE)
+        val (email, purpose) = tokenService.getEmailChallengeClaims(challengeToken)
 
         codeService.confirmAuthCodeByEmail(challengeCode, email, purpose)
 
-        return ConfirmAuthCodeResponse(tokenService.createEmailVerifiedToken(email, purpose))
+        val verifiedToken = tokenService.createVerifiedToken(
+            VerifiedClaims(provider = AuthProvider.EMAIL, email = email, purpose = purpose),
+        )
+
+        return ConfirmAuthCodeResponse(verifiedToken)
     }
 
     /**
-     * 비밀번호 찾기 용도의 emailVerifiedToken을 검증하고, 임시 비밀번호로 교체한 뒤 이메일로 발송한다.
+     * 비밀번호 찾기 용도의 verifiedToken을 검증하고, 임시 비밀번호로 교체한 뒤 이메일로 발송한다.
+     *
+     * verifiedToken은 소셜 로그인도 발급하므로 용도뿐 아니라 provider=EMAIL도 검사한다 —
+     * 소셜 제공자가 넘긴 이메일은 우리 쪽 본인 확인을 거친 것이 아니어서 비밀번호 재설정의 근거가 될 수 없다.
      *
      * 비밀번호가 바뀌면 이전에 발급된 AccessToken도 무효화한다(로그아웃과 같은 메커니즘).
      * Redis 기록 실패는 로그만 남기고 진행한다 — 이미 커밋된 비밀번호 교체를 되돌릴 수 없기 때문이다.
@@ -394,22 +382,23 @@ class AuthService(
      * 토큰 파싱(트랜잭션 없음) → 비밀번호 교체([PasswordService] 트랜잭션) → 토큰 무효화 → 이메일 발송 순으로
      * 순차 실행된다 — 발송이 실패하면 사용자는 코드 발송부터 플로우를 재시작해야 한다.
      *
-     * @param request 비밀번호 재설정 요청 정보를 담은 [PasswordResetRequest] (emailVerifiedToken)
-     * @throws BusinessException [AuthErrorCode.EMAIL_VERIFICATION_EXPIRED] emailVerifiedToken이 만료된 경우
-     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않거나 비밀번호 찾기 용도가 아닌 경우
+     * @param request 비밀번호 재설정 요청 정보를 담은 [PasswordResetRequest] (verifiedToken)
+     * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
+     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않거나, 이메일 계정의 비밀번호 찾기 용도가 아닌 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 토큰의 이메일에 해당하는 사용자가 없는 경우
      * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
      */
     fun resetPassword(request: PasswordResetRequest) {
-        // TODO: 레디스 도입 시 사용한 emailVerifiedToken을 블랙리스트로 등록해 일회성 보장
+        // TODO: 레디스 도입 시 사용한 verifiedToken을 블랙리스트로 등록해 일회성 보장
 
-        val emailVerifiedToken = request.emailVerifiedToken
+        val claims = tokenService.getVerifiedClaims(request.verifiedToken)
 
-        val (email, purpose) = tokenService.getEmailAndPurpose(emailVerifiedToken, TokenType.EMAIL_VERIFIED)
-
-        if (purpose != AuthPurpose.RESET_PASSWORD) {
+        if (claims.provider != AuthProvider.EMAIL || claims.purpose != AuthPurpose.RESET_PASSWORD) {
             throw BusinessException(AuthErrorCode.UNAUTHORIZED)
         }
+
+        val email = claims.email
+            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
 
         val user = userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email)
             ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)

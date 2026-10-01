@@ -12,10 +12,10 @@ import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Duration
-import java.time.Instant
 import java.util.*
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
+import kotlin.enums.enumEntries
 
 @Component
 class JwtProvider(private val jwtProperties: JwtProperties, private val clock: Clock) {
@@ -74,7 +74,7 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
             .compact()
     }
 
-    private fun createEncryptedToken(subject: String, type: TokenType, claims: Map<String, String>): String {
+    private fun createEncryptedToken(subject: String?, type: TokenType, claims: Map<String, String>): String {
         val now = clock.instant()
 
         val timeToLive = getTimeToLive(type)
@@ -89,45 +89,54 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
             .compact()
     }
 
-    private fun createToken(email: String, type: TokenType, purpose: AuthPurpose): String =
-        createEncryptedToken(email, type, mapOf("purpose" to purpose.name))
-
     private fun getTimeToLive(type: TokenType): Duration = when (type) {
         TokenType.ACCESS -> jwtProperties.accessTimeToLive
         TokenType.REFRESH -> jwtProperties.refreshTimeToLive
         TokenType.EMAIL_CHALLENGE -> jwtProperties.emailChallengeTimeToLive
-        TokenType.EMAIL_VERIFIED -> jwtProperties.emailVerifiedTimeToLive
-        TokenType.OAUTH_VERIFIED -> jwtProperties.oauthVerifiedTimeToLive
+        TokenType.VERIFIED -> jwtProperties.verifiedTimeToLive
     }
 
     fun createEmailChallengeToken(email: String, purpose: AuthPurpose): String =
-        createToken(email, TokenType.EMAIL_CHALLENGE, purpose)
+        createEncryptedToken(email, TokenType.EMAIL_CHALLENGE, mapOf("purpose" to purpose.name))
 
-    fun createEmailVerifiedToken(email: String, purpose: AuthPurpose): String =
-        createToken(email, TokenType.EMAIL_VERIFIED, purpose)
+    fun getEmailChallengeClaims(token: String): EmailChallengeClaims {
+        val claims = getClaims(token, TokenType.EMAIL_CHALLENGE)
 
-    fun createOAuthVerifiedToken(provider: AuthProvider, providerUserId: String, email: String?): String {
-        val claims = buildMap {
-            put("provider", provider.name)
-            email?.let { put("email", it) }
-        }
+        val email = claims.subject
+            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
 
-        return createEncryptedToken(providerUserId, TokenType.OAUTH_VERIFIED, claims)
+        val purpose = claims.getEnum<AuthPurpose>("purpose")
+            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+
+        return EmailChallengeClaims(email, purpose)
     }
 
-    fun getOAuthVerifiedClaims(token: String): OAuthVerifiedClaims {
-        val claims = getClaims(token, TokenType.OAUTH_VERIFIED)
+    fun createVerifiedToken(claims: VerifiedClaims): String = createEncryptedToken(
+        subject = null,
+        type = TokenType.VERIFIED,
+        claims = buildMap {
+            put("provider", claims.provider.name)
+            put("purpose", claims.purpose.name)
+            claims.providerUserId?.let { put("providerUserId", it) }
+            claims.email?.let { put("email", it) }
+        },
+    )
 
-        val providerName = claims["provider"] as? String
+    fun getVerifiedClaims(token: String): VerifiedClaims {
+        val claims = getClaims(token, TokenType.VERIFIED)
+
+        val provider = claims.getEnum<AuthProvider>("provider")
             ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
 
-        val provider = AuthProvider.entries.find { it.name == providerName }
+        val purpose = claims.getEnum<AuthPurpose>("purpose")
             ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
 
-        val providerUserId = claims.subject
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
-
-        return OAuthVerifiedClaims(provider, providerUserId, claims["email"] as? String)
+        return VerifiedClaims(
+            provider = provider,
+            providerUserId = claims["providerUserId"] as? String,
+            email = claims["email"] as? String,
+            purpose = purpose,
+        )
     }
 
     fun createAccessToken(userId: Long): String = createToken(userId, TokenType.ACCESS)
@@ -137,16 +146,9 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
     fun getUserId(token: String, type: TokenType): Long = getClaims(token, type).subject?.toLongOrNull()
         ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
 
-    fun getEmail(token: String, type: TokenType): String = getClaims(token, type).subject
-        ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+    private inline fun <reified E : Enum<E>> Claims.getEnum(name: String): E? {
+        val value = this[name] as? String ?: return null
 
-    fun getPurpose(token: String, type: TokenType): AuthPurpose {
-        val purpose = getClaims(token, type)["purpose"] as? String
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
-
-        return AuthPurpose.entries.find { it.name == purpose }
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+        return enumEntries<E>().find { it.name == value }
     }
-
-    fun getExpiration(token: String, type: TokenType): Date = getClaims(token, type).expiration
 }
