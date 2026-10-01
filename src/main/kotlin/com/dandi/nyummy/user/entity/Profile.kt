@@ -1,6 +1,6 @@
-package com.dandi.nyummy.profile.entity
+package com.dandi.nyummy.user.entity
 
-import com.dandi.nyummy.profile.enum.Gender
+import com.dandi.nyummy.user.enum.Gender
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityListeners
@@ -44,6 +44,15 @@ class Profile(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     val id: Long = 0L
+
+    @Column(name = "breakfast_hour")
+    val breakfastHour: Int? = null
+
+    @Column(name = "lunch_hour")
+    val lunchHour: Int? = null
+
+    @Column(name = "dinner_hour")
+    val dinnerHour: Int? = null
 
     @Column(name = "coin", nullable = false)
     val coin: Int = 0

@@ -3,18 +3,19 @@ package com.dandi.nyummy.cat.service
 import com.dandi.nyummy.cat.calculator.calculateWeightStep
 import com.dandi.nyummy.cat.calculator.isWeightUpdateDue
 import com.dandi.nyummy.cat.config.CatProperties
+import com.dandi.nyummy.cat.dto.CatAnimationResponse
 import com.dandi.nyummy.cat.dto.CatResponse
+import com.dandi.nyummy.cat.enum.CatWeight
 import com.dandi.nyummy.cat.mapper.toCatResponse
+import com.dandi.nyummy.cat.repository.CatAnimationLoader
 import com.dandi.nyummy.cat.repository.CatRepository
 import com.dandi.nyummy.exception.BusinessException
-import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.CatErrorCode
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
-import com.dandi.nyummy.profile.repository.ProfileRepository
+import com.dandi.nyummy.user.repository.ProfileRepository
 import org.slf4j.LoggerFactory
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -28,6 +29,7 @@ class CatService(
     private val profileRepository: ProfileRepository,
     private val catProperties: CatProperties,
     private val clock: Clock,
+    private val catAnimationLoader: CatAnimationLoader,
 ) {
 
     companion object {
@@ -35,22 +37,18 @@ class CatService(
     }
 
     /**
-     * 고양이의 현재 체형을 조회한다. 체형 평가는 하지 않으므로, 평가까지 필요하면 [updateCatWeight]를 사용한다.
+     * 사용자의 고양이 정보를 조회한다. 체형 평가는 하지 않으므로, 평가까지 필요하면 [updateCatWeight]를 사용한다.
+     *
+     * 고양이는 사용자당 하나이고 userId로 조회하므로, 다른 사용자의 고양이가 조회될 수 없다.
      *
      * @param userId 조회하는 사용자 ID
-     * @param catId 조회할 고양이 ID
-     * @return 체형 단계와 표시 이름을 담은 [CatResponse]
-     * @throws BusinessException [CatErrorCode.CAT_NOT_FOUND] catId에 해당하는 고양이가 없는 경우
-     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 고양이가 요청자 소유가 아닌 경우
+     * @return 이름·체형·애정도·경험치를 담은 [CatResponse]
+     * @throws BusinessException [CatErrorCode.CAT_NOT_FOUND] 사용자의 고양이가 없는 경우
      */
     @Transactional(readOnly = true)
-    fun getCatWeight(userId: Long, catId: Long): CatResponse {
-        val cat = catRepository.findByIdOrNull(catId)
+    fun getCat(userId: Long): CatResponse {
+        val cat = catRepository.findByUserId(userId)
             ?: throw BusinessException(CatErrorCode.CAT_NOT_FOUND)
-
-        if (cat.userId != userId) {
-            throw BusinessException(AuthErrorCode.FORBIDDEN)
-        }
 
         return cat.toCatResponse()
     }
@@ -69,19 +67,13 @@ class CatService(
      * 낙관적 락을 검토한다.
      *
      * @param userId 요청한 사용자 ID
-     * @param catId 갱신할 고양이 ID
-     * @return 체형 단계와 표시 이름을 담은 [CatResponse]
-     * @throws BusinessException [CatErrorCode.CAT_NOT_FOUND] catId에 해당하는 고양이가 없는 경우
-     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 고양이가 요청자 소유가 아닌 경우
+     * @return 갱신 결과가 반영된 [CatResponse]
+     * @throws BusinessException [CatErrorCode.CAT_NOT_FOUND] 사용자의 고양이가 없는 경우
      */
     @Transactional
-    fun updateCatWeight(userId: Long, catId: Long): CatResponse {
-        val cat = catRepository.findByIdOrNull(catId)
+    fun updateCatWeight(userId: Long): CatResponse {
+        val cat = catRepository.findByUserId(userId)
             ?: throw BusinessException(CatErrorCode.CAT_NOT_FOUND)
-
-        if (cat.userId != userId) {
-            throw BusinessException(AuthErrorCode.FORBIDDEN)
-        }
 
         // TODO: 사용자별 timezone에 맞게 계산
         val zone = ZoneId.of("Asia/Seoul")
@@ -110,5 +102,24 @@ class CatService(
         logger.info("고양이 체형 변화: userId = {}, step = {}, weight = {}", userId, step, cat.weight)
 
         return cat.toCatResponse()
+    }
+
+    /**
+     * 고양이의 현재 체형에 해당하는 애니메이션 메타데이터를 조회한다.
+     *
+     * 메타데이터 자체는 S3에 있고 체형 5종뿐이므로 [CatAnimationLoader]가 캐시한다.
+     *
+     * @param userId 조회하는 사용자 ID
+     * @return 체형에 해당하는 [CatAnimationResponse]
+     * @throws BusinessException [CatErrorCode.CAT_NOT_FOUND] 사용자의 고양이가 없는 경우
+     * @throws BusinessException [CatErrorCode.ANIMATION_METADATA_INVALID] 메타데이터를 읽을 수 없는 경우
+     */
+    @Transactional(readOnly = true)
+    fun getCatAnimations(userId: Long): CatAnimationResponse {
+        val cat = catRepository.findByUserId(userId)
+            ?: throw BusinessException(CatErrorCode.CAT_NOT_FOUND)
+
+        // 저장된 체형 값(-2~2)을 CatWeight로 바꿔 S3의 체형별 메타데이터를 찾는다.
+        return catAnimationLoader.load(CatWeight.fromWeight(cat.weight))
     }
 }

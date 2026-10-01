@@ -19,12 +19,13 @@ import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.aws.ses.SesService
-import com.dandi.nyummy.profile.entity.Profile
-import com.dandi.nyummy.profile.repository.ProfileRepository
+import com.dandi.nyummy.security.jwt.JwtProperties
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.security.jwt.VerifiedClaims
+import com.dandi.nyummy.user.entity.Profile
 import com.dandi.nyummy.user.entity.User
+import com.dandi.nyummy.user.repository.ProfileRepository
 import com.dandi.nyummy.user.repository.UserRepository
 import com.dandi.nyummy.user.service.PasswordService
 import org.slf4j.LoggerFactory
@@ -46,6 +47,7 @@ class AuthService(
     private val sesService: SesService,
     private val passwordService: PasswordService,
     private val authProperties: AuthProperties,
+    private val jwtProperties: JwtProperties,
     private val clock: Clock,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
 ) {
