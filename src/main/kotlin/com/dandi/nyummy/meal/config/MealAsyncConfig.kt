@@ -12,6 +12,18 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 @EnableScheduling
 class MealAsyncConfig {
     @Bean
+    fun mealAnalysisExecutor(properties: MealAnalysisProperties): ThreadPoolTaskExecutor =
+        ThreadPoolTaskExecutor().apply {
+            corePoolSize = properties.concurrency
+            maxPoolSize = properties.concurrency
+            // 실행 자리 제한이 제출 수를 제한한다. 큐는 Worker 반환 직후의 인계 경합만 흡수한다.
+            queueCapacity = properties.concurrency
+            setThreadNamePrefix("meal-analysis-")
+            setWaitForTasksToCompleteOnShutdown(true)
+            setAwaitTerminationSeconds(40)
+        }
+
+    @Bean
     fun outboxExecutor(): ThreadPoolTaskExecutor = ThreadPoolTaskExecutor().apply {
         corePoolSize = 1
         maxPoolSize = 1

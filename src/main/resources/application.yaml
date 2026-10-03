@@ -23,6 +23,9 @@ server:
 
 app:
   meal:
+    analysis:
+      poll-delay: 1s
+      concurrency: 2
     outbox:
       recovery-delay: 3s
       batch-size: 100

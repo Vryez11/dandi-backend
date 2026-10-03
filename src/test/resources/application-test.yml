@@ -33,6 +33,8 @@ logging:
 
 app:
   meal:
+    analysis:
+      polling-enabled: false
     outbox:
       recovery-enabled: false
   ai:
