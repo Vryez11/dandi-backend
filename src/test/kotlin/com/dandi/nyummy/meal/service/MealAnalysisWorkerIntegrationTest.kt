@@ -6,6 +6,7 @@ import com.dandi.nyummy.infra.ai.AiProperties
 import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisClient
 import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisResult
 import com.dandi.nyummy.meal.config.MealAnalysisProperties
+import com.dandi.nyummy.meal.config.MealAsyncConfig
 import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.entity.MealAnalysisQueue
@@ -387,7 +388,9 @@ class MealAnalysisWorkerIntegrationTest {
     @Test
     fun `두 Consumer가 동시에 실행해도 같은 작업을 중복 분석하지 않는다`() {
         val pending = List(4) { enqueue() }
-        val other = DbMealAnalysisConsumer(jobs, handler, executor, MealAnalysisProperties())
+        // 각 ECS Task는 독립된 실행 자리와 Worker 풀을 가진다.
+        val otherExecutor = MealAsyncConfig().mealAnalysisExecutor(MealAnalysisProperties()).apply { initialize() }
+        val other = DbMealAnalysisConsumer(jobs, handler, otherExecutor, MealAnalysisProperties())
         val start = CountDownLatch(1)
         val threads = Executors.newFixedThreadPool(2)
         try {
@@ -410,6 +413,7 @@ class MealAnalysisWorkerIntegrationTest {
             start.countDown()
             threads.shutdownNow()
             threads.awaitTermination(5, TimeUnit.SECONDS)
+            otherExecutor.shutdown()
         }
     }
 
