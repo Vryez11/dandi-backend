@@ -32,6 +32,9 @@ logging:
     com.dandi.nyummy: INFO
 
 app:
+  meal:
+    outbox:
+      recovery-enabled: false
   ai:
     api-key: test-gemini-key
   jwt:
