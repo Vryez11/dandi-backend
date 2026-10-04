@@ -14,7 +14,7 @@ pipeline {
     environment {
         AWS_REGION = 'ap-northeast-2'
         ECR_REPOSITORY = 'nyummy-backend'
-        DEV_INSTANCE_ID = 'i-09233fde1ceb5e562'
+        DEV_INSTANCE_ID = 'i-084c8385490e7e532'
     }
 
     stages {
