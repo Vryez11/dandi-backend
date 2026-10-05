@@ -59,7 +59,7 @@ class OutboxDispatchIntegrationTest {
     private lateinit var queue: MealAnalysisQueueRepository
 
     @Autowired
-    private lateinit var dispatchService: OutboxDispatchService
+    private lateinit var mealService: MealService
 
     @Autowired
     private lateinit var events: ApplicationEventPublisher
@@ -83,7 +83,7 @@ class OutboxDispatchIntegrationTest {
         awaitAsyncDispatches()
         queue.deleteAllInBatch()
         outboxes.deleteAllInBatch()
-        recovery = MealOutboxRecoveryScheduler(outboxes, dispatchService, MealOutboxProperties())
+        recovery = MealOutboxRecoveryScheduler(outboxes, mealService, MealOutboxProperties())
     }
 
     @AfterEach
@@ -135,7 +135,7 @@ class OutboxDispatchIntegrationTest {
     fun `이벤트 없이 남은 Outbox를 배치 크기만큼 복구한다`() {
         val first = outboxes.save(MealOutbox(1, Instant.now()))
         val second = outboxes.save(MealOutbox(2, Instant.now()))
-        val singleBatch = MealOutboxRecoveryScheduler(outboxes, dispatchService, MealOutboxProperties(batchSize = 1))
+        val singleBatch = MealOutboxRecoveryScheduler(outboxes, mealService, MealOutboxProperties(batchSize = 1))
 
         singleBatch.recover()
         assertEquals(listOf(first.id), queue.findAll().map { it.outboxId })
@@ -229,7 +229,7 @@ class OutboxDispatchIntegrationTest {
         try {
             val direct = threads.submit {
                 check(start.await(5, TimeUnit.SECONDS))
-                dispatchService.dispatch(outbox.id)
+                mealService.dispatchMealOutbox(outbox.id)
             }
             val scheduled = threads.submit {
                 check(start.await(5, TimeUnit.SECONDS))

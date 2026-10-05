@@ -2,7 +2,7 @@ package com.dandi.nyummy.meal.queue
 
 import com.dandi.nyummy.meal.config.MealAnalysisProperties
 import com.dandi.nyummy.meal.service.AnalysisHandler
-import com.dandi.nyummy.meal.service.MealAnalysisJobService
+import com.dandi.nyummy.meal.service.AnalysisService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.task.TaskExecutor
@@ -12,7 +12,7 @@ import java.util.concurrent.Semaphore
 
 @Component
 class DbMealAnalysisConsumer(
-    private val jobService: MealAnalysisJobService,
+    private val analysisService: AnalysisService,
     private val handler: AnalysisHandler,
     @param:Qualifier("mealAnalysisExecutor") private val executor: TaskExecutor,
     properties: MealAnalysisProperties,
@@ -26,7 +26,7 @@ class DbMealAnalysisConsumer(
         if (reserved == 0) return
 
         val jobs = try {
-            jobService.claim(reserved)
+            analysisService.startNutritionAnalyses(reserved)
         } catch (e: Exception) {
             slots.release(reserved)
             logger.error("분석 작업 선점 실패", e)
@@ -49,7 +49,7 @@ class DbMealAnalysisConsumer(
             } catch (e: RejectedExecutionException) {
                 try {
                     logger.error("분석 작업 제출 실패: queueId={}", job.queueId, e)
-                    jobService.fail(job.queueId)
+                    analysisService.failNutritionAnalysis(job.queueId)
                 } catch (failure: Exception) {
                     logger.error("제출 실패 상태 저장 실패: queueId={}", job.queueId, failure)
                 } finally {

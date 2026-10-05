@@ -113,10 +113,10 @@ class MealAnalysisWorkerIntegrationTest {
     private lateinit var ai: NutritionAnalysisClient
 
     @MockitoSpyBean
-    private lateinit var jobs: MealAnalysisJobService
+    private lateinit var analysisService: AnalysisService
 
-    private val jobsTarget: MealAnalysisJobService
-        get() = AopTestUtils.getUltimateTargetObject(jobs)
+    private val analysisServiceTarget: AnalysisService
+        get() = AopTestUtils.getUltimateTargetObject(analysisService)
 
     private val result = NutritionAnalysisResult("샐러드", Nutrition(200, 20, 10, 9), "맛있게 먹었다냥", 1)
     private var userId = 0L
@@ -179,9 +179,9 @@ class MealAnalysisWorkerIntegrationTest {
         try {
             consumer.poll()
             assertTrue(started.await(5, TimeUnit.SECONDS))
-            clearInvocations(jobsTarget)
+            clearInvocations(analysisServiceTarget)
             consumer.poll()
-            verify(jobsTarget, never()).claim(anyInt())
+            verify(analysisServiceTarget, never()).startNutritionAnalyses(anyInt())
             assertEquals(MealAnalysisQueueStatus.READY, queue.findById(pending.last().id).orElseThrow().status)
             verify(ai, times(2)).analyzeNutrition(anyString())
         } finally {
@@ -213,7 +213,7 @@ class MealAnalysisWorkerIntegrationTest {
         doAnswer { invocation ->
             if (failOnce.getAndSet(false)) error("DB 조회 실패")
             invocation.callRealMethod()
-        }.`when`(jobsTarget).claim(anyInt())
+        }.`when`(analysisServiceTarget).startNutritionAnalyses(anyInt())
 
         consumer.poll()
         assertTrue(queue.findAll().all { it.status == MealAnalysisQueueStatus.READY })
@@ -225,7 +225,7 @@ class MealAnalysisWorkerIntegrationTest {
     fun `Executor 제출이 거부되면 실패 처리하고 실행 자리를 반환한다`() {
         val reject = AtomicBoolean(true)
         val controlled = DbMealAnalysisConsumer(
-            jobs,
+            analysisService,
             handler,
             TaskExecutor { task ->
                 if (reject.get()) throw TaskRejectedException("테스트 제출 거부")
@@ -344,12 +344,12 @@ class MealAnalysisWorkerIntegrationTest {
     @Test
     fun `분석 중 삭제된 식사에는 결과를 반영하지 않는다`() {
         val job = enqueue()
-        val claimed = jobs.claim(1).single()
+        val claimed = analysisService.startNutritionAnalyses(1).single()
         transaction.executeWithoutResult {
             assertNotNull(meals.findByIdForUpdate(job.mealId)).updateDeletedAt(Instant.now())
         }
 
-        jobs.complete(claimed, result)
+        analysisService.completeNutritionAnalysis(claimed, result)
 
         assertNull(meals.findById(job.mealId).orElseThrow().calory)
         assertEquals(MealAnalysisQueueStatus.FAILED, queue.findById(job.id).orElseThrow().status)
@@ -358,14 +358,14 @@ class MealAnalysisWorkerIntegrationTest {
     @Test
     fun `이미 종료된 작업의 늦은 결과와 실패 처리는 현재 식사 상태를 덮어쓰지 않는다`() {
         val job = enqueue()
-        val claimed = jobs.claim(1).single()
-        jobs.fail(job.id)
+        val claimed = analysisService.startNutritionAnalyses(1).single()
+        analysisService.failNutritionAnalysis(job.id)
         transaction.executeWithoutResult {
             assertNotNull(meals.findByIdForUpdate(job.mealId)).updateStatus(MealStatus.WAITING)
         }
 
-        jobs.complete(claimed, result)
-        jobs.fail(job.id)
+        analysisService.completeNutritionAnalysis(claimed, result)
+        analysisService.failNutritionAnalysis(job.id)
 
         assertEquals(MealStatus.WAITING, meals.findById(job.mealId).orElseThrow().status)
         assertNull(meals.findById(job.mealId).orElseThrow().calory)
@@ -374,12 +374,12 @@ class MealAnalysisWorkerIntegrationTest {
     @Test
     fun `분석 도중 수정한 식사 이름은 결과 저장 시 보존한다`() {
         val job = enqueue()
-        val claimed = jobs.claim(1).single()
+        val claimed = analysisService.startNutritionAnalyses(1).single()
         transaction.executeWithoutResult {
             assertNotNull(meals.findByIdForUpdate(job.mealId)).updateName("직접 입력한 이름")
         }
 
-        jobs.complete(claimed, result)
+        analysisService.completeNutritionAnalysis(claimed, result)
 
         assertEquals("직접 입력한 이름", meals.findById(job.mealId).orElseThrow().name)
         assertEquals(MealStatus.COMPLETED, meals.findById(job.mealId).orElseThrow().status)
@@ -390,7 +390,7 @@ class MealAnalysisWorkerIntegrationTest {
         val pending = List(4) { enqueue() }
         // 각 ECS Task는 독립된 실행 자리와 Worker 풀을 가진다.
         val otherExecutor = MealAsyncConfig().mealAnalysisExecutor(MealAnalysisProperties()).apply { initialize() }
-        val other = DbMealAnalysisConsumer(jobs, handler, otherExecutor, MealAnalysisProperties())
+        val other = DbMealAnalysisConsumer(analysisService, handler, otherExecutor, MealAnalysisProperties())
         val start = CountDownLatch(1)
         val threads = Executors.newFixedThreadPool(2)
         try {

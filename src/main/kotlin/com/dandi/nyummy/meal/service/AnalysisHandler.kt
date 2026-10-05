@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service
 @Service
 class AnalysisHandler(
     private val analysisClient: NutritionAnalysisClient,
-    private val jobService: MealAnalysisJobService,
+    private val analysisService: AnalysisService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -18,9 +18,9 @@ class AnalysisHandler(
             analysisClient.analyzeNutrition(job.imageKey)
         } catch (e: Exception) {
             logger.error("영양 분석 실패: queueId={}, mealId={}", job.queueId, job.mealId, e)
-            jobService.fail(job.queueId)
+            analysisService.failNutritionAnalysis(job.queueId)
             return
         }
-        jobService.complete(job, result)
+        analysisService.completeNutritionAnalysis(job, result)
     }
 }
