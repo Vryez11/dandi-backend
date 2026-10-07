@@ -46,6 +46,15 @@ app:
       app-key: ${KAKAO_NATIVE_APP_KEY}
       connect-timeout: 5s
       read-timeout: 5s
+    google:
+      issuers:
+        - "https://accounts.google.com"
+        - "accounts.google.com"
+      jwk-set-uri: "https://www.googleapis.com/oauth2/v3/certs"
+      client-ids:
+        - ${GOOGLE_SERVER_CLIENT_ID}
+      connect-timeout: 5s
+      read-timeout: 5s
   jwt:
     secret-key: ${JWT_SECRET_KEY}
     encryption-key: ${JWT_ENCRYPTION_KEY}

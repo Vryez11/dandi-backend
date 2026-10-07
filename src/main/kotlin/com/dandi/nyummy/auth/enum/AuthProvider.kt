@@ -10,4 +10,5 @@ package com.dandi.nyummy.auth.enum
 enum class AuthProvider(val isSocial: Boolean) {
     EMAIL(false),
     KAKAO(true),
+    GOOGLE(true),
 }
