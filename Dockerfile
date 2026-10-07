@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # 1단계: 애플리케이션 빌드
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /app
@@ -53,18 +54,33 @@ WORKDIR /app
 
 RUN adduser --system --group spring
 
+# 프로파일 수집(Pyroscope Java agent). app.jar보다 먼저 받아 레이어 캐시를 살린다.
+# 버전을 올리면 checksum도 같이 바꾼다.
+ADD --checksum=sha256:ad738199a90734f7b8392bae1ab892027d411acb953ef1f00cd6e8e7c669ff8f \
+    https://github.com/grafana/pyroscope-java/releases/download/v2.9.2/pyroscope.jar \
+    /app/pyroscope.jar
+
+# agent는 항상 붙이고 켜기만 환경변수로 한다. 기본 꺼짐(local compose).
+# dev/prod는 PYROSCOPE_AGENT_ENABLED=true와 서버 주소·인증 정보를 준다.
+# agent가 async-profiler 네이티브 라이브러리를 로드하므로 ENTRYPOINT에 --enable-native-access를 준다
+# (Java 25는 경고만, 이후 버전은 차단 예정).
+ENV PYROSCOPE_AGENT_ENABLED=false \
+    PYROSCOPE_APPLICATION_NAME=nyummy
+
 COPY --from=build /app/build/libs/app.jar app.jar
 
 # 기존 Java CA 목록을 보존하면서 RDS CA를 추가한 저장소
 COPY --from=certs /tmp/rds-cacerts /app/rds-cacerts
 
-RUN chown spring:spring app.jar rds-cacerts
+RUN chown spring:spring app.jar rds-cacerts pyroscope.jar
 
 USER spring
 
 EXPOSE 8080
 
 ENTRYPOINT ["java", \
+    "-javaagent:/app/pyroscope.jar", \
+    "--enable-native-access=ALL-UNNAMED", \
     "-Djavax.net.ssl.trustStore=/app/rds-cacerts", \
     "-Djavax.net.ssl.trustStorePassword=changeit", \
     "-jar", "app.jar"]
