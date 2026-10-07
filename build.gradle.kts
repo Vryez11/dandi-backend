@@ -95,6 +95,18 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-mysql")
 
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+
+    // 관측(OpenTelemetry): 메트릭·트레이스 OTLP 전송
+    // OTel 기본 전송기(okhttp sender)는 OkHttp를 5.3.x로 끌어올려 AWS Kotlin SDK(5.0.0-alpha 기준 빌드)를
+    // 깨뜨린다(ClassNotFoundException: okhttp3.ConnectionListener). JDK HttpClient 전송기로 바꾼다.
+    implementation("org.springframework.boot:spring-boot-starter-opentelemetry") {
+        exclude(group = "io.opentelemetry", module = "opentelemetry-exporter-sender-okhttp")
+    }
+    implementation("io.opentelemetry:opentelemetry-exporter-sender-jdk")
+
+    // 로그 OTLP 전송. Boot BOM 밖이라 버전을 직접 맞춘다.
+    // 2.28.0-alpha가 Boot 4.1.0의 OTel SDK 1.62.0을 요구한다(2.29+는 1.63+).
+    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.28.0-alpha")
 }
 
 kotlin {
