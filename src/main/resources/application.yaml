@@ -18,6 +18,20 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+  # app.email.client=smtp일 때 SmtpEmailClient가 쓰는 JavaMailSender 설정 (Gmail, 앱 비밀번호)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_SMTP_USERNAME}
+    password: ${EMAIL_SMTP_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      # 기본값은 무한 대기 — SMTP 서버가 응답하지 않으면 요청 스레드가 묶인다.
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
 server:
   forward-headers-strategy: framework
 
@@ -75,7 +89,7 @@ app:
     connect-timeout: 5s
     read-timeout: 30s
   email:
-    client: ${EMAIL_CLIENT:ses} # ses | smtp
+    client: ${EMAIL_CLIENT:smtp} # smtp | ses (ses는 샌드박스 해제 후 전환)
     from-address: ${EMAIL_FROM_ADDRESS}
     from-name: "Nyummy"
   auth:
