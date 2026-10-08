@@ -15,6 +15,9 @@ class HttpLoggingFilter : OncePerRequestFilter() {
 
     companion object {
         private val log = LoggerFactory.getLogger(HttpLoggingFilter::class.java)
+
+        // ALB·compose가 짧은 주기로 호출한다. 성공 응답까지 남기면 로그 대부분이 health check로 채워진다.
+        private const val HEALTH_PATH = "/actuator/health"
     }
 
     override fun doFilterInternal(
@@ -27,7 +30,13 @@ class HttpLoggingFilter : OncePerRequestFilter() {
             filterChain.doFilter(request, response)
         } finally {
             val elapsed = (System.nanoTime() - startTime) / 1_000_000
-            log.info("{} {} status={} elapsed={}ms", request.method, request.requestURI, response.status, elapsed)
+            if (!isSuccessfulHealthCheck(request, response)) {
+                log.info("{} {} status={} elapsed={}ms", request.method, request.requestURI, response.status, elapsed)
+            }
         }
     }
+
+    // 실패한 health check(503 등)는 장애 단서라 그대로 남긴다.
+    private fun isSuccessfulHealthCheck(request: HttpServletRequest, response: HttpServletResponse): Boolean =
+        request.requestURI.startsWith(HEALTH_PATH) && response.status in 200..299
 }
