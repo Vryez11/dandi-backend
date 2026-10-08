@@ -31,3 +31,10 @@ management:
   endpoint:
     health:
       show-details: never
+  opentelemetry:
+    resource-attributes:
+      "[deployment.environment.name]": dev
+  tracing:
+    sampling:
+      # dev는 트래픽이 적으니 전부 샘플링한다.
+      probability: 1.0

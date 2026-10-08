@@ -23,6 +23,9 @@ class SesService(
 
     companion object {
         val log = LoggerFactory.getLogger(SesService::class.java)
+
+        // SES 오류 메시지에 수신자 주소가 섞여 나온다(예: 샌드박스 미인증 주소). 로그는 외부(Grafana Cloud)로 나가므로 가린다.
+        private val EMAIL_PATTERN = Regex("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
     }
 
     /**
@@ -85,7 +88,7 @@ class SesService(
         try {
             sesV2Client.sendEmail(request)
         } catch (e: SdkBaseException) {
-            log.error("이메일 발송이 실패했습니다. ${e.message}")
+            log.error("이메일 발송이 실패했습니다. {}", e.message?.replace(EMAIL_PATTERN, "[email]"))
             throw BusinessException(SesErrorCode.EMAIL_SEND_FAILED)
         }
     }

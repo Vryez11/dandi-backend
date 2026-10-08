@@ -21,6 +21,44 @@ spring:
 server:
   forward-headers-strategy: framework
 
+# 관측: 메트릭·트레이스·로그를 Grafana Cloud OTLP 게이트웨이로 보낸다.
+# 기본은 꺼짐(local·test). dev/prod는 GRAFANA_OTLP_ENABLED=true로 켠다.
+# GRAFANA_OTLP_ENDPOINT는 게이트웨이 주소(.../otlp)까지만, 신호별 경로는 여기서 붙인다.
+# GRAFANA_OTLP_AUTH_HEADER는 헤더 값 전체: "Basic base64(instanceId:token)".
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: ${GRAFANA_OTLP_ENABLED:false}
+        url: ${GRAFANA_OTLP_ENDPOINT:}/v1/metrics
+        headers:
+          Authorization: ${GRAFANA_OTLP_AUTH_HEADER:}
+  tracing:
+    export:
+      otlp:
+        enabled: ${GRAFANA_OTLP_ENABLED:false}
+  logging:
+    export:
+      otlp:
+        enabled: ${GRAFANA_OTLP_ENABLED:false}
+  opentelemetry:
+    resource-attributes:
+      # 같은 환경에 인스턴스가 여럿이면(prod ECS task 2개) 메트릭 series를 가르는 값.
+      # 컨테이너 hostname: compose는 컨테이너 ID, ECS awsvpc는 task ENI 기준.
+      "[service.instance.id]": ${HOSTNAME:local}
+    tracing:
+      export:
+        otlp:
+          endpoint: ${GRAFANA_OTLP_ENDPOINT:}/v1/traces
+          headers:
+            Authorization: ${GRAFANA_OTLP_AUTH_HEADER:}
+    logging:
+      export:
+        otlp:
+          endpoint: ${GRAFANA_OTLP_ENDPOINT:}/v1/logs
+          headers:
+            Authorization: ${GRAFANA_OTLP_AUTH_HEADER:}
+
 app:
   meal:
     upload-method: "PUT"

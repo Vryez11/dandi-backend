@@ -39,3 +39,11 @@ logging:
     root: INFO
     com.dandi.nyummy: INFO
 
+management:
+  opentelemetry:
+    resource-attributes:
+      "[deployment.environment.name]": prod
+  tracing:
+    sampling:
+      # NAT 데이터 처리 비용이 전송량에 비례하므로 일부만 샘플링한다.
+      probability: 0.1
