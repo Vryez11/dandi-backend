@@ -1,7 +1,7 @@
 package com.dandi.nyummy.infra.ai.nutrition
 
 import com.dandi.nyummy.infra.ai.AiProperties
-import com.dandi.nyummy.infra.aws.s3.S3Service
+import com.dandi.nyummy.infra.image.s3.S3Service
 import com.dandi.nyummy.meal.dto.Nutrition
 import com.dandi.nyummy.meal.repository.IconRepository
 import com.dandi.nyummy.meal.service.IconService
