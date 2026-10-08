@@ -91,6 +91,15 @@ Content-Type: application/json
   "nonce": "{{googleNonce}}"
 }
 
+### 소셜 로그인 API (Naver) - token은 네이버 로그인 SDK가 준 access token, nonce 없음
+POST {{url}}/api/v1/auth/oauth/login
+Content-Type: application/json
+
+{
+  "provider": "NAVER",
+  "token": "{{naverAccessToken}}"
+}
+
 ### access token 재발급 API
 POST {{url}}/api/v1/auth/refresh
 Content-Type: application/json
