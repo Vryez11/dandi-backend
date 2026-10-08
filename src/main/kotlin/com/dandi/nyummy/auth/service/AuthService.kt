@@ -18,8 +18,7 @@ import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
-import com.dandi.nyummy.infra.aws.ses.SesService
-import com.dandi.nyummy.security.jwt.JwtProperties
+import com.dandi.nyummy.infra.email.EmailService
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.security.jwt.VerifiedClaims
@@ -44,10 +43,9 @@ class AuthService(
     private val refreshTokenService: RefreshTokenService,
     private val tokenService: TokenService,
     private val codeService: CodeService,
-    private val sesService: SesService,
+    private val emailService: EmailService,
     private val passwordService: PasswordService,
     private val authProperties: AuthProperties,
-    private val jwtProperties: JwtProperties,
     private val clock: Clock,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
 ) {
@@ -269,7 +267,7 @@ class AuthService(
      * @throws BusinessException [AuthErrorCode.EMAIL_ALREADY_EXISTS] 회원가입 용도인데 이미 가입된 이메일인 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 비밀번호 찾기 용도인데 가입되지 않은 이메일인 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_SEND_RATE_LIMITED] TTL 윈도우 내 발송 횟수가 5회를 초과한 경우
-     * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] SES 이메일 발송이 실패한 경우
+     * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 이메일 발송이 실패한 경우
      */
     fun sendAuthCode(request: SendAuthCodeRequest): SendAuthCodeResponse {
         val email = request.email
@@ -279,7 +277,7 @@ class AuthService(
 
         val authCode = codeService.createCodeByEmail(email, purpose)
 
-        sesService.sendAuthCode(email, authCode)
+        emailService.sendAuthCode(email, authCode)
 
         val emailChallengeToken = tokenService.createEmailChallengeToken(email, purpose)
 
@@ -330,7 +328,7 @@ class AuthService(
      * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
      * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않거나, 이메일 계정의 비밀번호 찾기 용도가 아닌 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 토큰의 이메일에 해당하는 사용자가 없는 경우
-     * @throws BusinessException [SesErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
+     * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
      */
     fun resetPassword(request: PasswordResetRequest) {
         // TODO: 레디스 도입 시 사용한 verifiedToken을 블랙리스트로 등록해 일회성 보장
@@ -355,7 +353,7 @@ class AuthService(
             logger.error("토큰 무효화 기록 실패: userId={}", user.id, e)
         }
 
-        sesService.sendTempPassword(email, tempPassword)
+        emailService.sendTempPassword(email, tempPassword)
     }
 
     /**

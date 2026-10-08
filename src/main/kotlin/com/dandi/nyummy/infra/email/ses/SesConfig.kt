@@ -1,4 +1,4 @@
-package com.dandi.nyummy.infra.aws.ses
+package com.dandi.nyummy.infra.email.ses
 
 import aws.sdk.kotlin.services.sesv2.SesV2Client
 import org.springframework.beans.factory.annotation.Value
