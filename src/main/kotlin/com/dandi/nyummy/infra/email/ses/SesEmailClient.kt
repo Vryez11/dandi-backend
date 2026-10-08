@@ -12,16 +12,15 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.EmailErrorCode
 import com.dandi.nyummy.infra.email.EmailClient
 import com.dandi.nyummy.infra.email.EmailMessage
+import com.dandi.nyummy.infra.email.EmailProperties
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 
 @Component
-class SesEmailClient(
-    private val sesV2Client: SesV2Client,
-    @Value("\${AWS_SES_FROM_ADDRESS}") private val fromAddress: String,
-) : EmailClient {
+@ConditionalOnProperty(name = ["app.email.client"], havingValue = "ses")
+class SesEmailClient(private val sesV2Client: SesV2Client, private val emailProperties: EmailProperties) : EmailClient {
 
     companion object {
         val log = LoggerFactory.getLogger(SesEmailClient::class.java)
@@ -32,7 +31,7 @@ class SesEmailClient(
      */
     override fun send(message: EmailMessage) {
         val request = SendEmailRequest {
-            fromEmailAddress = fromAddress
+            fromEmailAddress = "${emailProperties.fromName} <${emailProperties.fromAddress}>"
             destination = Destination {
                 toAddresses = listOf(message.to)
             }

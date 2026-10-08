@@ -74,6 +74,10 @@ app:
     base-url: "https://generativelanguage.googleapis.com"
     connect-timeout: 5s
     read-timeout: 30s
+  email:
+    client: ${EMAIL_CLIENT:ses} # ses | smtp
+    from-address: ${EMAIL_FROM_ADDRESS}
+    from-name: "Nyummy"
   auth:
     login-redirect-url: "dandi://home"
     signup-redirect-url: "dandi://signup"
