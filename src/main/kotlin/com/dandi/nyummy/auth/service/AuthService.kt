@@ -100,7 +100,7 @@ class AuthService(
      * @param request 회원가입 요청 정보를 담은 [SignUpRequest] (verifiedToken, 비밀번호(이메일 가입만), 닉네임, 신체 정보)
      * @return 발급된 AccessToken·RefreshToken을 담은 [SignUpResponse]
      * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
-     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입·클레임이 유효하지 않거나 회원가입 용도가 아닌 경우
+     * @throws BusinessException [AuthErrorCode.INVALID_VERIFIED_TOKEN] 토큰의 서명·형식·타입·클레임이 유효하지 않거나 회원가입 용도가 아닌 경우
      * @throws BusinessException [AuthErrorCode.PASSWORD_REQUIRED] 이메일 가입인데 비밀번호가 없는 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_ALREADY_EXISTS] 이미 가입된 이메일인 경우
      * @throws BusinessException [AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS] 이미 가입된 소셜 계정인 경우
@@ -110,7 +110,7 @@ class AuthService(
         val claims = tokenService.getVerifiedClaims(request.verifiedToken)
 
         if (claims.purpose != AuthPurpose.SIGNUP) {
-            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
         }
 
         val alreadyExistsError = if (claims.provider.isSocial) {
@@ -175,12 +175,12 @@ class AuthService(
     private fun existsUser(claims: VerifiedClaims): Boolean = if (claims.provider.isSocial) {
         userRepository.existsByProviderAndProviderUserId(
             claims.provider,
-            claims.providerUserId ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
+            claims.providerUserId ?: throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN),
         )
     } else {
         userRepository.existsByProviderAndEmail(
             claims.provider,
-            claims.email ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED),
+            claims.email ?: throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN),
         )
     }
 
@@ -292,7 +292,7 @@ class AuthService(
      * @param request 인증 코드 확인 요청 정보를 담은 [ConfirmAuthCodeRequest] (인증 코드, emailChallengeToken)
      * @return 발급된 verifiedToken을 담은 [ConfirmAuthCodeResponse]
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
-     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입·용도가 유효하지 않은 경우
+     * @throws BusinessException [AuthErrorCode.INVALID_EMAIL_CHALLENGE_TOKEN] 토큰의 서명·형식·타입·용도가 유효하지 않은 경우
      * @throws BusinessException [AuthErrorCode.INCORRECT_EMAIL] 해당 이메일·용도로 발급된 인증 코드가 없는 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
@@ -326,7 +326,7 @@ class AuthService(
      *
      * @param request 비밀번호 재설정 요청 정보를 담은 [PasswordResetRequest] (verifiedToken)
      * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
-     * @throws BusinessException [AuthErrorCode.UNAUTHORIZED] 토큰의 서명·형식·타입이 유효하지 않거나, 이메일 계정의 비밀번호 찾기 용도가 아닌 경우
+     * @throws BusinessException [AuthErrorCode.INVALID_VERIFIED_TOKEN] 토큰의 서명·형식·타입이 유효하지 않거나, 이메일 계정의 비밀번호 찾기 용도가 아닌 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 토큰의 이메일에 해당하는 사용자가 없는 경우
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
      */
@@ -336,11 +336,11 @@ class AuthService(
         val claims = tokenService.getVerifiedClaims(request.verifiedToken)
 
         if (claims.provider != AuthProvider.EMAIL || claims.purpose != AuthPurpose.RESET_PASSWORD) {
-            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
         }
 
         val email = claims.email
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            ?: throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
 
         val user = userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email)
             ?: throw BusinessException(AuthErrorCode.EMAIL_NOT_FOUND)

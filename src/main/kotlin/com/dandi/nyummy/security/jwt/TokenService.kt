@@ -55,7 +55,7 @@ class TokenService(
     } catch (e: ExpiredJwtException) {
         throw BusinessException(AuthErrorCode.EMAIL_CODE_EXPIRED)
     } catch (e: JwtException) {
-        throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+        throw BusinessException(AuthErrorCode.INVALID_EMAIL_CHALLENGE_TOKEN)
     }
 
     fun createVerifiedToken(claims: VerifiedClaims): String = jwtProvider.createVerifiedToken(claims)
@@ -65,7 +65,7 @@ class TokenService(
     } catch (e: ExpiredJwtException) {
         throw BusinessException(AuthErrorCode.VERIFICATION_EXPIRED)
     } catch (e: JwtException) {
-        throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+        throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
     }
 
     fun getUserId(token: String, type: TokenType): Long = jwtProvider.getUserId(token, type)

@@ -5,6 +5,7 @@ import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import io.jsonwebtoken.Claims
+import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.JwtParser
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.io.Decoders
@@ -42,8 +43,9 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
             jwsParser.parseSignedClaims(token).payload
         }
 
+        // 여러 토큰 타입이 공유하는 경로라 에러 코드를 정하지 않고 JwtException으로 올린다 — 호출부가 토큰별 코드로 변환
         if (claims["type"] != type.value) {
-            throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            throw JwtException("토큰 타입이 일치하지 않습니다: expected=${type.value}")
         }
 
         return claims
@@ -103,10 +105,10 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
         val claims = getClaims(token, TokenType.EMAIL_CHALLENGE)
 
         val email = claims.subject
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            ?: throw BusinessException(AuthErrorCode.INVALID_EMAIL_CHALLENGE_TOKEN)
 
         val purpose = claims.getEnum<AuthPurpose>("purpose")
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            ?: throw BusinessException(AuthErrorCode.INVALID_EMAIL_CHALLENGE_TOKEN)
 
         return EmailChallengeClaims(email, purpose)
     }
@@ -126,10 +128,10 @@ class JwtProvider(private val jwtProperties: JwtProperties, private val clock: C
         val claims = getClaims(token, TokenType.VERIFIED)
 
         val provider = claims.getEnum<AuthProvider>("provider")
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            ?: throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
 
         val purpose = claims.getEnum<AuthPurpose>("purpose")
-            ?: throw BusinessException(AuthErrorCode.UNAUTHORIZED)
+            ?: throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
 
         return VerifiedClaims(
             provider = provider,

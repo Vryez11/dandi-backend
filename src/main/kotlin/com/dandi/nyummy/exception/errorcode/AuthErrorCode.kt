@@ -30,6 +30,16 @@ enum class AuthErrorCode(override val status: HttpStatus, override val code: Str
         "인증이 만료되었습니다. 처음부터 다시 인증해주세요.",
     ),
     PASSWORD_REQUIRED(HttpStatus.BAD_REQUEST, "api.auth.passwordRequired", "이메일 회원가입에는 비밀번호가 필요합니다."),
+    INVALID_EMAIL_CHALLENGE_TOKEN(
+        HttpStatus.UNAUTHORIZED,
+        "api.auth.invalidEmailChallengeToken",
+        "유효하지 않은 인증 요청입니다. 인증 코드를 재발송 받으세요.",
+    ),
+    INVALID_VERIFIED_TOKEN(
+        HttpStatus.UNAUTHORIZED,
+        "api.auth.invalidVerifiedToken",
+        "유효하지 않은 인증입니다. 처음부터 다시 인증해주세요.",
+    ),
     INVALID_OAUTH_TOKEN(HttpStatus.UNAUTHORIZED, "api.auth.invalidOAuthToken", "유효하지 않은 소셜 로그인 토큰입니다."),
     OAUTH_ACCOUNT_ALREADY_EXISTS(HttpStatus.CONFLICT, "api.auth.oauthAccountAlreadyExists", "이미 가입된 소셜 계정입니다."),
     UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "api.auth.unsupportedOAuthProvider", "지원하지 않는 소셜 로그인 제공자입니다."),
