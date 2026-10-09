@@ -50,6 +50,9 @@ dependencies {
     implementation("aws.sdk.kotlin:s3:1.4.0")
     implementation("aws.sdk.kotlin:sesv2:1.4.0")
 
+    // SMTP 메일 발송 (JavaMailSender)
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // .env 파일 파싱용 라이브러리
     implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
 

@@ -3,7 +3,7 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
-import com.dandi.nyummy.infra.aws.s3.S3Service
+import com.dandi.nyummy.infra.image.s3.S3Service
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
 import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake

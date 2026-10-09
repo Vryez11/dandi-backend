@@ -4,7 +4,7 @@ import com.dandi.nyummy.cat.dto.CatAnimationResponse
 import com.dandi.nyummy.cat.enum.CatWeight
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.CatErrorCode
-import com.dandi.nyummy.infra.aws.s3.S3Service
+import com.dandi.nyummy.infra.image.s3.S3Service
 import org.slf4j.LoggerFactory
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Component

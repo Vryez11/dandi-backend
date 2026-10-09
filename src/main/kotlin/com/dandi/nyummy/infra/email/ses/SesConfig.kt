@@ -1,11 +1,13 @@
-package com.dandi.nyummy.infra.aws.ses
+package com.dandi.nyummy.infra.email.ses
 
 import aws.sdk.kotlin.services.sesv2.SesV2Client
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
+@ConditionalOnProperty(name = ["app.email.client"], havingValue = "ses")
 class SesConfig(@Value("\${AWS_REGION}") private val region: String) {
     @Bean
     fun sesV2Client(): SesV2Client = SesV2Client {

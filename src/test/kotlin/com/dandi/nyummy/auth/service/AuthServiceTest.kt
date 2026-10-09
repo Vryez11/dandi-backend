@@ -11,11 +11,10 @@ import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.exception.errorcode.EmailErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
-import com.dandi.nyummy.exception.errorcode.SesErrorCode
-import com.dandi.nyummy.infra.aws.ses.SesService
+import com.dandi.nyummy.infra.email.EmailService
 import com.dandi.nyummy.security.jwt.EmailChallengeClaims
-import com.dandi.nyummy.security.jwt.JwtProperties
 import com.dandi.nyummy.security.jwt.TokenService
 import com.dandi.nyummy.security.jwt.VerifiedClaims
 import com.dandi.nyummy.user.entity.Profile
@@ -34,7 +33,6 @@ import io.mockk.verifyOrder
 import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.dao.DataIntegrityViolationException
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -48,15 +46,6 @@ class AuthServiceTest {
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
     private val email = "user@nyummy.com"
 
-    private val jwtProperties = JwtProperties(
-        secretKey = "unused",
-        encryptionKey = "unused",
-        accessTimeToLive = Duration.ofMinutes(30),
-        refreshTimeToLive = Duration.ofDays(15),
-        refreshAbsoluteTimeToLive = Duration.ofDays(90),
-        emailChallengeTimeToLive = Duration.ofMinutes(5),
-        verifiedTimeToLive = Duration.ofMinutes(30),
-    )
     private val authProperties = AuthProperties(
         loginRedirectUrl = "dandi://home",
         signupRedirectUrl = "dandi://signup",
@@ -68,7 +57,7 @@ class AuthServiceTest {
     private val refreshTokenService = mockk<RefreshTokenService>(relaxUnitFun = true)
     private val tokenService = mockk<TokenService>()
     private val codeService = mockk<CodeService>()
-    private val sesService = mockk<SesService>(relaxUnitFun = true)
+    private val emailService = mockk<EmailService>(relaxUnitFun = true)
     private val passwordService = mockk<PasswordService>()
     private val tokenInvalidationRepository = mockk<TokenInvalidationRepository>(relaxUnitFun = true)
 
@@ -79,10 +68,9 @@ class AuthServiceTest {
         refreshTokenService = refreshTokenService,
         tokenService = tokenService,
         codeService = codeService,
-        sesService = sesService,
+        emailService = emailService,
         passwordService = passwordService,
         authProperties = authProperties,
-        jwtProperties = jwtProperties,
         clock = clock,
         tokenInvalidationRepository = tokenInvalidationRepository,
     )
@@ -227,7 +215,7 @@ class AuthServiceTest {
         verifyOrder {
             userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email)
             codeService.createCodeByEmail(email, AuthPurpose.SIGNUP)
-            sesService.sendAuthCode(email, "123456")
+            emailService.sendAuthCode(email, "123456")
             tokenService.createEmailChallengeToken(email, AuthPurpose.SIGNUP)
         }
     }
@@ -240,16 +228,16 @@ class AuthServiceTest {
             authService.sendAuthCode(SendAuthCodeRequest(email = email, purpose = AuthPurpose.SIGNUP))
         }
         verify(exactly = 0) { codeService.createCodeByEmail(any(), any()) }
-        verify(exactly = 0) { sesService.sendAuthCode(any(), any()) }
+        verify(exactly = 0) { emailService.sendAuthCode(any(), any()) }
     }
 
     @Test
     fun `이메일 발송에 실패하면 예외를 전파하고 챌린지 토큰을 발급하지 않는다`() {
         every { userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email) } returns false
         every { codeService.createCodeByEmail(email, AuthPurpose.SIGNUP) } returns "123456"
-        every { sesService.sendAuthCode(email, "123456") } throws BusinessException(SesErrorCode.EMAIL_SEND_FAILED)
+        every { emailService.sendAuthCode(email, "123456") } throws BusinessException(EmailErrorCode.EMAIL_SEND_FAILED)
 
-        assertBusinessException(SesErrorCode.EMAIL_SEND_FAILED) {
+        assertBusinessException(EmailErrorCode.EMAIL_SEND_FAILED) {
             authService.sendAuthCode(SendAuthCodeRequest(email = email, purpose = AuthPurpose.SIGNUP))
         }
         verify(exactly = 0) { tokenService.createEmailChallengeToken(any(), any()) }
@@ -324,7 +312,7 @@ class AuthServiceTest {
         verifyOrder {
             passwordService.createTempPasswordByEmail(email)
             tokenInvalidationRepository.createInvalidatedAt(user.id, now)
-            sesService.sendTempPassword(email, "Temp12345678")
+            emailService.sendTempPassword(email, "Temp12345678")
         }
     }
 
@@ -340,6 +328,6 @@ class AuthServiceTest {
 
         authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
 
-        verify(exactly = 1) { sesService.sendTempPassword(email, "Temp12345678") }
+        verify(exactly = 1) { emailService.sendTempPassword(email, "Temp12345678") }
     }
 }

@@ -23,6 +23,11 @@ spring:
   flyway:
     baseline-on-migrate: true
 
+  # 컨텍스트 기동 시 SMTP 접속은 없다(JavaMailSender는 발송 시점에 연결). 빈 생성에 필요한 값만 채운다.
+  mail:
+    username: test@nyummy.co.kr
+    password: test-smtp-password
+
   jpa:
     show-sql: false
 
@@ -34,6 +39,8 @@ logging:
 app:
   ai:
     api-key: test-gemini-key
+  email:
+    from-address: test@nyummy.co.kr
   jwt:
     # Base64 32바이트. HS256 서명과 A256GCM 암호화에 그대로 쓰이므로 길이가 맞아야 한다.
     secret-key: c83mV3J9dm3u1nGB93mdHgHbZTE3mciNNc93nMvfi3m=
@@ -48,4 +55,3 @@ app:
 # S3Config / SesConfig가 @Value로 직접 읽는 값들. app.* 아래가 아니라 최상위여야 한다.
 AWS_REGION: ap-northeast-2
 AWS_S3_BUCKET_NAME: test-bucket
-AWS_SES_FROM_ADDRESS: test@dandi.com
