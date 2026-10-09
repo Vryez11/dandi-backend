@@ -141,7 +141,7 @@ class AuthServiceTest {
     fun `비밀번호 찾기 용도의 토큰으로는 가입할 수 없다`() {
         stubVerifiedToken(AuthPurpose.RESET_PASSWORD)
 
-        assertBusinessException(AuthErrorCode.UNAUTHORIZED) {
+        assertBusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN) {
             authService.signup(createSignUpRequest())
         }
         verify(exactly = 0) { userRepository.save(any()) }
@@ -283,7 +283,7 @@ class AuthServiceTest {
     fun `회원가입 용도의 토큰으로는 비밀번호를 재설정할 수 없다`() {
         stubVerifiedToken(AuthPurpose.SIGNUP)
 
-        assertBusinessException(AuthErrorCode.UNAUTHORIZED) {
+        assertBusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN) {
             authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
         }
         verify(exactly = 0) { passwordService.createTempPasswordByEmail(any()) }
