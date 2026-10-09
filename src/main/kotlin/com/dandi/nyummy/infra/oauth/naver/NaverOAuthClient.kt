@@ -30,7 +30,7 @@ class NaverOAuthClient(private val restClient: RestClient, private val userInfoU
      * 403은 콘솔의 API 권한 미설정(서버 설정 문제)이므로 토큰 오류가 아닌 제공자 통신 불가로 처리한다.
      */
     override fun getUserInfo(token: String, nonce: String?): OAuthUserInfoResult {
-        val response = request(token)
+        val response = fetchUserInfo(token)
 
         if (response.resultcode != RESULT_CODE_SUCCESS) {
             logger.warn("Naver 프로필 조회 실패: resultcode={}, message={}", response.resultcode, response.message)
@@ -46,7 +46,7 @@ class NaverOAuthClient(private val restClient: RestClient, private val userInfoU
         )
     }
 
-    private fun request(token: String): NaverUserInfoResponse = try {
+    private fun fetchUserInfo(token: String): NaverUserInfoResponse = try {
         restClient.get()
             .uri(userInfoUri)
             .headers { it.setBearerAuth(token) }
