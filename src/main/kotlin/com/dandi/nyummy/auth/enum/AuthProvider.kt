@@ -11,4 +11,5 @@ enum class AuthProvider(val isSocial: Boolean) {
     EMAIL(false),
     KAKAO(true),
     GOOGLE(true),
+    NAVER(true),
 }
