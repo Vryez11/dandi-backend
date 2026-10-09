@@ -2,13 +2,20 @@ package com.dandi.nyummy.cat.controller
 
 import com.dandi.nyummy.cat.dto.CatAnimationResponse
 import com.dandi.nyummy.cat.dto.CatResponse
+import com.dandi.nyummy.cat.dto.CreateCatRequest
 import com.dandi.nyummy.cat.service.CatService
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -16,6 +23,18 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/cats")
 class CatController(private val catService: CatService) {
+
+    @Operation(
+        summary = "고양이 생성",
+        description = "고양이를 만들고 온보딩에서 받은 끼니 시각을 프로필에 저장한다. 사용자당 한 마리만 생성할 수 있다.",
+    )
+    @ApiResponse(responseCode = "400", description = "끼니 시각이 0~23이 아니거나 서로 겹칩니다.")
+    @ApiResponse(responseCode = "409", description = "이미 생성된 고양이입니다.")
+    @PostMapping
+    fun createCat(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateCatRequest): ResponseEntity<Void> {
+        catService.createCat(user.userId, request)
+        return ResponseEntity.status(HttpStatus.CREATED).build()
+    }
 
     @Operation(
         summary = "고양이 조회",
