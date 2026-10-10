@@ -8,6 +8,7 @@ import com.dandi.nyummy.image.dto.UploadUrlResponse
 import com.dandi.nyummy.image.dto.UploadedImage
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService.Companion.ALLOWED_CONTENT_TYPES
+import com.dandi.nyummy.image.validator.ImageUploadValidator
 import com.dandi.nyummy.infra.storage.s3.S3StorageClient
 import kotlinx.coroutines.runBlocking
 import org.apache.tika.Tika
@@ -21,7 +22,8 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * 이미지 업로드 URL 발급과 업로드 확정을 담당한다.
  *
- * 용도별 정책(경로, 최대 크기)은 [ImagePurpose]가 가진다. 확정은 HTTP로 노출하지 않고,
+ * 용도별 정책(경로, 최대 크기)은 [ImagePurpose]가 가진다. 발급 전 도메인 검증은 [ImageUploadValidator]
+ * 구현으로, 확정 전 도메인 검증은 [confirmUpload]의 콜백으로 끼운다. 확정은 HTTP로 노출하지 않고,
  * 각 도메인 서비스가 자신의 생성 흐름 안에서 [confirmUpload]를 호출한다.
  */
 @Service
@@ -30,6 +32,7 @@ class ImageService(
     private val exifCaptureTimeReader: ExifCaptureTimeReader,
     private val imageProperties: ImageProperties,
     private val clock: Clock,
+    validators: List<ImageUploadValidator>,
 ) {
     companion object {
         private val ALLOWED_CONTENT_TYPES = setOf(
@@ -45,6 +48,14 @@ class ImageService(
 
     private val tika = Tika()
 
+    private val validatorsByPurpose: Map<ImagePurpose, ImageUploadValidator> = validators
+        .groupBy { it.purpose }
+        .mapValues { (purpose, validatorsOfPurpose) ->
+            // associateBy는 중복을 조용히 덮어쓰므로, 어느 검증이 빠졌는지 모르게 되는 상황을 기동 시점에 막는다.
+            require(validatorsOfPurpose.size == 1) { "ImageUploadValidator가 용도당 하나여야 합니다: $purpose" }
+            validatorsOfPurpose.single()
+        }
+
     /**
      * 이미지를 업로드할 수 있는 presigned URL을 발급한다.
      *
@@ -54,6 +65,9 @@ class ImageService(
      *
      * [fileSizeBytes]는 사전 검증용 값일 뿐 presigned URL에 서명되지 않는다.
      * 실제 업로드된 크기는 [confirmUpload]에서 다시 확인한다.
+     *
+     * [purpose]에 [ImageUploadValidator] 구현이 있으면 다른 검사보다 먼저 실행하며,
+     * 그 검증이 던진 예외는 그대로 전파된다.
      *
      * @param userId 업로드를 요청한 사용자 ID. 객체 키의 소유자 경로로 사용된다
      * @param purpose 업로드 용도. 객체 키 경로와 최대 크기를 정한다
@@ -72,6 +86,8 @@ class ImageService(
         contentType: String,
         fileSizeBytes: Long,
     ): UploadUrlResponse {
+        validatorsByPurpose[purpose]?.validate(userId)
+
         if (contentType !in ALLOWED_CONTENT_TYPES) {
             throw BusinessException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE)
         }

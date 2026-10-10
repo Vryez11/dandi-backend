@@ -3,7 +3,6 @@ package com.dandi.nyummy.meal.dto
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.NotNull
 import java.time.Instant
 import java.time.LocalDate
 
@@ -12,14 +11,6 @@ data class CreateMealRequest(
     @field:NotBlank
     val imageKey: String,
 
-)
-
-data class UploadImageRequest(
-    @field:NotBlank()
-    val contentType: String,
-
-    @field:NotNull()
-    val fileSizeBytes: Long,
 )
 
 data class MealResponse(

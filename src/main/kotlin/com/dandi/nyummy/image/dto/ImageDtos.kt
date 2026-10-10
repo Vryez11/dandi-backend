@@ -1,6 +1,20 @@
 package com.dandi.nyummy.image.dto
 
+import com.dandi.nyummy.image.enum.ImagePurpose
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import java.time.Instant
+
+data class CreateUploadUrlRequest(
+    @field:NotNull
+    val purpose: ImagePurpose,
+
+    @field:NotBlank
+    val contentType: String,
+
+    @field:NotNull
+    val fileSizeBytes: Long,
+)
 
 data class UploadUrlResponse(
     val uploadUrl: String,
