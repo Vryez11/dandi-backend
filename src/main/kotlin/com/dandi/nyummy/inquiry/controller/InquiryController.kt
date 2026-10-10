@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.controller
 
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
+import com.dandi.nyummy.inquiry.dto.InquiriesResponse
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
 import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
 import com.dandi.nyummy.inquiry.service.InquiryService
@@ -11,6 +12,8 @@ import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @Tag(name = "Inquiry", description = "문의 생성 · 조회 · 수정 · 삭제 API")
@@ -40,6 +44,24 @@ class InquiryController(private val inquiryService: InquiryService) {
         inquiryService.createInquiry(user.userId, request)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
+
+    @Operation(
+        summary = "문의 목록 조회",
+        description = "문의 목록을 최신순으로 조회한다. 무한 스크롤용 cursor 방식이다. " +
+            "첫 요청은 cursor 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor를 cursor로 보낸다. " +
+            "hasNext가 false면 마지막 묶음이며 nextCursor는 null이다.",
+    )
+    @ApiResponse(responseCode = "400", description = "size가 1~50 범위를 벗어났습니다.")
+    @GetMapping
+    fun getInquiries(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "직전 응답의 nextCursor. 첫 요청에서는 생략한다.") @RequestParam(required = false) cursor: Long?,
+        @Parameter(description = "한 번에 조회할 개수 (1~50, 기본 10)")
+        @RequestParam(defaultValue = "10")
+        @Min(1)
+        @Max(50)
+        size: Int,
+    ): InquiriesResponse = inquiryService.getInquiries(user.userId, cursor, size)
 
     @Operation(
         summary = "문의 상세 조회",

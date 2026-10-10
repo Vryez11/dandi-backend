@@ -31,6 +31,17 @@ data class UpdateInquiryRequest(
     val questionContent: String,
 )
 
+data class InquiriesResponse(val inquiries: List<InquirySummaryResponse>, val nextCursor: Long?, val hasNext: Boolean)
+
+data class InquirySummaryResponse(
+    val inquiryId: Long,
+    val category: InquiryCategory,
+    val questionTitle: String,
+    val createdAt: Instant,
+    val isAnswered: Boolean,
+    val hasNewAnswer: Boolean,
+)
+
 data class InquiryResponse(
     val inquiryId: Long,
     val category: InquiryCategory,

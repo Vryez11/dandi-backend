@@ -3,11 +3,14 @@ package com.dandi.nyummy.inquiry.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
+import com.dandi.nyummy.inquiry.dto.InquiriesResponse
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
 import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
 import com.dandi.nyummy.inquiry.mapper.toInquiry
 import com.dandi.nyummy.inquiry.mapper.toInquiryResponse
+import com.dandi.nyummy.inquiry.mapper.toInquirySummaryResponse
 import com.dandi.nyummy.inquiry.repository.InquiryRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -25,6 +28,29 @@ class InquiryService(private val inquiryRepository: InquiryRepository, private v
     @Transactional
     fun createInquiry(userId: Long, request: CreateInquiryRequest) {
         inquiryRepository.save(request.toInquiry(userId))
+    }
+
+    /**
+     * 사용자의 문의 목록을 최신순으로 [size]개씩 조회한다. 무한 스크롤용 cursor 방식이다.
+     *
+     * 첫 요청은 [cursor] 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor(마지막 문의 id)를 보낸다.
+     * offset 대신 id 기준점을 쓰므로 스크롤 중에 문의가 생기거나 지워져도 중복·누락이 없다.
+     *
+     * @param cursor 직전 묶음의 마지막 문의 id. null이면 가장 최신 문의부터 조회한다.
+     */
+    @Transactional(readOnly = true)
+    fun getInquiries(userId: Long, cursor: Long?, size: Int): InquiriesResponse {
+        val inquiries = inquiryRepository.getInquiriesByUserIdBeforeCursor(
+            userId = userId,
+            cursor = cursor ?: Long.MAX_VALUE,
+            pageable = PageRequest.of(0, size),
+        )
+
+        return InquiriesResponse(
+            inquiries = inquiries.content.map { it.toInquirySummaryResponse() },
+            nextCursor = if (inquiries.hasNext()) inquiries.content.last().id else null,
+            hasNext = inquiries.hasNext(),
+        )
     }
 
     /**

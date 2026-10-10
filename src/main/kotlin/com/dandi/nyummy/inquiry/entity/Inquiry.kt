@@ -73,6 +73,9 @@ class Inquiry(
     val isAnswered: Boolean
         get() = answeredAt != null
 
+    val hasNewAnswer: Boolean
+        get() = isAnswered && answerReadAt == null
+
     fun updateQuestion(category: InquiryCategory, questionTitle: String, questionContent: String) {
         validateUpdatable()
         this.category = category

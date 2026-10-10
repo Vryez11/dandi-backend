@@ -2,6 +2,7 @@ package com.dandi.nyummy.inquiry.mapper
 
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
+import com.dandi.nyummy.inquiry.dto.InquirySummaryResponse
 import com.dandi.nyummy.inquiry.entity.Inquiry
 
 fun CreateInquiryRequest.toInquiry(userId: Long): Inquiry = Inquiry(
@@ -9,6 +10,15 @@ fun CreateInquiryRequest.toInquiry(userId: Long): Inquiry = Inquiry(
     category = this.category,
     questionTitle = this.questionTitle,
     questionContent = this.questionContent,
+)
+
+fun Inquiry.toInquirySummaryResponse(): InquirySummaryResponse = InquirySummaryResponse(
+    inquiryId = this.id,
+    category = this.category,
+    questionTitle = this.questionTitle,
+    createdAt = this.createdAt,
+    isAnswered = this.isAnswered,
+    hasNewAnswer = this.hasNewAnswer,
 )
 
 fun Inquiry.toInquiryResponse(): InquiryResponse = InquiryResponse(
