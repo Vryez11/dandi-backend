@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -64,4 +65,16 @@ class InquiryController(private val inquiryService: InquiryService) {
         @Parameter(description = "문의 ID") @PathVariable("inquiryId") inquiryId: Long,
         @Valid @RequestBody request: UpdateInquiryRequest,
     ): InquiryResponse = inquiryService.updateInquiry(user.userId, inquiryId, request)
+
+    @Operation(summary = "문의 삭제", description = "문의를 삭제한다. 답변이 등록된 문의도 삭제할 수 있다.")
+    @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @ApiResponse(responseCode = "404", description = "문의가 없거나 접근할 수 없습니다.")
+    @DeleteMapping("/{inquiryId}")
+    fun deleteInquiry(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "문의 ID") @PathVariable("inquiryId") inquiryId: Long,
+    ): ResponseEntity<Void> {
+        inquiryService.deleteInquiry(user.userId, inquiryId)
+        return ResponseEntity.noContent().build()
+    }
 }
