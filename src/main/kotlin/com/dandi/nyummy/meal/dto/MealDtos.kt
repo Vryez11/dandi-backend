@@ -22,14 +22,6 @@ data class UploadImageRequest(
     val fileSizeBytes: Long,
 )
 
-data class UploadImageResponse(
-    val uploadUrl: String,
-    val imageKey: String,
-    val uploadMethod: String,
-    val uploadHeaders: Map<String, String>,
-    val expiresAt: String,
-)
-
 data class MealResponse(
 
     val mealId: Long,
