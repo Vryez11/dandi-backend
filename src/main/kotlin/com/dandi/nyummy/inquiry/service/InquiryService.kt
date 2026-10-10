@@ -28,6 +28,14 @@ class InquiryService(private val inquiryRepository: InquiryRepository, private v
     }
 
     /**
+     * 답변이 등록됐지만 아직 읽지 않은 문의가 있는지 확인한다. 삭제된 문의는 제외한다.
+     *
+     * 답변을 읽은 시각은 문의 상세 조회 때 기록된다.
+     */
+    @Transactional(readOnly = true)
+    fun existsUnreadAnswer(userId: Long): Boolean = inquiryRepository.existsUnreadAnswerByUserId(userId)
+
+    /**
      * 문의 하나의 상세 내용을 조회한다.
      *
      * 답변이 달린 문의를 처음 조회하면 답변 읽음 시각을 기록한다. home의 안 읽은 답변 여부가 이 값으로 계산되므로,
