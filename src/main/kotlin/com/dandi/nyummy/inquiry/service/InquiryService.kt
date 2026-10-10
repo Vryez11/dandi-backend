@@ -4,6 +4,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
+import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
 import com.dandi.nyummy.inquiry.mapper.toInquiry
 import com.dandi.nyummy.inquiry.mapper.toInquiryResponse
 import com.dandi.nyummy.inquiry.repository.InquiryRepository
@@ -41,6 +42,25 @@ class InquiryService(private val inquiryRepository: InquiryRepository, private v
 
         inquiry.validateOwnership(userId)
         inquiry.updateAnswerReadAt(Instant.now(clock))
+
+        return inquiry.toInquiryResponse()
+    }
+
+    /**
+     * 문의의 유형, 제목, 내용을 수정한다. 답변이 등록된 뒤에는 수정할 수 없다.
+     *
+     * 이미지(imageKey)는 presigned URL 발급이 추상화된 뒤에 수정 대상에 추가한다.
+     *
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
+     */
+    @Transactional
+    fun updateInquiry(userId: Long, inquiryId: Long, request: UpdateInquiryRequest): InquiryResponse {
+        val inquiry = inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId)
+            ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+
+        inquiry.validateOwnership(userId)
+        inquiry.updateQuestion(request.category, request.questionTitle, request.questionContent)
 
         return inquiry.toInquiryResponse()
     }

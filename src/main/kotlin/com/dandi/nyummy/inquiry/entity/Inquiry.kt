@@ -73,6 +73,13 @@ class Inquiry(
     val isAnswered: Boolean
         get() = answeredAt != null
 
+    fun updateQuestion(category: InquiryCategory, questionTitle: String, questionContent: String) {
+        validateUpdatable()
+        this.category = category
+        this.questionTitle = questionTitle
+        this.questionContent = questionContent
+    }
+
     /**
      * 답변을 처음 읽은 시각을 기록한다. 답변이 없거나 이미 읽었으면 그대로 둔다.
      */
@@ -85,6 +92,12 @@ class Inquiry(
     fun validateOwnership(requestUserId: Long) {
         if (userId != requestUserId) {
             throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+        }
+    }
+
+    fun validateUpdatable() {
+        if (isAnswered) {
+            throw BusinessException(InquiryErrorCode.ALREADY_ANSWERED)
         }
     }
 }
