@@ -2,10 +2,8 @@ package com.dandi.nyummy.inquiry.service
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
-import com.dandi.nyummy.inquiry.dto.InquiryResponse
 import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
 import com.dandi.nyummy.inquiry.entity.Inquiry
-import com.dandi.nyummy.inquiry.mapper.toInquiryResponse
 import com.dandi.nyummy.inquiry.repository.InquiryRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -44,20 +42,16 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
      * 답변을 지울 수 있기 때문이다. 다시 읽으면 그사이 답변·삭제도 다시 검증된다.
      *
      * @param imageKey 확정이 끝난 이미지 키. null이면 이미지를 지운다
+     * @return 변경이 커밋된 [Inquiry]
      * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
      * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
      */
     @Transactional
-    fun updateInquiry(
-        userId: Long,
-        inquiryId: Long,
-        request: UpdateInquiryRequest,
-        imageKey: String?,
-    ): InquiryResponse {
+    fun updateInquiry(userId: Long, inquiryId: Long, request: UpdateInquiryRequest, imageKey: String?): Inquiry {
         val inquiry = getUpdatableInquiry(userId, inquiryId)
 
         inquiry.updateQuestion(request.category, request.questionTitle, request.questionContent, imageKey)
 
-        return inquiry.toInquiryResponse()
+        return inquiry
     }
 }

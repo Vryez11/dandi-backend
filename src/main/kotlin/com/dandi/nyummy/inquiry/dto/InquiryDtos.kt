@@ -51,6 +51,7 @@ data class InquiryResponse(
     val category: InquiryCategory,
     val questionTitle: String,
     val questionContent: String,
+    val imageUrl: String?,
     val createdAt: Instant,
     val isAnswered: Boolean,
     val answerTitle: String?,

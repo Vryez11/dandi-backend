@@ -22,11 +22,12 @@ fun Inquiry.toInquirySummaryResponse(): InquirySummaryResponse = InquirySummaryR
     hasNewAnswer = this.hasNewAnswer,
 )
 
-fun Inquiry.toInquiryResponse(): InquiryResponse = InquiryResponse(
+fun Inquiry.toInquiryResponse(imageUrl: String?): InquiryResponse = InquiryResponse(
     inquiryId = this.id,
     category = this.category,
     questionTitle = this.questionTitle,
     questionContent = this.questionContent,
+    imageUrl = imageUrl,
     createdAt = this.createdAt,
     isAnswered = this.isAnswered,
     answerTitle = this.answerTitle,

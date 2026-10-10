@@ -9,6 +9,7 @@ import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
 import com.dandi.nyummy.inquiry.dto.InquiriesResponse
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
 import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
+import com.dandi.nyummy.inquiry.entity.Inquiry
 import com.dandi.nyummy.inquiry.mapper.toInquiry
 import com.dandi.nyummy.inquiry.mapper.toInquiryResponse
 import com.dandi.nyummy.inquiry.mapper.toInquirySummaryResponse
@@ -109,7 +110,7 @@ class InquiryService(
         inquiry.validateOwnership(userId)
         inquiry.updateAnswerReadAt(Instant.now(clock))
 
-        return inquiry.toInquiryResponse()
+        return convertInquiryResponse(inquiry)
     }
 
     /**
@@ -140,8 +141,16 @@ class InquiryService(
             else -> confirmImage(userId, requestImageKey)
         }
 
-        return inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
+        val updatedInquiry = inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
+
+        return convertInquiryResponse(updatedInquiry)
     }
+
+    /**
+     * 문의를 상세 응답으로 변환한다. 이미지가 있으면 조회용 presigned URL을 만들어 넣는다.
+     */
+    private fun convertInquiryResponse(inquiry: Inquiry): InquiryResponse =
+        inquiry.toInquiryResponse(imageUrl = inquiry.imageKey?.let { imageService.createImageUrl(it) })
 
     /**
      * 문의를 소프트 삭제한다. 답변이 등록된 문의도 삭제할 수 있다.

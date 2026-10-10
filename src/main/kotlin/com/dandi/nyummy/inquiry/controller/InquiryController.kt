@@ -71,7 +71,8 @@ class InquiryController(private val inquiryService: InquiryService) {
 
     @Operation(
         summary = "문의 상세 조회",
-        description = "문의 하나의 질문과 답변을 조회한다. 답변이 달린 문의를 처음 조회하면 답변을 읽은 것으로 기록한다.",
+        description = "문의 하나의 질문과 답변을 조회한다. 답변이 달린 문의를 처음 조회하면 답변을 읽은 것으로 기록한다. " +
+            "이미지가 있으면 imageUrl에 일정 시간 동안만 유효한 조회 URL이 들어 있고, 없으면 null이다.",
     )
     @ApiResponse(responseCode = "404", description = "문의가 없거나 접근할 수 없습니다.")
     @GetMapping("/{inquiryId}")
