@@ -1,0 +1,113 @@
+package com.dandi.nyummy.inquiry.entity
+
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.ErrorCode
+import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
+import com.dandi.nyummy.inquiry.enum.InquiryCategory
+import java.time.Instant
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/** 답변 여부·읽음·수정 가능 여부처럼 answeredAt에서 계산되는 규칙을 다룬다. */
+class InquiryTest {
+
+    private val userId = 1L
+    private val answeredAt = Instant.parse("2026-10-10T03:00:00Z")
+    private val readAt = Instant.parse("2026-10-10T04:00:00Z")
+
+    private fun inquiry(answeredAt: Instant? = null, answerReadAt: Instant? = null) = Inquiry(
+        userId = userId,
+        category = InquiryCategory.QUESTION,
+        questionTitle = "제목",
+        questionContent = "내용",
+    ).apply {
+        this.answeredAt = answeredAt
+        this.answerReadAt = answerReadAt
+    }
+
+    private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(expected, exception.errorCode)
+    }
+
+    // hasNewAnswer
+
+    @Test
+    fun `답변이 없으면 새 답변이 아니다`() {
+        assertFalse(inquiry().hasNewAnswer)
+    }
+
+    @Test
+    fun `답변이 있고 읽지 않았으면 새 답변이다`() {
+        assertTrue(inquiry(answeredAt = answeredAt).hasNewAnswer)
+    }
+
+    @Test
+    fun `답변을 읽었으면 새 답변이 아니다`() {
+        assertFalse(inquiry(answeredAt = answeredAt, answerReadAt = readAt).hasNewAnswer)
+    }
+
+    // updateAnswerReadAt
+
+    @Test
+    fun `답변이 없으면 읽음 시각을 기록하지 않는다`() {
+        val inquiry = inquiry()
+
+        inquiry.updateAnswerReadAt(readAt)
+
+        assertNull(inquiry.answerReadAt)
+    }
+
+    @Test
+    fun `답변을 처음 읽으면 읽음 시각을 기록한다`() {
+        val inquiry = inquiry(answeredAt = answeredAt)
+
+        inquiry.updateAnswerReadAt(readAt)
+
+        assertEquals(readAt, inquiry.answerReadAt)
+    }
+
+    @Test
+    fun `이미 읽은 답변은 처음 읽은 시각을 유지한다`() {
+        val inquiry = inquiry(answeredAt = answeredAt, answerReadAt = readAt)
+
+        inquiry.updateAnswerReadAt(readAt.plusSeconds(3_600))
+
+        assertEquals(readAt, inquiry.answerReadAt)
+    }
+
+    // updateQuestion
+
+    @Test
+    fun `답변이 없으면 질문과 이미지를 수정한다`() {
+        val inquiry = inquiry()
+
+        inquiry.updateQuestion(InquiryCategory.BUG_REPORT, "새 제목", "새 내용", "inquiries/1/new.png")
+
+        assertEquals(InquiryCategory.BUG_REPORT, inquiry.category)
+        assertEquals("새 제목", inquiry.questionTitle)
+        assertEquals("새 내용", inquiry.questionContent)
+        assertEquals("inquiries/1/new.png", inquiry.imageKey)
+    }
+
+    @Test
+    fun `답변이 달린 문의는 수정하지 않는다`() {
+        val inquiry = inquiry(answeredAt = answeredAt)
+
+        assertBusinessException(InquiryErrorCode.ALREADY_ANSWERED) {
+            inquiry.updateQuestion(InquiryCategory.BUG_REPORT, "새 제목", "새 내용", null)
+        }
+        assertEquals("제목", inquiry.questionTitle)
+    }
+
+    // validateOwnership
+
+    @Test
+    fun `다른 사용자의 문의는 존재하지 않는 것으로 거부한다`() {
+        assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiry().validateOwnership(userId + 1) }
+    }
+}
