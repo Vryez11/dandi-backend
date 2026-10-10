@@ -1,0 +1,10 @@
+### 문의하기 API
+POST {{url}}/api/v1/inquiries
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "category": "BUG_REPORT",
+  "questionTitle": "식사 사진이 업로드되지 않아요",
+  "questionContent": "갤러리에서 사진을 선택하면 로딩만 계속됩니다."
+}
