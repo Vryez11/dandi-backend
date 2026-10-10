@@ -1,5 +1,7 @@
 package com.dandi.nyummy.inquiry.entity
 
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.enum.InquiryCategory
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -67,4 +69,22 @@ class Inquiry(
 
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null
+
+    val isAnswered: Boolean
+        get() = answeredAt != null
+
+    /**
+     * 답변을 처음 읽은 시각을 기록한다. 답변이 없거나 이미 읽었으면 그대로 둔다.
+     */
+    fun updateAnswerReadAt(answerReadAt: Instant) {
+        if (isAnswered && this.answerReadAt == null) {
+            this.answerReadAt = answerReadAt
+        }
+    }
+
+    fun validateOwnership(requestUserId: Long) {
+        if (userId != requestUserId) {
+            throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+        }
+    }
 }
