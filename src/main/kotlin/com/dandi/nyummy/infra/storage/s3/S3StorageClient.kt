@@ -1,4 +1,4 @@
-package com.dandi.nyummy.infra.image.s3
+package com.dandi.nyummy.infra.storage.s3
 
 import aws.sdk.kotlin.services.s3.S3Client
 import aws.sdk.kotlin.services.s3.headObject
@@ -15,10 +15,10 @@ import aws.smithy.kotlin.runtime.content.toByteArray
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
-import com.dandi.nyummy.infra.image.ExifCaptureTimeReader
-import com.dandi.nyummy.infra.image.s3.S3Service.Companion.ALLOWED_CONTENT_TYPES
-import com.dandi.nyummy.infra.image.s3.dto.S3ObjectContent
-import com.dandi.nyummy.infra.image.s3.dto.S3UploadResult
+import com.dandi.nyummy.image.ExifCaptureTimeReader
+import com.dandi.nyummy.infra.storage.s3.S3StorageClient.Companion.ALLOWED_CONTENT_TYPES
+import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContent
+import com.dandi.nyummy.infra.storage.s3.dto.S3UploadResult
 import com.dandi.nyummy.meal.config.MealProperties
 import kotlinx.coroutines.runBlocking
 import org.apache.tika.Tika
@@ -33,7 +33,7 @@ import java.util.*
 import kotlin.time.Duration
 
 @Service
-class S3Service(
+class S3StorageClient(
     private val s3Client: S3Client,
     private val clock: Clock,
     @Value("\${AWS_S3_BUCKET_NAME}") private val bucketName: String,
@@ -58,7 +58,7 @@ class S3Service(
         const val TAG_STATUS = "status"
         const val TAG_STATUS_TEMP = "temp"
         const val TAG_STATUS_COMMITTED = "committed"
-        private val logger = LoggerFactory.getLogger(S3Service::class.java)
+        private val logger = LoggerFactory.getLogger(S3StorageClient::class.java)
     }
 
     private val tika = Tika()

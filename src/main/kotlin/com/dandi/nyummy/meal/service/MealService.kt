@@ -3,7 +3,7 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
-import com.dandi.nyummy.infra.image.s3.S3Service
+import com.dandi.nyummy.infra.storage.s3.S3StorageClient
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
 import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
@@ -43,7 +43,7 @@ import kotlin.time.Duration.Companion.minutes
 class MealService(
     private val analysisService: AnalysisService,
     private val mealRepository: MealRepository,
-    private val s3Service: S3Service,
+    private val s3StorageClient: S3StorageClient,
     private val clock: Clock,
     private val profileRepository: ProfileRepository,
     private val mealProperties: MealProperties,
@@ -76,7 +76,7 @@ class MealService(
         val expirationInstant = Instant.now(clock)
             .plus(mealProperties.presignedUrlExpirationMinutes.toLong(), ChronoUnit.MINUTES)
 
-        val uploadUrl = s3Service.createMealUploadUrl(
+        val uploadUrl = s3StorageClient.createMealUploadUrl(
             userId = userId,
             contentType = request.contentType,
             fileSizeBytes = request.fileSizeBytes,
@@ -107,7 +107,7 @@ class MealService(
      * 반환되는 상태는 이미 COMPLETED 또는 FAILED로 확정된 값이다.
      *
      * [Meal.mealAt]에는 이미지 EXIF에서 추출한 촬영 시각이 저장되고, EXIF가 없으면 서버 시각이
-     * 들어간다. [S3Service.confirmUploadedMealImage]가 촬영 날짜를 오늘로 강제하므로 저장되는
+     * 들어간다. [S3StorageClient.confirmUploadedMealImage]가 촬영 날짜를 오늘로 강제하므로 저장되는
      * 값은 어느 쪽이든 오늘 안의 시각이다.
      *
      * EXIF에서 온 값은 촬영 기기의 시계에 의존하므로 서버 시각과 최대 하루만큼 어긋날 수 있다.
@@ -134,7 +134,7 @@ class MealService(
         // status=committed라 라이프사이클 정리 대상에서 빠져 고아 객체로 남는다.
         validateDailyCount(userId, LocalDate.now(clock.withZone(MEAL_ZONE)))
 
-        val (imageKey, capturedAt) = s3Service.confirmUploadedMealImage(
+        val (imageKey, capturedAt) = s3StorageClient.confirmUploadedMealImage(
             userId = userId,
             imageKey = request.imageKey,
             maxFileSizeBytes = mealProperties.maxFileSizeBytes,
@@ -270,7 +270,7 @@ class MealService(
             throw BusinessException(AuthErrorCode.FORBIDDEN)
         }
 
-        val imageUrl = s3Service.createPresignedGetUrl(meal.imageKey, 10.minutes)
+        val imageUrl = s3StorageClient.createPresignedGetUrl(meal.imageKey, 10.minutes)
 
         return meal.toMealResponse(imageUrl)
     }
@@ -294,7 +294,7 @@ class MealService(
             throw BusinessException(AuthErrorCode.FORBIDDEN)
         }
 
-        val imageUrl = s3Service.createPresignedGetUrl(meal.imageKey, 10.minutes)
+        val imageUrl = s3StorageClient.createPresignedGetUrl(meal.imageKey, 10.minutes)
 
         meal.updateName(name)
 
