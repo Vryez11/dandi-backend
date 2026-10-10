@@ -64,4 +64,20 @@ class InquiryService(private val inquiryRepository: InquiryRepository, private v
 
         return inquiry.toInquiryResponse()
     }
+
+    /**
+     * 문의를 소프트 삭제한다. 답변이 등록된 문의도 삭제할 수 있다.
+     *
+     * 첨부 이미지는 S3에서 지우지 않고 그대로 둔다.
+     *
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 이미 삭제됐거나, 다른 사용자의 문의인 경우
+     */
+    @Transactional
+    fun deleteInquiry(userId: Long, inquiryId: Long) {
+        val inquiry = inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId)
+            ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+
+        inquiry.validateOwnership(userId)
+        inquiry.updateDeletedAt(Instant.now(clock))
+    }
 }

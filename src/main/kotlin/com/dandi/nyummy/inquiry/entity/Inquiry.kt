@@ -89,6 +89,10 @@ class Inquiry(
         }
     }
 
+    fun updateDeletedAt(deletedAt: Instant) {
+        this.deletedAt = deletedAt
+    }
+
     fun validateOwnership(requestUserId: Long) {
         if (userId != requestUserId) {
             throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
