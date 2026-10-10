@@ -1,3 +1,4 @@
 ### 홈 API
+# hasUnreadInquiryAnswer: 답변이 달렸지만 상세 조회로 아직 읽지 않은 문의가 있으면 true (inquiry.http 참고)
 GET {{url}}/api/v1/home
 Authorization: Bearer {{accessToken}}
