@@ -12,6 +12,8 @@ import org.springframework.stereotype.Repository
 interface InquiryRepository : JpaRepository<Inquiry, Long> {
     fun getInquiryByIdAndDeletedAtIsNull(inquiryId: Long): Inquiry?
 
+    fun existsByImageKey(imageKey: String): Boolean
+
     /**
      * id가 [cursor]보다 작은 문의를 최신순(id 내림차순)으로 조회한다.
      *

@@ -2,6 +2,9 @@ package com.dandi.nyummy.inquiry.service
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
+import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.image.enum.ImagePurpose
+import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
 import com.dandi.nyummy.inquiry.dto.InquiriesResponse
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
@@ -17,17 +20,45 @@ import java.time.Clock
 import java.time.Instant
 
 @Service
-class InquiryService(private val inquiryRepository: InquiryRepository, private val clock: Clock) {
+class InquiryService(
+    private val inquiryRepository: InquiryRepository,
+    private val imageService: ImageService,
+    private val clock: Clock,
+) {
 
     /**
-     * 사용자의 문의를 생성한다.
+     * 사용자의 문의를 생성한다. 이미지는 선택이며, 있으면 확정(status=committed)한 뒤 저장한다.
      *
-     * 이미지(imageKey)와 앱 버전(appVersion)은 아직 받지 않는다.
-     * 이미지는 presigned URL 발급이 추상화된 뒤에, 앱 버전은 공통 헤더가 구현된 뒤에 추가한다.
+     * 트랜잭션을 열지 않는다. 이미지 확정은 S3 조회·다운로드를 거치므로, 그동안 DB 커넥션을 잡아두지 않는다.
+     * 저장은 save 자체의 트랜잭션으로 충분하다.
+     *
+     * 앱 버전(appVersion)은 아직 받지 않는다. 공통 헤더가 구현된 뒤에 추가한다.
+     *
+     * @throws BusinessException [InquiryErrorCode.DUPLICATE_IMAGE_KEY] 이미 문의에 사용된 imageKey인 경우
+     * @throws BusinessException [S3ErrorCode.INVALID_KEY] imageKey가 요청자의 문의 경로(`inquiries/{userId}/`)가 아닌 경우
+     * @throws BusinessException [S3ErrorCode.OBJECT_NOT_FOUND] imageKey에 해당하는 객체가 S3에 없는 경우
+     * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] 실제 업로드된 크기가 0이거나 [ImagePurpose.INQUIRY]의 최대 크기를 초과하는 경우
+     * @throws BusinessException [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE] 실제 콘텐츠의 MIME 타입이 허용되지 않거나, imageKey의 확장자와 다른 경우
      */
-    @Transactional
     fun createInquiry(userId: Long, request: CreateInquiryRequest) {
-        inquiryRepository.save(request.toInquiry(userId))
+        val imageKey = request.imageKey?.let { confirmImage(userId, it) }
+
+        inquiryRepository.save(request.toInquiry(userId, imageKey))
+    }
+
+    /**
+     * 문의 이미지를 확정하고 확정된 키를 반환한다.
+     *
+     * 중복 검사를 확정보다 먼저 한다. 확정 뒤에 거부하면 객체가 이미 status=committed라
+     * 라이프사이클 정리 대상에서 빠져 고아 객체로 남는다.
+     * 소프트 삭제된 문의에 쓰인 키도 중복으로 본다.
+     */
+    private fun confirmImage(userId: Long, imageKey: String): String {
+        if (inquiryRepository.existsByImageKey(imageKey)) {
+            throw BusinessException(InquiryErrorCode.DUPLICATE_IMAGE_KEY)
+        }
+
+        return imageService.confirmUpload(userId, ImagePurpose.INQUIRY, imageKey).imageKey
     }
 
     /**

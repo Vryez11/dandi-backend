@@ -33,9 +33,15 @@ class InquiryController(private val inquiryService: InquiryService) {
 
     @Operation(
         summary = "문의하기",
-        description = "문의 유형(BUG_REPORT · QUESTION · SUGGESTION)과 제목, 내용으로 문의를 생성한다.",
+        description = "문의 유형(BUG_REPORT · QUESTION · SUGGESTION)과 제목, 내용으로 문의를 생성한다. " +
+            "이미지는 선택이며, 이미지 업로드 URL 발급 API에 purpose=INQUIRY로 받은 imageKey로 업로드한 뒤 imageKey를 함께 보낸다.",
     )
-    @ApiResponse(responseCode = "400", description = "제목·내용이 비었거나 길이 제한(100 · 2000자)을 넘었습니다.")
+    @ApiResponse(
+        responseCode = "400",
+        description = "제목·내용이 비었거나 길이 제한(100 · 2000자)을 넘었거나, " +
+            "imageKey가 요청자의 문의 경로가 아니거나, 업로드된 이미지가 없거나, 이미지 크기·형식이 허용되지 않습니다.",
+    )
+    @ApiResponse(responseCode = "409", description = "이미 문의에 사용된 imageKey입니다.")
     @PostMapping
     fun createInquiry(
         @CurrentUser user: AuthUser,

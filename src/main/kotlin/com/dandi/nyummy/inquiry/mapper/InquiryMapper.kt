@@ -5,11 +5,12 @@ import com.dandi.nyummy.inquiry.dto.InquiryResponse
 import com.dandi.nyummy.inquiry.dto.InquirySummaryResponse
 import com.dandi.nyummy.inquiry.entity.Inquiry
 
-fun CreateInquiryRequest.toInquiry(userId: Long): Inquiry = Inquiry(
+fun CreateInquiryRequest.toInquiry(userId: Long, imageKey: String?): Inquiry = Inquiry(
     userId = userId,
     category = this.category,
     questionTitle = this.questionTitle,
     questionContent = this.questionContent,
+    imageKey = imageKey,
 )
 
 fun Inquiry.toInquirySummaryResponse(): InquirySummaryResponse = InquirySummaryResponse(
