@@ -31,6 +31,8 @@ data class UpdateInquiryRequest(
     @field:NotBlank(message = "문의 내용은 필수입니다.")
     @field:Size(max = 2000, message = "문의 내용은 2000자 이하여야 합니다.")
     val questionContent: String,
+
+    val imageKey: String? = null,
 )
 
 data class InquiriesResponse(val inquiries: List<InquirySummaryResponse>, val nextCursor: Long?, val hasNext: Boolean)

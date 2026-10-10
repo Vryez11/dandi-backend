@@ -23,6 +23,7 @@ import java.time.Instant
 class InquiryService(
     private val inquiryRepository: InquiryRepository,
     private val imageService: ImageService,
+    private val inquiryTransactionService: InquiryTransactionService,
     private val clock: Clock,
 ) {
 
@@ -112,22 +113,34 @@ class InquiryService(
     }
 
     /**
-     * 문의의 유형, 제목, 내용을 수정한다. 답변이 등록된 뒤에는 수정할 수 없다.
+     * 문의의 유형, 제목, 내용, 이미지를 수정한다. 답변이 등록된 뒤에는 수정할 수 없다.
      *
-     * 이미지(imageKey)는 presigned URL 발급이 추상화된 뒤에 수정 대상에 추가한다.
+     * 이미지는 PUT 의미를 따른다. imageKey가 null이면 이미지를 지우고, 기존과 같으면 그대로 두고,
+     * 다르면 새 이미지를 확정해 교체한다. 지우거나 교체된 이전 객체는 S3에 그대로 둔다.
+     *
+     * 생성과 같은 이유로 이미지 확정(S3 호출) 동안 트랜잭션을 열지 않으며, 순서는 다음과 같다.
+     * 1. 검증(소유권, 답변 여부)을 확정보다 먼저 한다. 수정이 거부될 이미지를 확정하면 고아 객체로 남는다.
+     * 2. 새 이미지일 때만 확정한다.
+     * 3. 변경은 [InquiryTransactionService]의 별도 트랜잭션에서 문의를 다시 읽어 적용한다. 확정하는 사이 답변이
+     *    등록되거나 삭제됐을 수 있어 다시 검증하고, 처음 읽은 엔티티를 merge하면 그사이 등록된 답변을 덮어쓸 수 있기 때문이다.
      *
      * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
      * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.DUPLICATE_IMAGE_KEY] 새 imageKey가 이미 문의에 사용된 경우
+     * @throws BusinessException [S3ErrorCode.INVALID_KEY] 새 imageKey가 요청자의 문의 경로(`inquiries/{userId}/`)가 아닌 경우
+     * @throws BusinessException [S3ErrorCode.OBJECT_NOT_FOUND] 새 imageKey에 해당하는 객체가 S3에 없는 경우
+     * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] 실제 업로드된 크기가 0이거나 [ImagePurpose.INQUIRY]의 최대 크기를 초과하는 경우
+     * @throws BusinessException [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE] 실제 콘텐츠의 MIME 타입이 허용되지 않거나, imageKey의 확장자와 다른 경우
      */
-    @Transactional
     fun updateInquiry(userId: Long, inquiryId: Long, request: UpdateInquiryRequest): InquiryResponse {
-        val inquiry = inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId)
-            ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+        val inquiry = inquiryTransactionService.getUpdatableInquiry(userId, inquiryId)
 
-        inquiry.validateOwnership(userId)
-        inquiry.updateQuestion(request.category, request.questionTitle, request.questionContent)
+        val imageKey = when (val requestImageKey = request.imageKey) {
+            null, inquiry.imageKey -> requestImageKey
+            else -> confirmImage(userId, requestImageKey)
+        }
 
-        return inquiry.toInquiryResponse()
+        return inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
     }
 
     /**

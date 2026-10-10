@@ -76,11 +76,12 @@ class Inquiry(
     val hasNewAnswer: Boolean
         get() = isAnswered && answerReadAt == null
 
-    fun updateQuestion(category: InquiryCategory, questionTitle: String, questionContent: String) {
+    fun updateQuestion(category: InquiryCategory, questionTitle: String, questionContent: String, imageKey: String?) {
         validateUpdatable()
         this.category = category
         this.questionTitle = questionTitle
         this.questionContent = questionContent
+        this.imageKey = imageKey
     }
 
     /**

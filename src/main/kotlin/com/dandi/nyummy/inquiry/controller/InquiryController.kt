@@ -82,11 +82,17 @@ class InquiryController(private val inquiryService: InquiryService) {
 
     @Operation(
         summary = "문의 수정",
-        description = "문의 유형, 제목, 내용을 수정하고 수정된 문의를 반환한다. 답변이 등록된 문의는 수정할 수 없다.",
+        description = "문의 유형, 제목, 내용, 이미지를 수정하고 수정된 문의를 반환한다. 답변이 등록된 문의는 수정할 수 없다. " +
+            "imageKey는 null이면 이미지 삭제, 기존과 같으면 유지, 다르면 새 이미지로 교체한다. " +
+            "이미지를 유지하려면 기존 imageKey를 그대로 보내야 한다.",
     )
-    @ApiResponse(responseCode = "400", description = "제목·내용이 비었거나 길이 제한(100 · 2000자)을 넘었습니다.")
+    @ApiResponse(
+        responseCode = "400",
+        description = "제목·내용이 비었거나 길이 제한(100 · 2000자)을 넘었거나, " +
+            "새 imageKey가 요청자의 문의 경로가 아니거나, 업로드된 이미지가 없거나, 이미지 크기·형식이 허용되지 않습니다.",
+    )
     @ApiResponse(responseCode = "404", description = "문의가 없거나 접근할 수 없습니다.")
-    @ApiResponse(responseCode = "409", description = "답변이 등록된 문의는 수정할 수 없습니다.")
+    @ApiResponse(responseCode = "409", description = "답변이 등록된 문의이거나, 새 imageKey가 이미 문의에 사용됐습니다.")
     @PutMapping("/{inquiryId}")
     fun updateInquiry(
         @CurrentUser user: AuthUser,
