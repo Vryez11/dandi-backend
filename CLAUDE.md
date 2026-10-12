@@ -8,6 +8,11 @@
 2. 표에 없는 개념이면 단어를 하나 정해 사용하고, **같은 커밋/PR에서 이 표에도 추가**한다.
 3. 금지(동의어) 열에 있는 단어는 사용하지 않는다.
 4. Claude도 동일 규칙을 따른다: 코드를 작성하다 표에 없는 새 개념의 단어를 쓰게 되면, 이 표를 함께 갱신할 것.
+5. 메서드 이름은 **`동사 + 목적어`**로 짓는다. 목적어는 그 메서드가 반환하거나 변경하는 대상이다. 예외는 아래 "동사" 절의 예외 목록만 허용한다.
+   - 동사만 있는 이름 금지: `send()` → `sendEmail()`, `rotate()` → `rotateToken()`
+   - 목적어 자리에 형용사·부사구만 오는 이름 금지: `markSent()` → `createSentMark()`, `validateBeforeUpload()` → 검증 대상을 목적어로
+   - 동사는 하나만: `createOrRestart()` → `startSession()`
+   - 동사가 없는 이름 금지(컨트롤러 포함): `me()` → `getMe()`, `home()` → `getHome()`
 
 ## 동사 (메서드 네이밍)
 
@@ -43,7 +48,14 @@
 | 세션 시작 / 재시작 | start / restart | begin, renew | `startSession()`, `restartSession()` |
 | 토큰 교체(세션 유지) | rotate | replace, swap, renew | `rotateToken()` |
 
-※ 예외: Mapper의 변환 확장 함수는 Kotlin 관례에 따라 `toXxx`를 사용한다. Xxx는 반환 타입 이름과 일치시킨다. 예: `Meal.toNutrition()`, `CreateMealRequest.toEntity()`
+※ 예외 (위 표의 동사와 사용 규칙 5항 `동사 + 목적어`를 따르지 않아도 되는 경우)
+
+- **Mapper 변환 확장 함수**: Kotlin 관례에 따라 `toXxx`를 사용한다. Xxx는 반환 타입 이름과 일치시킨다. 예: `Meal.toNutrition()`, `CreateMealRequest.toEntity()`
+- **인증 행위 자체가 이름인 메서드**: `login()`, `logout()`, `signUp()`, `refresh()` — 목적어(세션·토큰)가 행위에 들어 있다
+- **프레임워크가 이름을 정하는 메서드**: 인터페이스·상위 클래스 override(`doFilterInternal`, `shouldNotFilter`, `commence`, `handle`, `customize`), `@Bean` 팩토리 메서드(반환 타입의 camelCase, 예: `s3Client()`, `passwordEncoder()`)
+- **Spring Data 파생 쿼리**: `findBy~`, `existsBy~`, `deleteBy~`, `countBy~` — 목적어 대신 `By` 뒤 조건이 대상을 나타낸다
+- **Kotlin 관례 함수**: 연산자 함수(`operator fun plus`), companion 팩토리(`of`, `from`), `main`
+- **Boolean 반환 함수**: `is~`/`has~`/`can~` 접두 함수(`isAbsoluteExpired()`)는 Boolean 네이밍을 따른다
 
 ## 클래스 접미사
 
