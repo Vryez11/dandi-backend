@@ -3,6 +3,7 @@ package com.dandi.nyummy.auth.dto
 import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.user.enum.Gender
+import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
@@ -45,6 +46,7 @@ data class SignUpRequest(
     val weight: Int? = null,
 ) {
     @get:AssertTrue(message = "비밀번호가 일치하지 않습니다.")
+    @get:Schema(hidden = true)
     val isPasswordConfirmed: Boolean
         get() = password == confirmPassword
 }

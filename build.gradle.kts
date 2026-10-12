@@ -78,6 +78,9 @@ dependencies {
 
     // spring-doc
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
+    // swagger-core는 스키마를 Jackson 2로 만든다. Jackson 2용 Kotlin 모듈이 없으면 isAnswered가 answered로 문서화돼
+    // 실제 응답(Jackson 3 + Kotlin 모듈)과 필드명이 달라진다. 클래스패스에 있으면 springdoc이 자동 등록한다.
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     runtimeOnly("org.bouncycastle:bcprov-jdk18on:1.82")
 
