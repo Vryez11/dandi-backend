@@ -48,10 +48,10 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
      *
      * @param objectKey 업로드될 S3 객체 키
      * @param contentType 업로드할 파일의 MIME 타입
-     * @param expiration presigned URL의 유효 기간
+     * @param timeToLive presigned URL의 유효 기간
      * @return 업로드용 presigned URL, 객체 키, 필수 요청 헤더를 담은 [S3UploadResult]
      */
-    fun createPresignedPutUrl(objectKey: String, contentType: String, expiration: Duration): S3UploadResult {
+    fun createPresignedPutUrl(objectKey: String, contentType: String, timeToLive: Duration): S3UploadResult {
         val objectTagging = "$TAG_STATUS=$TAG_STATUS_TEMP"
 
         val request = PutObjectRequest {
@@ -61,7 +61,7 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
             tagging = objectTagging
         }
 
-        val url = runBlocking { s3Client.presignPutObject(request, expiration) }.url.toString()
+        val url = runBlocking { s3Client.presignPutObject(request, timeToLive) }.url.toString()
 
         val uploadHeaders = mapOf(
             "Content-Type" to contentType,

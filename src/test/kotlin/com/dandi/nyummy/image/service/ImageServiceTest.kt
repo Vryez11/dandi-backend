@@ -39,8 +39,8 @@ class ImageServiceTest {
 
     private val imageProperties = ImageProperties(
         uploadMethod = "PUT",
-        uploadUrlExpirationMinutes = 10,
-        imageUrlExpirationMinutes = 10,
+        uploadUrlTimeToLiveMinutes = 10,
+        imageUrlTimeToLiveMinutes = 10,
     )
 
     private val s3StorageClient = mockk<S3StorageClient>()

@@ -19,7 +19,7 @@ class SmtpEmailClient(private val javaMailSender: JavaMailSender, private val em
     EmailClient {
 
     companion object {
-        val log = LoggerFactory.getLogger(SmtpEmailClient::class.java)
+        private val logger = LoggerFactory.getLogger(SmtpEmailClient::class.java)
     }
 
     /**
@@ -39,10 +39,10 @@ class SmtpEmailClient(private val javaMailSender: JavaMailSender, private val em
             }
             javaMailSender.send(mimeMessage)
         } catch (e: MailException) {
-            log.error("이메일 발송이 실패했습니다. ${e.message}")
+            logger.error("이메일 발송이 실패했습니다. ${e.message}")
             throw BusinessException(EmailErrorCode.EMAIL_SEND_FAILED)
         } catch (e: MessagingException) {
-            log.error("이메일 메시지 구성이 실패했습니다. ${e.message}")
+            logger.error("이메일 메시지 구성이 실패했습니다. ${e.message}")
             throw BusinessException(EmailErrorCode.EMAIL_SEND_FAILED)
         }
     }

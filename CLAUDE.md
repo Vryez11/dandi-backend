@@ -233,4 +233,4 @@
 
 | 대상 | 규칙 | 비고 |
 |---|---|---|
-| 로거 변수명 | logger | log 금지. `companion object { private val logger = LoggerFactory.getLogger(Xxx::class.java) }` |
+| 로거 변수명 | logger | log 금지. `companion object { private val logger = LoggerFactory.getLogger(Xxx::class.java) }` 단, 상위 클래스가 `logger` 필드를 가진 경우(`OncePerRequestFilter`, `ResponseEntityExceptionHandler` 상속)는 이름이 충돌해 컴파일되지 않으므로(KT-56386) `log`를 쓴다 |

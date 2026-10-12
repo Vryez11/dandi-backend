@@ -99,13 +99,13 @@ class ImageService(
             "${purpose.prefix}/$userId/${today.year}/${today.monthValue}/${today.dayOfMonth}/" +
                 "${UUID.randomUUID()}.$extension"
 
-        val expiration = imageProperties.uploadUrlExpirationMinutes.minutes
-        val expiresAt = Instant.now(clock).plusSeconds(expiration.inWholeSeconds)
+        val timeToLive = imageProperties.uploadUrlTimeToLiveMinutes.minutes
+        val expiresAt = Instant.now(clock).plusSeconds(timeToLive.inWholeSeconds)
 
         val upload = s3StorageClient.createPresignedPutUrl(
             objectKey = key,
             contentType = contentType,
-            expiration = expiration,
+            timeToLive = timeToLive,
         )
 
         return UploadUrlResponse(
@@ -188,5 +188,5 @@ class ImageService(
      * @return 다운로드용 presigned URL 문자열
      */
     fun createImageUrl(imageKey: String): String =
-        s3StorageClient.createPresignedGetUrl(imageKey, imageProperties.imageUrlExpirationMinutes.minutes)
+        s3StorageClient.createPresignedGetUrl(imageKey, imageProperties.imageUrlTimeToLiveMinutes.minutes)
 }

@@ -9,6 +9,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 @ConfigurationProperties("app.image")
 data class ImageProperties(
     val uploadMethod: String,
-    val uploadUrlExpirationMinutes: Int,
-    val imageUrlExpirationMinutes: Int,
+    val uploadUrlTimeToLiveMinutes: Int,
+    val imageUrlTimeToLiveMinutes: Int,
 )
