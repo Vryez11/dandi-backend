@@ -1,6 +1,6 @@
 package com.dandi.nyummy.auth.service
 
-import com.dandi.nyummy.auth.dto.PasswordResetRequest
+import com.dandi.nyummy.auth.dto.ResetPasswordRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.ValidateAuthCodeRequest
@@ -293,7 +293,7 @@ class AuthServiceTest {
         stubVerifiedToken(AuthPurpose.SIGNUP)
 
         assertBusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN) {
-            authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+            authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
         }
         verify(exactly = 0) { passwordService.createTempPasswordByEmail(any()) }
     }
@@ -304,7 +304,7 @@ class AuthServiceTest {
         every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns null
 
         assertBusinessException(AuthErrorCode.EMAIL_NOT_FOUND) {
-            authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+            authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
         }
         verify(exactly = 0) { passwordService.createTempPasswordByEmail(any()) }
     }
@@ -316,7 +316,7 @@ class AuthServiceTest {
         every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns user
         every { passwordService.createTempPasswordByEmail(email) } returns "Temp12345678"
 
-        authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+        authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
 
         verifyOrder {
             passwordService.createTempPasswordByEmail(email)
@@ -335,7 +335,7 @@ class AuthServiceTest {
             tokenInvalidationRepository.createInvalidatedAt(user.id, now)
         } throws DataAccessResourceFailureException("redis down")
 
-        authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+        authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
 
         verify(exactly = 1) { emailService.sendTempPassword(email, "Temp12345678") }
     }

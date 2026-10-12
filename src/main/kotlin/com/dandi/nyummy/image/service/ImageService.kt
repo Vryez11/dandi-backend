@@ -6,7 +6,7 @@ import com.dandi.nyummy.image.ExifCaptureTimeReader
 import com.dandi.nyummy.image.config.ImageProperties
 import com.dandi.nyummy.image.dto.CreateUploadUrlRequest
 import com.dandi.nyummy.image.dto.UploadUrlResponse
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService.Companion.ALLOWED_CONTENT_TYPES
 import com.dandi.nyummy.image.validator.ImageUploadValidator
@@ -130,7 +130,7 @@ class ImageService(
      * @param purpose 업로드 용도. 다른 용도로 발급된 키는 거부된다
      * @param imageKey [createUploadUrl]로 발급받아 업로드에 사용한 객체 키
      * @param validateAfterUpload 업로드된 이미지에 대한 도메인 고유 검증. 예외를 던지면 확정하지 않는다
-     * @return 확정된 키와 EXIF 촬영 시각을 담은 [UploadedImage]
+     * @return 확정된 키와 EXIF 촬영 시각을 담은 [UploadedImageResult]
      * @throws BusinessException [S3ErrorCode.INVALID_KEY] imageKey가 `{purpose.prefix}/{userId}/`로 시작하지 않을 경우
      * @throws BusinessException [S3ErrorCode.OBJECT_NOT_FOUND] imageKey에 해당하는 객체가 S3에 존재하지 않을 경우
      * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] 실제 업로드된 크기가 0이거나
@@ -142,8 +142,8 @@ class ImageService(
         userId: Long,
         purpose: ImagePurpose,
         imageKey: String,
-        validateAfterUpload: (UploadedImage) -> Unit = {},
-    ): UploadedImage = runBlocking {
+        validateAfterUpload: (UploadedImageResult) -> Unit = {},
+    ): UploadedImageResult = runBlocking {
         // 1. imageKey가 이 용도·이 사용자의 경로인지 확인
         if (!imageKey.startsWith("${purpose.prefix}/$userId/")) {
             throw BusinessException(S3ErrorCode.INVALID_KEY)
@@ -168,7 +168,7 @@ class ImageService(
         }
 
         // 5. 도메인 고유 검증. 거부되면 확정 전이므로 객체는 status=temp로 남는다
-        val uploadedImage = UploadedImage(
+        val uploadedImage = UploadedImageResult(
             imageKey = imageKey,
             capturedAt = exifCaptureTimeReader.extractCapturedAt(objectBytes),
         )

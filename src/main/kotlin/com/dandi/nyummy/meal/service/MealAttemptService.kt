@@ -2,7 +2,7 @@ package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.repository.MealRepository
 import org.slf4j.LoggerFactory
@@ -70,7 +70,7 @@ class MealAttemptService(
      * @param uploadedImage 공통 검증을 통과한 업로드 이미지
      * @throws BusinessException [MealErrorCode.STALE_IMAGE] 촬영 날짜가 오늘이 아닌 경우
      */
-    fun validateCapturedAt(userId: Long, uploadedImage: UploadedImage) {
+    fun validateCapturedAt(userId: Long, uploadedImage: UploadedImageResult) {
         val capturedAt = uploadedImage.capturedAt ?: return
         val now = Instant.now(clock)
 

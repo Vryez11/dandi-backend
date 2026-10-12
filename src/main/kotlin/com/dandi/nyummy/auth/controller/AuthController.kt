@@ -4,9 +4,9 @@ import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.OAuthLoginRequest
 import com.dandi.nyummy.auth.dto.OAuthLoginResponse
-import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.ResetPasswordRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
@@ -159,7 +159,7 @@ class AuthController(private val authService: AuthService, private val oauthServ
         email = [EmailErrorCode.EMAIL_SEND_FAILED],
     )
     @PostMapping("/password/reset")
-    fun resetPassword(@Valid @RequestBody request: PasswordResetRequest): ResponseEntity<Void> {
+    fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest): ResponseEntity<Void> {
         authService.resetPassword(request)
 
         return ResponseEntity

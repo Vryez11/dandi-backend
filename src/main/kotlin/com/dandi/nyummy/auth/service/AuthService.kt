@@ -2,9 +2,9 @@ package com.dandi.nyummy.auth.service
 
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
-import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.ResetPasswordRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
@@ -333,13 +333,13 @@ class AuthService(
      * 토큰 파싱(트랜잭션 없음) → 비밀번호 교체([PasswordService] 트랜잭션) → 토큰 무효화 → 이메일 발송 순으로
      * 순차 실행된다 — 발송이 실패하면 사용자는 코드 발송부터 플로우를 재시작해야 한다.
      *
-     * @param request 비밀번호 재설정 요청 정보를 담은 [PasswordResetRequest] (verifiedToken)
+     * @param request 비밀번호 재설정 요청 정보를 담은 [ResetPasswordRequest] (verifiedToken)
      * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
      * @throws BusinessException [AuthErrorCode.INVALID_VERIFIED_TOKEN] 토큰의 서명·형식·타입이 유효하지 않거나, 이메일 계정의 비밀번호 찾기 용도가 아닌 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 토큰의 이메일에 해당하는 사용자가 없는 경우
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
      */
-    fun resetPassword(request: PasswordResetRequest) {
+    fun resetPassword(request: ResetPasswordRequest) {
         // TODO: 레디스 도입 시 사용한 verifiedToken을 블랙리스트로 등록해 일회성 보장
 
         val claims = jwtService.getVerifiedClaims(request.verifiedToken)

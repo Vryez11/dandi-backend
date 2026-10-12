@@ -4,7 +4,7 @@ import com.dandi.nyummy.cat.service.CatService
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.home.dto.HomeResponse
-import com.dandi.nyummy.home.mapper.toHomeUser
+import com.dandi.nyummy.home.mapper.toHomeUserResponse
 import com.dandi.nyummy.inquiry.service.InquiryService
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.user.repository.ProfileRepository
@@ -49,7 +49,7 @@ class HomeService(
         val hasUnreadInquiryAnswer = inquiryService.existsUnreadAnswer(userId)
 
         val response = HomeResponse(
-            user = profile.toHomeUser(),
+            user = profile.toHomeUserResponse(),
             streak = streak,
             todayMealSummary = todayMealSummary,
             hasUnreadInquiryAnswer = hasUnreadInquiryAnswer,

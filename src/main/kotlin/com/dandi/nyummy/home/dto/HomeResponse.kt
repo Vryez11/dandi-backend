@@ -1,12 +1,12 @@
 package com.dandi.nyummy.home.dto
 
-import com.dandi.nyummy.meal.dto.Streak
-import com.dandi.nyummy.meal.dto.TodayMealSummary
-import com.dandi.nyummy.user.dto.HomeUser
+import com.dandi.nyummy.meal.dto.StreakResponse
+import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
+import com.dandi.nyummy.user.dto.HomeUserResponse
 
 data class HomeResponse(
-    val user: HomeUser,
-    val streak: Streak,
-    val todayMealSummary: TodayMealSummary,
+    val user: HomeUserResponse,
+    val streak: StreakResponse,
+    val todayMealSummary: TodayMealSummaryResponse,
     val hasUnreadInquiryAnswer: Boolean,
 )

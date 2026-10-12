@@ -7,11 +7,11 @@ import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.image.ExifCaptureTimeReader
 import com.dandi.nyummy.image.config.ImageProperties
 import com.dandi.nyummy.image.dto.CreateUploadUrlRequest
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.validator.ImageUploadValidator
 import com.dandi.nyummy.infra.storage.s3.S3StorageClient
-import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContent
+import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContentResult
 import com.dandi.nyummy.infra.storage.s3.dto.S3UploadResult
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -79,7 +79,7 @@ class ImageServiceTest {
         capturedAt: Instant? = now,
     ) {
         coEvery { s3StorageClient.getObjectSize(key) } returns size
-        coEvery { s3StorageClient.downloadObject(key) } returns S3ObjectContent(bytes, null)
+        coEvery { s3StorageClient.downloadObject(key) } returns S3ObjectContentResult(bytes, null)
         every { exifCaptureTimeReader.extractCapturedAt(bytes) } returns capturedAt
         coEvery { s3StorageClient.confirmObject(key) } just Runs
     }
@@ -185,13 +185,13 @@ class ImageServiceTest {
         val events = mutableListOf<String>()
         coEvery { s3StorageClient.confirmObject(mealKey) } answers { events += "confirm" }
 
-        var received: UploadedImage? = null
+        var received: UploadedImageResult? = null
         val result = imageService.confirmUpload(userId, ImagePurpose.MEAL, mealKey) {
             received = it
             events += "validate"
         }
 
-        assertEquals(UploadedImage(mealKey, now), result)
+        assertEquals(UploadedImageResult(mealKey, now), result)
         assertEquals(result, received)
         assertEquals(listOf("validate", "confirm"), events)
     }

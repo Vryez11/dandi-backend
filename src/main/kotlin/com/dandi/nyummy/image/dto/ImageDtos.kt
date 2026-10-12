@@ -30,4 +30,4 @@ data class UploadUrlResponse(
  * @property imageKey 확정된 객체 키
  * @property capturedAt EXIF 촬영 시각. 읽을 수 없으면 null이며, 대체값은 도메인이 정한다
  */
-data class UploadedImage(val imageKey: String, val capturedAt: Instant?)
+data class UploadedImageResult(val imageKey: String, val capturedAt: Instant?)

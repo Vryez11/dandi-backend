@@ -3,7 +3,7 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.meal.config.MealProperties
@@ -63,10 +63,10 @@ class MealServiceTest {
 
     /** ImageService가 공통 검증을 통과시킨 뒤 콜백을 실행하는 동작을 흉내 낸다. */
     private fun givenConfirmUpload(capturedAt: Instant?) {
-        val validateAfterUpload = slot<(UploadedImage) -> Unit>()
+        val validateAfterUpload = slot<(UploadedImageResult) -> Unit>()
         every { imageService.confirmUpload(userId, ImagePurpose.MEAL, imageKey, capture(validateAfterUpload)) } answers
             {
-                val uploadedImage = UploadedImage(imageKey, capturedAt)
+                val uploadedImage = UploadedImageResult(imageKey, capturedAt)
                 validateAfterUpload.captured(uploadedImage)
                 uploadedImage
             }
@@ -101,7 +101,7 @@ class MealServiceTest {
 
         mealService.createMeal(userId, request)
 
-        verify { mealAttemptService.validateCapturedAt(userId, UploadedImage(imageKey, now)) }
+        verify { mealAttemptService.validateCapturedAt(userId, UploadedImageResult(imageKey, now)) }
     }
 
     @Test

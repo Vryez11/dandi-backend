@@ -97,7 +97,7 @@ data class ValidateAuthCodeRequest(
 
 data class ValidateAuthCodeResponse(val verifiedToken: String)
 
-data class PasswordResetRequest(
+data class ResetPasswordRequest(
 
     @field:NotBlank
     val verifiedToken: String,

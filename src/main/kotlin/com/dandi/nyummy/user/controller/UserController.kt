@@ -4,10 +4,10 @@ import com.dandi.nyummy.config.openapi.ApiErrorCodes
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
-import com.dandi.nyummy.user.dto.PasswordUpdateRequest
-import com.dandi.nyummy.user.dto.PasswordUpdateResponse
 import com.dandi.nyummy.user.dto.PushSettingResponse
 import com.dandi.nyummy.user.dto.UpdateMealTimeRequest
+import com.dandi.nyummy.user.dto.UpdatePasswordRequest
+import com.dandi.nyummy.user.dto.UpdatePasswordResponse
 import com.dandi.nyummy.user.dto.UpdatePushSettingRequest
 import com.dandi.nyummy.user.dto.UserResponse
 import com.dandi.nyummy.user.service.UserService
@@ -49,8 +49,8 @@ class UserController(private val userService: UserService) {
     @PatchMapping("/me/password")
     fun updatePassword(
         @CurrentUser user: AuthUser,
-        @Valid @RequestBody request: PasswordUpdateRequest,
-    ): PasswordUpdateResponse = userService.updatePassword(user.userId, request)
+        @Valid @RequestBody request: UpdatePasswordRequest,
+    ): UpdatePasswordResponse = userService.updatePassword(user.userId, request)
 
     @Operation(summary = "알림 수신 설정 조회", description = "서비스 알림과 마케팅 알림의 수신 여부를 조회한다.")
     @ApiErrorCodes(user = [UserErrorCode.PROFILE_NOT_FOUND])

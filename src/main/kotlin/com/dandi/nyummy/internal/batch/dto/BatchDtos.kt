@@ -3,7 +3,7 @@ package com.dandi.nyummy.internal.batch.dto
 import com.dandi.nyummy.meal.enum.MealTime
 import java.time.Instant
 
-data class MealReminderTarget(
+data class MealReminderTargetResult(
     val userId: Long,
     val catName: String,
     val breakfastHour: Int?,
@@ -19,4 +19,4 @@ data class MealReminderTarget(
     }
 }
 
-data class RetentionTarget(val userId: Long, val catName: String, val lastMealAt: Instant, val token: String)
+data class RetentionTargetResult(val userId: Long, val catName: String, val lastMealAt: Instant, val token: String)

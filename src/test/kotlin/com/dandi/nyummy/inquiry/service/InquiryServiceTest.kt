@@ -4,7 +4,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
@@ -60,7 +60,7 @@ class InquiryServiceTest {
         every { inquiryRepository.save(capture(savedInquiry)) } answers { firstArg() }
         every { inquiryRepository.existsByImageKey(any()) } returns false
         every { imageService.confirmUpload(userId, ImagePurpose.INQUIRY, any(), any()) } answers {
-            UploadedImage(imageKey = thirdArg(), capturedAt = null)
+            UploadedImageResult(imageKey = thirdArg(), capturedAt = null)
         }
         every { imageService.createImageUrl(any()) } answers { "https://image.example/${firstArg<String>()}" }
     }

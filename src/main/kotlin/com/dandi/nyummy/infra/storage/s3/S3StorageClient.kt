@@ -14,7 +14,7 @@ import aws.sdk.kotlin.services.s3.presigners.presignPutObject
 import aws.smithy.kotlin.runtime.content.toByteArray
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
-import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContent
+import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContentResult
 import com.dandi.nyummy.infra.storage.s3.dto.S3UploadResult
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
@@ -143,14 +143,14 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
         content.bytes.toString(Charsets.UTF_8)
     }
 
-    suspend fun downloadObject(key: String): S3ObjectContent {
+    suspend fun downloadObject(key: String): S3ObjectContentResult {
         val request = GetObjectRequest {
             bucket = bucketName
             this.key = key
         }
 
         return s3Client.getObject(request) { response ->
-            S3ObjectContent(
+            S3ObjectContentResult(
                 bytes = response.body?.toByteArray()
                     ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $key"),
                 contentType = response.contentType,

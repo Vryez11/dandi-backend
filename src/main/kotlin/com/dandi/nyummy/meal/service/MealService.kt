@@ -17,8 +17,8 @@ import com.dandi.nyummy.meal.dto.MealStatusResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.Nutrition
-import com.dandi.nyummy.meal.dto.Streak
-import com.dandi.nyummy.meal.dto.TodayMealSummary
+import com.dandi.nyummy.meal.dto.StreakResponse
+import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
@@ -289,9 +289,9 @@ class MealService(
     }
 
     @Transactional(readOnly = true)
-    fun getStreak(userId: Long): Streak {
+    fun getStreak(userId: Long): StreakResponse {
         // TODO: 스트릭 구현하기
-        return Streak(0, 0)
+        return StreakResponse(0, 0)
     }
 
     /**
@@ -304,10 +304,10 @@ class MealService(
      * 목표 칼로리는 프로필에서 계산하며, 프로필이 비어 있으면 기본 권장량이 쓰인다.
      *
      * @param userId 조회하는 사용자 ID
-     * @return 오늘 기록한 끼니 수·기록 시도 횟수와 상한, 섭취·목표 칼로리를 담은 [TodayMealSummary]
+     * @return 오늘 기록한 끼니 수·기록 시도 횟수와 상한, 섭취·목표 칼로리를 담은 [TodayMealSummaryResponse]
      */
     @Transactional(readOnly = true)
-    fun getTodayMealSummary(userId: Long): TodayMealSummary {
+    fun getTodayMealSummary(userId: Long): TodayMealSummaryResponse {
         // TODO: 사용자별 timezone에 맞게 계산
         val zone = ZoneId.of("Asia/Seoul")
         val today = Instant.now(clock).atZone(zone).toLocalDate()
@@ -327,7 +327,7 @@ class MealService(
         val profile = profileRepository.findProfileByUserId(userId)
         val targetCalory = calculateRecommendedDailyIntake(profile, today).calory
 
-        return TodayMealSummary(
+        return TodayMealSummaryResponse(
             todayRecordedCount = meals.size,
             todayAttemptCount = mealAttemptService.countDailyAttempts(userId, today).toInt(),
             todayMaxAttemptCount = mealProperties.maxDailyCount,
