@@ -28,7 +28,7 @@
 | 재시도 | retry | resume, redo | `retryNutritionAnalysis()` |
 | 분석 | analyze | analysis(명사를 동사 자리에 금지), analyse | `analyzeNutrition()` |
 | 확정(임시→최종 승격) | confirm | finalize, promote, complete | `confirmUpload()` |
-| 바이너리 콘텐츠 조회(외부 스토리지) | download | fetch, retrieve (단, `get`은 도메인 리소스 조회 전용) | `downloadObject()`, `downloadObjectRange()` |
+| 바이너리 콘텐츠 조회(외부 스토리지) | download | fetch, retrieve (단, `get`은 도메인 리소스 조회 전용) | `downloadObject()`, `downloadText()` |
 
 ※ 예외: Mapper의 변환 확장 함수는 Kotlin 관례에 따라 `toXxx`를 사용한다. Xxx는 반환 타입 이름과 일치시킨다. 예: `Meal.toNutrition()`, `CreateMealRequest.toEntity()`
 
@@ -45,7 +45,7 @@
 | DTO-엔티티 변환 | ~Mapper | ~Converter, ~Transformer |
 | 계산 로직(최상위 함수 파일) | ~Calculator | ~Calc, ~Calculation, ~Util |
 | 서블릿/보안 필터 | ~Filter | ~Interceptor (인터셉터는 MVC 계층의 다른 개념) |
-| 응답 직접 직렬화(필터 단계) | ~Writer | ~Handler, ~Responder — 예: `AuthErrorResponseWriter` |
+| 예외를 에러 응답으로 변환 | ~ExceptionHandler | ~Writer, ~Responder — 예: `GlobalExceptionHandler`(@RestControllerAdvice), `SecurityExceptionHandler`(필터 단계 예외를 HandlerExceptionResolver로 위임) |
 | 토큰 발급/검증 컴포넌트 | ~Provider | ~Manager, ~Generator, ~Factory, ~TokenService — 예: `JwtProvider` |
 | 외부 호출과 분리한 짧은 트랜잭션 구간(별도 빈) | ~TransactionService | 같은 클래스의 @Transactional 메서드 호출은 프록시를 거치지 않아 별도 빈으로 둔다 — 예: `InquiryTransactionService` |
 
@@ -54,7 +54,7 @@
 | 개념 | 접두사 | 예시 |
 |---|---|---|
 | 상태/여부 | is~ | `isActive`, `isDeleted` |
-| 소유 여부 | has~ | `hasCat` |
+| 보유/존재 여부 | has~ | `hasCat`, `hasNext`, `hasUnreadAnswer` — Boolean 프로퍼티 전용. 존재를 확인하는 메서드는 exists 동사 |
 | 가능 여부 | can~ | `canEvolve` |
 
 ## 도메인 용어
@@ -65,7 +65,7 @@
 |---|---|---|
 | 사용자 | User | |
 | 고양이 캐릭터 | Cat | |
-| 식사 기록 | Meal | history 아님 (V0.4 마이그레이션에서 rename됨) |
+| 식사 기록 | Meal | history 아님 (V0.4에서 history → meal, V0.31에서 meal → meals로 rename됨) |
 | 재화 | Coin | |
 | 애정도 | Love | |
 | 경험치 | Exp | |
@@ -89,12 +89,11 @@
 | 단백질 | Protein | 단수형 고정 (proteins 아님) |
 | 지방 | Fat | 단수형 고정 (fats 아님) |
 | 분석 | Analysis | 영양 분석. 명사 위치에 사용 (AnalysisService, retryNutritionAnalysis). 진행 중 상태는 MealStatus.ANALYZING |
-| 단건 | Single | 식사 단건 개념 (SingleMealService, getSingleMeal 등) |
 | 인증 | Auth | authentication 축약. 패키지명(auth), 에러코드(api.auth.*) 접두로 사용 |
 | 인증된 현재 사용자 | AuthUser | SecurityContext의 principal 타입. Principal, LoginUser, SessionUser 금지 |
 | 현재 사용자 주입 | CurrentUser | @AuthenticationPrincipal 메타 어노테이션(@CurrentUser). 인증 필수 경로의 컨트롤러 파라미터 전용 |
 | 소유권 | Ownership | 리소스가 요청 사용자 소유인지. 검증은 validateOwnership — ownership은 한 단어 (OwnerShip 금지) |
-| 임시 구현 | Stub | 프로덕션 코드의 임시 대역 접두 (예: StubAuthenticationFilter). Fake, Mock 금지 — Mock은 테스트 전용 |
+| 임시 구현 | Stub | 프로덕션 코드의 임시 대역 접두 (예: StubPushClient). Fake, Mock 금지 — Mock은 테스트 전용 |
 | 보안 인프라 | Security | Spring Security 메커니즘(설정·필터·principal)의 패키지명(security). 인증 API(컨트롤러/DTO)는 auth 패키지와 분리 |
 | JWT | Jwt | 식별자 표기는 Jwt (클래스 `JwtProvider`, 패키지 security.jwt). JWT 전체 대문자, JsonWebToken 금지 |
 | 접근 토큰 | AccessToken | 30분 수명, API 인증용. type 클레임 값은 "access". 필드명 accessToken |
@@ -122,4 +121,5 @@
 |---|---|---|
 | 클래스 | PascalCase | `MealService` |
 | 함수/프로퍼티 | camelCase | `getMeal`, `imageUrl` |
-| DB 테이블/컬럼 | snake_case | `meal`, `image_url` |
+| DB 테이블/컬럼 | snake_case | `meals`, `image_url` |
+| DB 테이블 이름 | 복수형 | `meals`, `refresh_tokens` (V0.31에서 통일). 엔티티 클래스는 단수형(`Meal`) + `@Table(name = "meals")` |
