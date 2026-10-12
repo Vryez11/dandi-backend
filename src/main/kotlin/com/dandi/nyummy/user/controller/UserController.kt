@@ -1,5 +1,7 @@
 package com.dandi.nyummy.user.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import com.dandi.nyummy.user.dto.PasswordUpdateRequest
@@ -31,7 +33,7 @@ class UserController(private val userService: UserService) {
         description = "닉네임 · 신체 정보 · 코인 · 설정한 끼니 시각을 조회한다. " +
             "알림 수신 설정은 설정 화면에서만 필요하므로 이 응답에 넣지 않고 `GET /me/push`로 분리했다.",
     )
-    @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없습니다.")
+    @ApiErrorCodes(user = [UserErrorCode.USER_NOT_FOUND])
     @GetMapping("/me")
     fun me(@CurrentUser user: AuthUser): UserResponse = userService.getMe(user.userId)
 
@@ -41,12 +43,9 @@ class UserController(private val userService: UserService) {
             "기존 RefreshToken을 교체하고 AccessToken 무효화 기준 시각을 기록한다. 응답의 새 토큰 쌍으로 즉시 교체해야 한다.",
     )
     @ApiResponse(responseCode = "200", description = "비밀번호 변경 완료. 새 AccessToken·RefreshToken을 응답한다.")
-    @ApiResponse(
-        responseCode = "400",
-        description = "현재 비밀번호가 일치하지 않거나, 새 비밀번호가 정책(8~64자, 영문·숫자 모두 포함)에 맞지 않거나, " +
-            "소셜 로그인 계정이라 비밀번호가 없는 경우",
+    @ApiErrorCodes(
+        user = [UserErrorCode.USER_NOT_FOUND, UserErrorCode.PASSWORD_NOT_SET, UserErrorCode.PASSWORD_MISMATCH],
     )
-    @ApiResponse(responseCode = "401", description = "인증이 필요합니다.")
     @PatchMapping("/me/password")
     fun updatePassword(
         @CurrentUser user: AuthUser,
@@ -54,6 +53,7 @@ class UserController(private val userService: UserService) {
     ): PasswordUpdateResponse = userService.updatePassword(user.userId, request)
 
     @Operation(summary = "알림 수신 설정 조회", description = "서비스 알림과 마케팅 알림의 수신 여부를 조회한다.")
+    @ApiErrorCodes(user = [UserErrorCode.PROFILE_NOT_FOUND])
     @GetMapping("/me/push")
     fun pushSetting(@CurrentUser user: AuthUser): PushSettingResponse = userService.getPushSetting(user.userId)
 
@@ -64,7 +64,7 @@ class UserController(private val userService: UserService) {
             "거부에서 동의로 바뀔 때 동의 시각을 기록한다.",
     )
     @ApiResponse(responseCode = "200", description = "변경 완료")
-    @ApiResponse(responseCode = "404", description = "프로필을 찾을 수 없습니다.")
+    @ApiErrorCodes(user = [UserErrorCode.PROFILE_NOT_FOUND])
     @PatchMapping("/me/push")
     fun updatePushSetting(@CurrentUser user: AuthUser, @RequestBody request: UpdatePushSettingRequest) {
         userService.updatePushSetting(user.userId, request)
@@ -75,7 +75,7 @@ class UserController(private val userService: UserService) {
         description = "세 끼니 시각을 한 번에 교체한다. 생략하거나 null로 보낸 끼니는 알림을 받지 않는다. " +
             "각 값은 0~23이어야 하고 서로 겹칠 수 없다.",
     )
-    @ApiResponse(responseCode = "400", description = "끼니 시각이 0~23이 아니거나 서로 겹칩니다.")
+    @ApiErrorCodes(user = [UserErrorCode.PROFILE_NOT_FOUND])
     @PutMapping("/me/meal-time")
     fun updateMealTime(
         @CurrentUser user: AuthUser,

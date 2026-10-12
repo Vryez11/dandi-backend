@@ -4,6 +4,10 @@ import com.dandi.nyummy.cat.dto.CatAnimationResponse
 import com.dandi.nyummy.cat.dto.CatResponse
 import com.dandi.nyummy.cat.dto.CreateCatRequest
 import com.dandi.nyummy.cat.service.CatService
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.CatErrorCode
+import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
@@ -28,8 +32,8 @@ class CatController(private val catService: CatService) {
         summary = "고양이 생성",
         description = "고양이를 만들고 온보딩에서 받은 끼니 시각을 프로필에 저장한다. 사용자당 한 마리만 생성할 수 있다.",
     )
-    @ApiResponse(responseCode = "400", description = "끼니 시각이 0~23이 아니거나 서로 겹칩니다.")
-    @ApiResponse(responseCode = "409", description = "이미 생성된 고양이입니다.")
+    @ApiResponse(responseCode = "201", description = "고양이 생성 성공")
+    @ApiErrorCodes(cat = [CatErrorCode.CAT_ALREADY_EXISTS], user = [UserErrorCode.PROFILE_NOT_FOUND])
     @PostMapping
     fun createCat(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateCatRequest): ResponseEntity<Void> {
         catService.createCat(user.userId, request)
@@ -39,10 +43,10 @@ class CatController(private val catService: CatService) {
     @Operation(
         summary = "고양이 조회",
         description = "로그인한 사용자의 고양이 정보(이름, 체형, 애정도, 경험치)를 조회한다. " +
-            "체형은 CatWeight 이름(LEAN · SLIM · NORMAL · CHUBBY · PLUMP)으로 반환된다. " +
+            "체형은 CatWeight 이름으로 반환된다. " +
             "저장된 값을 그대로 읽기만 하며 체형 평가는 하지 않는다.",
     )
-    @ApiResponse(responseCode = "404", description = "사용자의 고양이가 존재하지 않음")
+    @ApiErrorCodes(cat = [CatErrorCode.CAT_NOT_FOUND])
     @GetMapping
     fun getCat(@CurrentUser user: AuthUser): CatResponse = catService.getCat(user.userId)
 
@@ -54,8 +58,10 @@ class CatController(private val catService: CatService) {
             "animation은 [동작 그룹][그룹 내 순차 재생 clip] 2단 배열이며, " +
             "loop가 true인 clip은 다음 clip으로 넘어가기 전 반복하는 지속 구간이다.",
     )
-    @ApiResponse(responseCode = "404", description = "사용자의 고양이가 존재하지 않음")
-    @ApiResponse(responseCode = "500", description = "체형에 해당하는 애니메이션 메타데이터를 읽을 수 없음")
+    @ApiErrorCodes(
+        cat = [CatErrorCode.CAT_NOT_FOUND, CatErrorCode.ANIMATION_METADATA_INVALID],
+        s3 = [S3ErrorCode.OBJECT_READ_FAILED],
+    )
     @GetMapping("/animations")
     fun getAnimations(@CurrentUser user: AuthUser): CatAnimationResponse = catService.getCatAnimations(user.userId)
 }

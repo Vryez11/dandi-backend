@@ -15,6 +15,9 @@ import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
 import com.dandi.nyummy.auth.service.AuthService
 import com.dandi.nyummy.auth.service.OAuthService
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.exception.errorcode.EmailErrorCode
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
@@ -37,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController(private val authService: AuthService, private val oauthService: OAuthService) {
 
     @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인하고 AccessToken(30분)과 RefreshToken(15일)을 발급받는다.")
-    @ApiResponse(responseCode = "401", description = "이메일 또는 비밀번호가 올바르지 않습니다.")
+    @ApiErrorCodes(auth = [AuthErrorCode.INVALID_CREDENTIALS])
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): LoginResponse = authService.login(request)
 
@@ -47,9 +50,16 @@ class AuthController(private val authService: AuthService, private val oauthServ
             "AccessToken과 RefreshToken을 발급받는다. password·confirmPassword는 이메일 가입 전용(필수)이며 소셜 가입은 생략한다. " +
             "신체 정보(gender·birth·height·weight)는 선택 입력이다.",
     )
-    @ApiResponse(responseCode = "400", description = "이메일 가입인데 비밀번호가 없습니다.")
-    @ApiResponse(responseCode = "401", description = "인증이 만료되었거나 토큰이 유효하지 않습니다.")
-    @ApiResponse(responseCode = "409", description = "이미 가입된 이메일 또는 소셜 계정입니다.")
+    @ApiResponse(responseCode = "201", description = "회원가입 성공")
+    @ApiErrorCodes(
+        auth = [
+            AuthErrorCode.VERIFICATION_EXPIRED,
+            AuthErrorCode.INVALID_VERIFIED_TOKEN,
+            AuthErrorCode.PASSWORD_REQUIRED,
+            AuthErrorCode.EMAIL_ALREADY_EXISTS,
+            AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS,
+        ],
+    )
     @PostMapping("/signup")
     fun signup(@Valid @RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> {
         val response = authService.signup(request)
@@ -65,20 +75,25 @@ class AuthController(private val authService: AuthService, private val oauthServ
             "기존 회원이면 AccessToken·RefreshToken을 발급하고 redirectUrl은 홈, " +
             "신규 회원이면 verifiedToken을 발급하고 redirectUrl은 프로필 입력 화면이다. " +
             "nonce는 OIDC 제공자(KAKAO·GOOGLE)에서 필수이며 앱이 SDK 로그인 시 전달한 값 그대로 보낸다. " +
-            "NAVER는 token에 access token을 보내고 nonce는 생략한다.",
+            "NAVER는 token에 access token을 보내고 nonce는 생략한다. provider에 EMAIL은 보낼 수 없다.",
     )
     @ApiResponse(
         responseCode = "200",
         description = "기존 회원: accessToken·refreshToken / 신규 회원: verifiedToken (회원가입 API로 전달)",
     )
-    @ApiResponse(responseCode = "400", description = "지원하지 않는 소셜 로그인 제공자이거나 nonce가 없습니다.")
-    @ApiResponse(responseCode = "401", description = "유효하지 않은 소셜 로그인 토큰입니다.")
-    @ApiResponse(responseCode = "503", description = "소셜 로그인 제공자와 통신할 수 없습니다.")
+    @ApiErrorCodes(
+        auth = [
+            AuthErrorCode.UNSUPPORTED_OAUTH_PROVIDER,
+            AuthErrorCode.OAUTH_NONCE_REQUIRED,
+            AuthErrorCode.INVALID_OAUTH_TOKEN,
+            AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE,
+        ],
+    )
     @PostMapping("/oauth/login")
     fun oauthLogin(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = oauthService.login(request)
 
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰을 검증하고 AccessToken·RefreshToken을 새로 발급한다(rotate).")
-    @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰입니다.")
+    @ApiErrorCodes(auth = [AuthErrorCode.INVALID_REFRESH_TOKEN])
     @PostMapping("/refresh")
     fun refresh(@Valid @RequestBody request: RefreshRequest): RefreshResponse = authService.refresh(request)
 
@@ -87,8 +102,15 @@ class AuthController(private val authService: AuthService, private val oauthServ
         description = "입력한 이메일 주소로 인증 코드를 발송한다. " +
             "purpose가 SIGNUP이면 미가입 이메일, RESET_PASSWORD면 가입된 이메일이어야 한다.",
     )
-    @ApiResponse(responseCode = "409", description = "이미 가입된 이메일입니다. (SIGNUP)")
-    @ApiResponse(responseCode = "404", description = "가입되지 않은 이메일입니다. (RESET_PASSWORD)")
+    @ApiResponse(responseCode = "201", description = "인증 코드 발송 성공. emailChallengeToken을 인증 코드 확인 API로 전달한다.")
+    @ApiErrorCodes(
+        auth = [
+            AuthErrorCode.EMAIL_ALREADY_EXISTS,
+            AuthErrorCode.EMAIL_NOT_FOUND,
+            AuthErrorCode.EMAIL_SEND_RATE_LIMITED,
+        ],
+        email = [EmailErrorCode.EMAIL_SEND_FAILED],
+    )
     @PostMapping("/email-verification")
     fun sendAuthCode(@Valid @RequestBody request: SendAuthCodeRequest): ResponseEntity<SendAuthCodeResponse> {
         val response = authService.sendAuthCode(request)
@@ -104,7 +126,15 @@ class AuthController(private val authService: AuthService, private val oauthServ
             "검증 후 각 용도(회원가입·비밀번호 찾기)를 승계한 verifiedToken을 응답한다.",
     )
     @ApiResponse(responseCode = "200", description = "verifiedToken 발급")
-    @ApiResponse(responseCode = "401", description = "인증 코드 유효 시간이 지났거나(재발송 필요) emailChallengeToken이 유효하지 않습니다.")
+    @ApiErrorCodes(
+        auth = [
+            AuthErrorCode.EMAIL_CODE_EXPIRED,
+            AuthErrorCode.INVALID_EMAIL_CHALLENGE_TOKEN,
+            AuthErrorCode.INCORRECT_EMAIL,
+            AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED,
+            AuthErrorCode.EMAIL_CODE_MISMATCH,
+        ],
+    )
     @PostMapping("/email-verification/confirm")
     fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ResponseEntity<ConfirmAuthCodeResponse> {
         val response = authService.confirmAuthCode(request)
@@ -118,7 +148,14 @@ class AuthController(private val authService: AuthService, private val oauthServ
             "임시 비밀번호로 교체한 뒤 이메일로 발송한다.",
     )
     @ApiResponse(responseCode = "204", description = "임시 비밀번호 발송 완료")
-    @ApiResponse(responseCode = "401", description = "토큰이 유효하지 않거나 이메일 계정의 비밀번호 찾기 용도가 아닙니다.")
+    @ApiErrorCodes(
+        auth = [
+            AuthErrorCode.VERIFICATION_EXPIRED,
+            AuthErrorCode.INVALID_VERIFIED_TOKEN,
+            AuthErrorCode.EMAIL_NOT_FOUND,
+        ],
+        email = [EmailErrorCode.EMAIL_SEND_FAILED],
+    )
     @PostMapping("/password/reset")
     fun resetPassword(@Valid @RequestBody request: PasswordResetRequest): ResponseEntity<Void> {
         authService.resetPassword(request)
@@ -136,7 +173,6 @@ class AuthController(private val authService: AuthService, private val oauthServ
     )
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponse(responseCode = "204", description = "로그아웃 성공")
-    @ApiResponse(responseCode = "401", description = "인증이 필요합니다.")
     @PostMapping("/logout")
     fun logout(@CurrentUser user: AuthUser): ResponseEntity<Void> {
         authService.logout(user.userId)
