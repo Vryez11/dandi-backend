@@ -1,5 +1,6 @@
 package com.dandi.nyummy.filter
 
+import com.dandi.nyummy.header.toCommonHeader
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -31,7 +32,14 @@ class HttpLoggingFilter : OncePerRequestFilter() {
         } finally {
             val elapsed = (System.nanoTime() - startTime) / 1_000_000
             if (!isSuccessfulHealthCheck(request, response)) {
-                log.info("{} {} status={} elapsed={}ms", request.method, request.requestURI, response.status, elapsed)
+                log.info(
+                    "{} {} status={} elapsed={}ms {}",
+                    request.method,
+                    request.requestURI,
+                    response.status,
+                    elapsed,
+                    request.toCommonHeader(),
+                )
             }
         }
     }

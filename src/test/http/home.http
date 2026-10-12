@@ -2,3 +2,13 @@
 # hasUnreadInquiryAnswer: 답변이 달렸지만 상세 조회로 아직 읽지 않은 문의가 있으면 true (inquiry.http 참고)
 GET {{url}}/api/v1/home
 Authorization: Bearer {{accessToken}}
+
+### 공통 헤더 로그 확인 (HttpLoggingFilter 로그 줄 끝에 값이 붙는다, 안 보낸 헤더는 null)
+GET {{url}}/api/v1/home
+Authorization: Bearer {{accessToken}}
+X-App-Version: 1.2.0
+X-Device-Model: iPhone15,2
+X-OS-Version: iOS 18.1
+X-Language: ko
+X-Region: KR
+X-Timezone-Id: Asia/Seoul
