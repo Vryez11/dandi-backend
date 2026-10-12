@@ -65,14 +65,14 @@ class MealAttemptServiceTest {
         assertEquals(MealErrorCode.DAILY_COUNT_EXCEEDED, exception.errorCode)
     }
 
-    // validateCapturedToday
+    // validateCapturedAt
 
     @Test
     fun `KST 기준 오늘 촬영한 사진이면 통과한다`() {
         // 10/10 00:05 KST
         val capturedAt = Instant.parse("2026-10-09T15:05:00Z")
 
-        mealAttemptService.validateCapturedToday(userId, UploadedImage("key", capturedAt))
+        mealAttemptService.validateCapturedAt(userId, UploadedImage("key", capturedAt))
     }
 
     @Test
@@ -80,19 +80,19 @@ class MealAttemptServiceTest {
         // 10/9 23:59 KST — 지금(00:30)과 31분 차이지만 날짜가 다르다
         val capturedAt = Instant.parse("2026-10-09T14:59:00Z")
 
-        assertStaleImage { mealAttemptService.validateCapturedToday(userId, UploadedImage("key", capturedAt)) }
+        assertStaleImage { mealAttemptService.validateCapturedAt(userId, UploadedImage("key", capturedAt)) }
     }
 
     @Test
     fun `촬영 시각이 내일이면 거부한다`() {
         // 10/11 00:00 KST (기기 시계가 앞선 경우)
         assertStaleImage {
-            mealAttemptService.validateCapturedToday(userId, UploadedImage("key", tomorrowStart))
+            mealAttemptService.validateCapturedAt(userId, UploadedImage("key", tomorrowStart))
         }
     }
 
     @Test
     fun `촬영 시각이 없으면 통과한다`() {
-        mealAttemptService.validateCapturedToday(userId, UploadedImage("key", null))
+        mealAttemptService.validateCapturedAt(userId, UploadedImage("key", null))
     }
 }

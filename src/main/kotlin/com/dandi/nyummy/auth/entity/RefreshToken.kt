@@ -37,7 +37,7 @@ class RefreshToken(
     /**
      * 재발급 시 토큰만 교체한다. 절대 만료는 세션이 시작된 시점 기준이므로 건드리지 않는다.
      */
-    fun rotate(refreshToken: String) {
+    fun rotateToken(refreshToken: String) {
         this.refreshToken = refreshToken
     }
 
@@ -46,7 +46,7 @@ class RefreshToken(
      *
      * user_id가 UNIQUE라 사용자당 행이 하나뿐이므로, 재로그인 시 기존 행을 지우지 않고 이 메서드로 갱신한다.
      */
-    fun restart(refreshToken: String, absoluteExpiresAt: Instant) {
+    fun restartSession(refreshToken: String, absoluteExpiresAt: Instant) {
         this.refreshToken = refreshToken
         this.absoluteExpiresAt = absoluteExpiresAt
     }

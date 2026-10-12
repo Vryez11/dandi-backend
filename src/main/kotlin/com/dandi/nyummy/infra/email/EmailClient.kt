@@ -8,5 +8,5 @@ package com.dandi.nyummy.infra.email
  */
 interface EmailClient {
 
-    fun send(message: EmailMessage)
+    fun sendEmail(message: EmailMessage)
 }

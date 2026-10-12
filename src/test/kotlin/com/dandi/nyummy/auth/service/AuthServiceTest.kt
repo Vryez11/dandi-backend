@@ -151,7 +151,7 @@ class AuthServiceTest {
         stubVerifiedToken(AuthPurpose.RESET_PASSWORD)
 
         assertBusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN) {
-            authService.signup(createSignUpRequest())
+            authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -162,7 +162,7 @@ class AuthServiceTest {
         every { userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email) } returns true
 
         assertBusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS) {
-            authService.signup(createSignUpRequest())
+            authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -175,7 +175,7 @@ class AuthServiceTest {
         every { userRepository.save(any()) } throws DataIntegrityViolationException("duplicate email")
 
         assertBusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS) {
-            authService.signup(createSignUpRequest())
+            authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { profileRepository.save(any()) }
     }
@@ -191,7 +191,7 @@ class AuthServiceTest {
         every { profileRepository.save(capture(savedProfile)) } answers { firstArg() }
         every { jwtService.createTokenPair(any()) } returns ("access-token" to "refresh-token")
 
-        val response = authService.signup(createSignUpRequest())
+        val response = authService.signUp(createSignUpRequest())
 
         assertEquals("access-token", response.accessToken)
         assertEquals("refresh-token", response.refreshToken)
@@ -207,7 +207,7 @@ class AuthServiceTest {
         assertEquals(165, savedProfile.captured.height)
         assertEquals(55, savedProfile.captured.weight)
 
-        verify(exactly = 1) { refreshTokenService.createOrRestart(savedUser.captured.id, "refresh-token") }
+        verify(exactly = 1) { refreshTokenService.startSession(savedUser.captured.id, "refresh-token") }
     }
 
     // sendAuthCode

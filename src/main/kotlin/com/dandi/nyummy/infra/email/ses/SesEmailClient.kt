@@ -29,7 +29,7 @@ class SesEmailClient(private val sesV2Client: SesV2Client, private val emailProp
     /**
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] SES 발송 요청이 실패한 경우
      */
-    override fun send(message: EmailMessage) {
+    override fun sendEmail(message: EmailMessage) {
         val request = SendEmailRequest {
             fromEmailAddress = "${emailProperties.fromName} <${emailProperties.fromAddress}>"
             destination = Destination {

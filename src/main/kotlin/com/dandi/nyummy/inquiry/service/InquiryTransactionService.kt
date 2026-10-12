@@ -30,7 +30,7 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
             ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
 
         inquiry.validateOwnership(userId)
-        inquiry.validateUpdatable()
+        inquiry.validateQuestionUpdate()
 
         return inquiry
     }

@@ -444,7 +444,7 @@ class CatServiceTest {
             baseUrl = "https://example.com/",
             animations = emptyList(),
         )
-        every { catAnimationLoader.load(CatWeight.SLIM) } returns animations
+        every { catAnimationLoader.loadCatAnimation(CatWeight.SLIM) } returns animations
 
         // when
         val response = catService.getCatAnimations(userId)
@@ -452,7 +452,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(-1)
         assertThat(response).isEqualTo(animations)
-        verify { catAnimationLoader.load(CatWeight.SLIM) }
+        verify { catAnimationLoader.loadCatAnimation(CatWeight.SLIM) }
     }
 
     // ---------------------------------------------------------------- 픽스처

@@ -15,7 +15,7 @@ class EmailService(private val emailClient: EmailClient) {
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 이메일 발송이 실패한 경우
      */
     fun sendAuthCode(email: String, code: String) {
-        emailClient.send(
+        emailClient.sendEmail(
             EmailMessage(
                 to = email,
                 subject = "[Nyummy] 인증 코드",
@@ -32,7 +32,7 @@ class EmailService(private val emailClient: EmailClient) {
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 이메일 발송이 실패한 경우
      */
     fun sendTempPassword(email: String, tempPassword: String) {
-        emailClient.send(
+        emailClient.sendEmail(
             EmailMessage(
                 to = email,
                 subject = "[Nyummy] 임시 비밀번호",

@@ -80,7 +80,7 @@ class Inquiry(
      * 질문(유형·제목·내용·첨부 이미지)을 수정한다. 답변이 등록된 뒤에는 수정할 수 없다.
      */
     fun updateQuestion(category: InquiryCategory, questionTitle: String, questionContent: String, imageKey: String?) {
-        validateUpdatable()
+        validateQuestionUpdate()
         this.category = category
         this.questionTitle = questionTitle
         this.questionContent = questionContent
@@ -106,7 +106,7 @@ class Inquiry(
         }
     }
 
-    fun validateUpdatable() {
+    fun validateQuestionUpdate() {
         if (isAnswered) {
             throw BusinessException(InquiryErrorCode.ALREADY_ANSWERED)
         }

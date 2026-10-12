@@ -56,7 +56,7 @@ class MealServiceTest {
     init {
         every { mealRepository.existsByImageKey(imageKey) } returns false
         every { mealAttemptService.validateDailyCount(userId) } just Runs
-        every { mealAttemptService.validateCapturedToday(userId, any()) } just Runs
+        every { mealAttemptService.validateCapturedAt(userId, any()) } just Runs
         every { mealRepository.save(capture(savedMeal)) } answers { firstArg() }
         every { analysisService.analyzeNutrition(any()) } just Runs
     }
@@ -101,7 +101,7 @@ class MealServiceTest {
 
         mealService.createMeal(userId, request)
 
-        verify { mealAttemptService.validateCapturedToday(userId, UploadedImage(imageKey, now)) }
+        verify { mealAttemptService.validateCapturedAt(userId, UploadedImage(imageKey, now)) }
     }
 
     @Test
@@ -136,7 +136,7 @@ class MealServiceTest {
     @Test
     fun `오늘 촬영 검증에서 거부되면 식사를 저장하지 않는다`() {
         givenConfirmUpload(now.minusSeconds(86_400))
-        every { mealAttemptService.validateCapturedToday(userId, any()) } throws
+        every { mealAttemptService.validateCapturedAt(userId, any()) } throws
             BusinessException(MealErrorCode.STALE_IMAGE)
 
         assertBusinessException(MealErrorCode.STALE_IMAGE) { mealService.createMeal(userId, request) }

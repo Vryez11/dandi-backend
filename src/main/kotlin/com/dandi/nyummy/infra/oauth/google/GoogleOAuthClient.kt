@@ -30,7 +30,7 @@ class GoogleOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
         val expectedNonce = nonce
             ?: throw BusinessException(AuthErrorCode.OAUTH_NONCE_REQUIRED)
 
-        val jwt = decode(token)
+        val jwt = decodeIdToken(token)
 
         if (jwt.getClaimAsString(CLAIM_NONCE) != expectedNonce) {
             logger.warn("Google ID 토큰 nonce 불일치")
@@ -46,7 +46,7 @@ class GoogleOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
         )
     }
 
-    private fun decode(token: String): Jwt = try {
+    private fun decodeIdToken(token: String): Jwt = try {
         jwtDecoder.decode(token)
     } catch (e: BadJwtException) {
         logger.warn("Google ID 토큰 검증 실패: {}", e.message)

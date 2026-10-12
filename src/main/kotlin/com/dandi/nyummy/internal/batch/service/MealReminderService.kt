@@ -70,7 +70,7 @@ class MealReminderService(
             val notificationId = NotificationId.createMealReminderId(target.userId, today, mealTime)
 
             // 젠킨스 재시도나 잡 중복 실행에서 알림이 두 번 가는 것을 방지
-            if (!pushDeduplicationRepository.markSent(notificationId, DEDUPLICATION_TIME_TO_LIVE)) {
+            if (!pushDeduplicationRepository.createSentMark(notificationId, DEDUPLICATION_TIME_TO_LIVE)) {
                 return@mapNotNull null
             }
 
@@ -86,7 +86,7 @@ class MealReminderService(
         val result = notificationService.sendPushes(messagesByToken)
 
         notificationService.deleteInvalidDeviceTokens(result.invalidTokens)
-        pushDeduplicationRepository.deleteSent(result.getRetryableNotificationIds(messagesByToken))
+        pushDeduplicationRepository.deleteSentMarks(result.getRetryableNotificationIds(messagesByToken))
 
         logger.info(
             "식사 리마인더 발송: hour={}, target={}, sent={}, success={}, invalid={}, retryable={}, elapsed={}ms",

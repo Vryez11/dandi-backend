@@ -28,7 +28,7 @@ class SmtpEmailClient(private val javaMailSender: JavaMailSender, private val em
      *
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] SMTP 발송 요청이 실패한 경우
      */
-    override fun send(message: EmailMessage) {
+    override fun sendEmail(message: EmailMessage) {
         try {
             val mimeMessage = javaMailSender.createMimeMessage()
             MimeMessageHelper(mimeMessage, "UTF-8").apply {

@@ -129,7 +129,7 @@ class CatService(
         val cat = updateCatWeight(userId)
 
         // 저장된 체형 값(-2~2)을 CatWeight로 바꿔 S3의 체형별 메타데이터를 찾는다.
-        return catAnimationLoader.load(CatWeight.fromWeight(cat.weight))
+        return catAnimationLoader.loadCatAnimation(CatWeight.fromWeight(cat.weight))
     }
 
     /**

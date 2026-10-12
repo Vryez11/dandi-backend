@@ -66,7 +66,7 @@ class MealService(
      * 반환되는 상태는 이미 COMPLETED 또는 FAILED로 확정된 값이다.
      *
      * [Meal.mealAt]에는 이미지 EXIF에서 추출한 촬영 시각이 저장되고, EXIF가 없으면 서버 시각이
-     * 들어간다. [MealAttemptService.validateCapturedToday]가 촬영 날짜를 오늘로 강제하므로 저장되는
+     * 들어간다. [MealAttemptService.validateCapturedAt]가 촬영 날짜를 오늘로 강제하므로 저장되는
      * 값은 어느 쪽이든 오늘 안의 시각이다.
      *
      * EXIF에서 온 값은 촬영 기기의 시계에 의존하므로 서버 시각과 최대 하루만큼 어긋날 수 있다.
@@ -98,7 +98,7 @@ class MealService(
             userId = userId,
             purpose = ImagePurpose.MEAL,
             imageKey = request.imageKey,
-            validateAfterUpload = { mealAttemptService.validateCapturedToday(userId, it) },
+            validateAfterUpload = { mealAttemptService.validateCapturedAt(userId, it) },
         )
 
         // EXIF가 없으면 거부하지 않고 서버 시각으로 채운다. 기기·앱에 따라 EXIF가 아예 없거나

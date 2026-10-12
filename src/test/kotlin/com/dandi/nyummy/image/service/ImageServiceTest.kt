@@ -47,7 +47,7 @@ class ImageServiceTest {
     private val exifCaptureTimeReader = mockk<ExifCaptureTimeReader>()
     private val mealValidator = mockk<ImageUploadValidator> {
         every { purpose } returns ImagePurpose.MEAL
-        every { validateBeforeUpload(any()) } just Runs
+        every { validateUploadRequest(any()) } just Runs
     }
 
     private val imageService = createImageService(listOf(mealValidator))
@@ -122,12 +122,12 @@ class ImageServiceTest {
 
         assertTrue(result.imageKey.startsWith("inquiries/1/2026/10/10/"), result.imageKey)
         assertTrue(result.imageKey.endsWith(".png"), result.imageKey)
-        verify(exactly = 0) { mealValidator.validateBeforeUpload(any()) }
+        verify(exactly = 0) { mealValidator.validateUploadRequest(any()) }
     }
 
     @Test
     fun `용도의 검증기가 거부하면 그 예외를 그대로 던지고 URL을 발급하지 않는다`() {
-        every { mealValidator.validateBeforeUpload(userId) } throws
+        every { mealValidator.validateUploadRequest(userId) } throws
             BusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED)
 
         assertBusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED) {

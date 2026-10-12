@@ -135,7 +135,7 @@ class UserService(
 
         val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
-        refreshTokenService.createOrRestart(userId, refreshToken)
+        refreshTokenService.startSession(userId, refreshToken)
 
         return PasswordUpdateResponse(accessToken, refreshToken)
     }

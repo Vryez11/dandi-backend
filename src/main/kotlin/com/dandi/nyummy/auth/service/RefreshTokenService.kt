@@ -29,13 +29,13 @@ class RefreshTokenService(
      * @param refreshToken 새로 발급된 RefreshToken
      */
     @Transactional
-    fun createOrRestart(userId: Long, refreshToken: String) {
+    fun startSession(userId: Long, refreshToken: String) {
         val absoluteExpiresAt = Instant.now(clock).plus(jwtProperties.refreshAbsoluteTimeToLive)
 
         val existingToken = refreshTokenRepository.findByUserId(userId)
 
         if (existingToken != null) {
-            existingToken.restart(refreshToken, absoluteExpiresAt)
+            existingToken.restartSession(refreshToken, absoluteExpiresAt)
             return
         }
 

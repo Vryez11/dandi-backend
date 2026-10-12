@@ -15,5 +15,5 @@ class MealImageUploadValidator(private val mealAttemptService: MealAttemptServic
 
     override val purpose = ImagePurpose.MEAL
 
-    override fun validateBeforeUpload(userId: Long) = mealAttemptService.validateDailyCount(userId)
+    override fun validateUploadRequest(userId: Long) = mealAttemptService.validateDailyCount(userId)
 }

@@ -62,7 +62,7 @@ class AuthService(
      *
      * 조회는 EMAIL 계정으로 한정한다 — 같은 이메일의 소셜 계정은 다른 사용자이며 비밀번호 로그인 대상이 아니다.
      *
-     * 로그인은 새 세션의 시작이므로 RefreshToken 저장은 [RefreshTokenService.createOrRestart]에 맡긴다.
+     * 로그인은 새 세션의 시작이므로 RefreshToken 저장은 [RefreshTokenService.startSession]에 맡긴다.
      *
      * @param request 로그인 요청 정보를 담은 [LoginRequest] (이메일, 비밀번호)
      * @return 리다이렉트 URL과 AccessToken·RefreshToken을 담은 [LoginResponse]
@@ -84,7 +84,7 @@ class AuthService(
 
         val (newAccessToken, newRefreshToken) = jwtService.createTokenPair(userId)
 
-        refreshTokenService.createOrRestart(userId, newRefreshToken)
+        refreshTokenService.startSession(userId, newRefreshToken)
 
         val redirectUrl = if (catRepository.existsByUserId(userId)) {
             appLinkProperties.home
@@ -114,7 +114,7 @@ class AuthService(
      * @throws BusinessException [AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS] 이미 가입된 소셜 계정인 경우
      */
     @Transactional
-    fun signup(request: SignUpRequest): SignUpResponse {
+    fun signUp(request: SignUpRequest): SignUpResponse {
         val claims = jwtService.getVerifiedClaims(request.verifiedToken)
 
         if (claims.purpose != AuthPurpose.SIGNUP) {
@@ -168,7 +168,7 @@ class AuthService(
 
         val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
-        refreshTokenService.createOrRestart(userId, refreshToken)
+        refreshTokenService.startSession(userId, refreshToken)
 
         return SignUpResponse(
             accessToken = accessToken,
@@ -228,7 +228,7 @@ class AuthService(
 
         val (newAccessToken, newRefreshToken) = jwtService.createTokenPair(userId)
 
-        existingToken.rotate(newRefreshToken)
+        existingToken.rotateToken(newRefreshToken)
 
         return RefreshResponse(newAccessToken, newRefreshToken)
     }

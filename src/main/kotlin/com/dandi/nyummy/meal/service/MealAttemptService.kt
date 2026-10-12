@@ -70,7 +70,7 @@ class MealAttemptService(
      * @param uploadedImage 공통 검증을 통과한 업로드 이미지
      * @throws BusinessException [MealErrorCode.STALE_IMAGE] 촬영 날짜가 오늘이 아닌 경우
      */
-    fun validateCapturedToday(userId: Long, uploadedImage: UploadedImage) {
+    fun validateCapturedAt(userId: Long, uploadedImage: UploadedImage) {
         val capturedAt = uploadedImage.capturedAt ?: return
         val now = Instant.now(clock)
 

@@ -83,7 +83,7 @@ class ImageService(
     fun createUploadUrl(userId: Long, request: CreateUploadUrlRequest): UploadUrlResponse {
         val (purpose, contentType, fileSizeBytes) = request
 
-        validatorsByPurpose[purpose]?.validateBeforeUpload(userId)
+        validatorsByPurpose[purpose]?.validateUploadRequest(userId)
 
         if (contentType !in ALLOWED_CONTENT_TYPES) {
             throw BusinessException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE)

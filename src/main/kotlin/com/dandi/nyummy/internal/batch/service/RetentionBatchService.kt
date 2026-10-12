@@ -55,14 +55,14 @@ class RetentionBatchService(
             val notificationId = NotificationId.createRetentionId(target.userId, today)
 
             convertPushMessage(notificationId, target.catName, daysDiff)
-                ?.takeIf { pushDeduplicationRepository.markSent(notificationId, DEDUPLICATION_TIME_TO_LIVE) }
+                ?.takeIf { pushDeduplicationRepository.createSentMark(notificationId, DEDUPLICATION_TIME_TO_LIVE) }
                 ?.let { target.token to it }
         }.toMap()
 
         val result = notificationService.sendPushes(messagesByToken)
 
         notificationService.deleteInvalidDeviceTokens(result.invalidTokens)
-        pushDeduplicationRepository.deleteSent(result.getRetryableNotificationIds(messagesByToken))
+        pushDeduplicationRepository.deleteSentMarks(result.getRetryableNotificationIds(messagesByToken))
 
         logger.info(
             "리텐션 푸시 발송: target={}, sent={}, success={}, invalid={}, retryable={}, elapsed={}ms",
