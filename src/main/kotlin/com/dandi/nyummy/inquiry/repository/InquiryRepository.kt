@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface InquiryRepository : JpaRepository<Inquiry, Long> {
-    fun getInquiryByIdAndDeletedAtIsNull(inquiryId: Long): Inquiry?
+    fun findInquiryByIdAndDeletedAtIsNull(inquiryId: Long): Inquiry?
 
     fun existsByImageKey(imageKey: String): Boolean
 
@@ -30,7 +30,7 @@ interface InquiryRepository : JpaRepository<Inquiry, Long> {
         order by i.id desc
     """,
     )
-    fun getInquiriesByUserIdBeforeCursor(
+    fun findInquiriesByUserIdBeforeCursor(
         @Param("userId") userId: Long,
         @Param("cursor") cursor: Long,
         pageable: Pageable,

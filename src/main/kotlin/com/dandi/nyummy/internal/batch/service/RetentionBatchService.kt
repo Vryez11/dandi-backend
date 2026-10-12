@@ -48,7 +48,7 @@ class RetentionBatchService(
         val startedAt = TimeSource.Monotonic.markNow()
 
         val today = LocalDate.now(clock.withZone(ZONE))
-        val targets = catRepository.getRetentionPushTargets()
+        val targets = catRepository.findRetentionPushTargets()
 
         val messagesByToken = targets.mapNotNull { target ->
             val daysDiff = ChronoUnit.DAYS.between(target.lastMealAt.atZone(ZONE).toLocalDate(), today)

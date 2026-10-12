@@ -73,7 +73,7 @@ class InquiryService(
      */
     @Transactional(readOnly = true)
     fun getInquiries(userId: Long, cursor: Long?, size: Int): InquiriesResponse {
-        val inquiries = inquiryRepository.getInquiriesByUserIdBeforeCursor(
+        val inquiries = inquiryRepository.findInquiriesByUserIdBeforeCursor(
             userId = userId,
             cursor = cursor ?: Long.MAX_VALUE,
             pageable = PageRequest.of(0, size),
@@ -104,7 +104,7 @@ class InquiryService(
      */
     @Transactional
     fun getInquiry(userId: Long, inquiryId: Long): InquiryResponse {
-        val inquiry = inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId)
+        val inquiry = inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId)
             ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
 
         inquiry.validateOwnership(userId)
@@ -161,7 +161,7 @@ class InquiryService(
      */
     @Transactional
     fun deleteInquiry(userId: Long, inquiryId: Long) {
-        val inquiry = inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId)
+        val inquiry = inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId)
             ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
 
         inquiry.validateOwnership(userId)

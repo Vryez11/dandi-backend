@@ -21,5 +21,5 @@ interface CatRepository : JpaRepository<Cat, Long> {
             where p.isMarketingPushEnabled = true
         """,
     )
-    fun getRetentionPushTargets(): List<RetentionTarget>
+    fun findRetentionPushTargets(): List<RetentionTarget>
 }

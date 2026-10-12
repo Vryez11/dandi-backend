@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param
 
 interface ProfileRepository : JpaRepository<Profile, Long> {
 
-    fun getProfileByUserId(userId: Long): Profile?
+    fun findProfileByUserId(userId: Long): Profile?
 
     @Query(
         """
@@ -22,5 +22,5 @@ interface ProfileRepository : JpaRepository<Profile, Long> {
                 and (p.breakfastHour = :hour or p.lunchHour = :hour or p.dinnerHour = :hour)
         """,
     )
-    fun getMealReminderTargets(@Param("hour") hour: Int): List<MealReminderTarget>
+    fun findMealReminderTargets(@Param("hour") hour: Int): List<MealReminderTarget>
 }

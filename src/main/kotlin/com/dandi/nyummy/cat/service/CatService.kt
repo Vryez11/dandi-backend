@@ -65,7 +65,7 @@ class CatService(
 
         val cat = request.toCat(userId)
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
             ?: run {
                 logger.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
                 throw BusinessException(UserErrorCode.PROFILE_NOT_FOUND)
@@ -180,7 +180,7 @@ class CatService(
 
         val caloryByInterval = IntArray(intervalCount)
         mealRepository
-            .getMealsByUserIdAndPeriod(
+            .findMealsByUserIdAndPeriod(
                 userId,
                 windowStartDate.atStartOfDay(zone).toInstant(),
                 windowEndDate.atStartOfDay(zone).toInstant(),
@@ -193,7 +193,7 @@ class CatService(
                 caloryByInterval[index] += meal.calory ?: 0
             }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
         val targetCalory = calculateRecommendedDailyIntake(profile, today).calory * intervalDays
 
         for (index in 0 until intervalCount) {

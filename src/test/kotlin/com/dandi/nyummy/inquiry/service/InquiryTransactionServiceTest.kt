@@ -44,7 +44,7 @@ class InquiryTransactionServiceTest {
 
     @Test
     fun `다시 읽은 문의에 변경을 적용한다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry()
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry()
 
         val result = inquiryTransactionService.updateQuestion(userId, inquiryId, request, imageKey)
 
@@ -56,7 +56,7 @@ class InquiryTransactionServiceTest {
 
     @Test
     fun `이미지를 확정하는 사이 답변이 달렸으면 수정하지 않는다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns
             inquiry(answeredAt = Instant.parse("2026-10-10T03:00:00Z"))
 
         assertBusinessException(InquiryErrorCode.ALREADY_ANSWERED) {
@@ -66,7 +66,7 @@ class InquiryTransactionServiceTest {
 
     @Test
     fun `이미지를 확정하는 사이 삭제됐으면 수정하지 않는다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns null
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns null
 
         assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) {
             inquiryTransactionService.updateQuestion(userId, inquiryId, request, imageKey)
@@ -75,7 +75,7 @@ class InquiryTransactionServiceTest {
 
     @Test
     fun `다른 사용자의 문의는 수정하지 않는다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry(ownerId = userId + 1)
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry(ownerId = userId + 1)
 
         assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) {
             inquiryTransactionService.getUpdatableInquiry(userId, inquiryId)

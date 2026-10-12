@@ -43,7 +43,7 @@ class UserService(
         val user = userRepository.findByIdOrNull(id)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
 
-        val profile = profileRepository.getProfileByUserId(user.id)
+        val profile = profileRepository.findProfileByUserId(user.id)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
 
         return user.toUserResponse(profile)
@@ -90,7 +90,7 @@ class UserService(
      *
      * @throws BusinessException [UserErrorCode.PROFILE_NOT_FOUND] 프로필이 없는 경우
      */
-    private fun getProfile(userId: Long): Profile = profileRepository.getProfileByUserId(userId)
+    private fun getProfile(userId: Long): Profile = profileRepository.findProfileByUserId(userId)
         ?: run {
             logger.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
             throw BusinessException(UserErrorCode.PROFILE_NOT_FOUND)

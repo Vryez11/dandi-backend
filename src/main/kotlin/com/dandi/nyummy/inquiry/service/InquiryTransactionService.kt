@@ -26,7 +26,7 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
      */
     @Transactional(readOnly = true)
     fun getUpdatableInquiry(userId: Long, inquiryId: Long): Inquiry {
-        val inquiry = inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId)
+        val inquiry = inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId)
             ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
 
         inquiry.validateOwnership(userId)

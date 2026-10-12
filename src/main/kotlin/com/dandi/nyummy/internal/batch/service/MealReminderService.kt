@@ -55,7 +55,7 @@ class MealReminderService(
         val oneHourAgo = Instant.now(clock).minus(1, ChronoUnit.HOURS)
 
         // 최근 한 시간 안에 기록했으면 리마인드 X
-        val targets = profileRepository.getMealReminderTargets(targetHour)
+        val targets = profileRepository.findMealReminderTargets(targetHour)
             .filterNot {
                 mealRepository.existsCompletedMealAfter(it.userId, MealStatus.COMPLETED, oneHourAgo)
             }

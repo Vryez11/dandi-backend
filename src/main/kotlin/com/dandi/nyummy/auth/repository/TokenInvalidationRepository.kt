@@ -42,7 +42,7 @@ class TokenInvalidationRepository(
     /**
      * 무효화 기준 시각을 조회한다. 무효화 이력이 없거나 TTL이 지나 키가 사라졌으면 null이다.
      */
-    fun getInvalidatedAt(userId: Long): Instant? = redisTemplate.opsForValue()
+    fun findInvalidatedAt(userId: Long): Instant? = redisTemplate.opsForValue()
         .get(key(userId))
         ?.toLongOrNull()
         ?.let(Instant::ofEpochSecond)

@@ -28,7 +28,7 @@ class TokenService(
         val (userId, issuedAt) = jwtProvider.getAccessTokenClaims(token)
 
         val invalidatedAt = try {
-            tokenInvalidationRepository.getInvalidatedAt(userId)
+            tokenInvalidationRepository.findInvalidatedAt(userId)
         } catch (e: DataAccessException) {
             logger.warn("토큰 무효화 조회 실패: userId={}", userId, e)
             null

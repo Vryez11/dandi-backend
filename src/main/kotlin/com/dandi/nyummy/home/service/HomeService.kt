@@ -39,7 +39,7 @@ class HomeService(
     fun getHome(userId: Long): HomeResponse {
         // 프로필은 가입 트랜잭션에서 함께 생성되므로 없을 수 없다.
         // 없다면 요청이 잘못된 게 아니라 데이터가 깨진 것이므로, 추적할 수 있게 userId를 남긴다.
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
             ?: run {
                 log.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
                 throw BusinessException(UserErrorCode.PROFILE_NOT_FOUND)

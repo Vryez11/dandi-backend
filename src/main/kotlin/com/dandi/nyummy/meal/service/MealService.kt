@@ -133,11 +133,11 @@ class MealService(
         val start = date.atStartOfDay(zone).toInstant()
         val end = date.plusDays(1).atStartOfDay(zone).toInstant()
 
-        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
+        val mealsByPeriod = mealRepository.findMealsByUserIdAndPeriod(userId, start, end)
 
         val meals = mealsByPeriod.map { it.toDailyMealResponse() }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
 
         val recommended = calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
@@ -166,7 +166,7 @@ class MealService(
         val zone = ZoneId.of("Asia/Seoul")
         val (startDate, endDate) = calculateMonthlyCalendarRange(YearMonth.of(year, month))
 
-        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
+        val mealsByPeriod = mealRepository.findMealsByUserIdAndPeriod(
             userId,
             startDate.atStartOfDay(zone).toInstant(),
             endDate.plusDays(1).atStartOfDay(zone).toInstant(),
@@ -176,7 +176,7 @@ class MealService(
             mealsByPeriod
                 .groupBy { it.mealAt.atZone(zone).toLocalDate() }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
         val recommended = calculateRecommendedDailyIntake(profile, LocalDate.now())
 
         val days = mutableListOf<MonthlyMealDayResponse>()
@@ -230,7 +230,7 @@ class MealService(
      */
     @Transactional(readOnly = true)
     fun getMeal(userId: Long, mealId: Long): MealResponse {
-        val meal = mealRepository.getMealByIdAndDeletedAtIsNull(mealId)
+        val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         if (meal.userId != userId) {
@@ -254,7 +254,7 @@ class MealService(
      */
     @Transactional
     fun updateMeal(userId: Long, mealId: Long, name: String): MealResponse {
-        val meal = mealRepository.getMealByIdAndDeletedAtIsNull(mealId)
+        val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         if (meal.userId != userId) {
@@ -278,7 +278,7 @@ class MealService(
      */
     @Transactional
     fun deleteMeal(userId: Long, mealId: Long) {
-        val meal = mealRepository.getMealByIdAndDeletedAtIsNull(mealId)
+        val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         if (meal.userId != userId) {
@@ -317,14 +317,14 @@ class MealService(
         val start = today.atStartOfDay(zone).toInstant()
         val end = today.plusDays(1).atStartOfDay(zone).toInstant()
 
-        val meals = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
+        val meals = mealRepository.findMealsByUserIdAndPeriod(userId, start, end)
 
         // 분석 전·실패한 식사는 calory가 null이므로 집계에서 제외한다.
         val currentCalory = meals
             .filter { it.status == MealStatus.COMPLETED }
             .sumOf { it.calory ?: 0 }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
         val targetCalory = calculateRecommendedDailyIntake(profile, today).calory
 
         return TodayMealSummary(
