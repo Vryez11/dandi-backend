@@ -47,6 +47,7 @@
 | 서블릿/보안 필터 | ~Filter | ~Interceptor (인터셉터는 MVC 계층의 다른 개념) |
 | 응답 직접 직렬화(필터 단계) | ~Writer | ~Handler, ~Responder — 예: `AuthErrorResponseWriter` |
 | 토큰 발급/검증 컴포넌트 | ~Provider | ~Manager, ~Generator, ~Factory, ~TokenService — 예: `JwtProvider` |
+| 외부 호출과 분리한 짧은 트랜잭션 구간(별도 빈) | ~TransactionService | 같은 클래스의 @Transactional 메서드 호출은 프록시를 거치지 않아 별도 빈으로 둔다 — 예: `InquiryTransactionService` |
 
 ## Boolean 네이밍
 
@@ -104,6 +105,14 @@
 | 마케팅 알림 | MarketingPush | 광고성 정보로 볼 여지가 있는 알림(리텐션 복귀 유도 등). 사전 동의 필요, 기본 거부 |
 | 알림 수신 설정 | PushSetting | profile의 수신 여부 묶음. PushConfig, PushPreference, PushOption 금지 |
 | 동의 | Agreed | 광고성 정보 수신 동의. 시점은 marketingAgreedAt. Consent, Approval, Accept 금지 |
+| 문의 | Inquiry | 문의함의 문의 한 건. 테이블 inquiries. 우편함·문의함 화면도 코드에서는 Inquiry로 통일 (Mailbox 금지) |
+| 문의 유형 | InquiryCategory | BUG_REPORT / QUESTION / SUGGESTION. Type, Kind 금지 |
+| 질문 | Question | 사용자가 작성한 문의 부분(유형·제목·내용·첨부 이미지). 필드는 questionTitle / questionContent, 수정은 updateQuestion |
+| 답변 | Answer | 운영자가 작성한 답변. 필드는 answerTitle / answerContent. Reply 금지 |
+| 답변 시각 | AnsweredAt | 최초 답변 시각으로 고정. 답변 여부는 상태 컬럼 없이 isAnswered(= answeredAt != null)로 계산 |
+| 답변 읽음 | Read | 사용자가 답변을 읽음. 시각은 answerReadAt(처음 읽은 시각 고정). 조회 동사 read 금지와는 별개의 도메인 의미이며, 메서드 동사로는 쓰지 않는다 |
+| 안 읽은 답변 | UnreadAnswer | 답변이 있고 아직 읽지 않음. hasUnreadAnswer(문의 단건), hasUnreadInquiryAnswer(홈), existsUnreadAnswer(조회). New 금지 |
+| 커서 | Cursor | 무한 스크롤에서 다음 묶음의 기준점(직전 묶음의 마지막 id). 응답은 nextCursor + hasNext, 조회는 id < cursor. 페이지 번호 방식은 Offset으로 구분 |
 | 고양이 체형 | Weight | CatWeight(-2~2, LEAN~PLUMP). 사용자 몸무게(Profile.weight, kg)와 단어가 겹치니 Cat/Profile 맥락으로 구분 |
 | 체형 변화 단계 | Step | 한 평가 구간에서 체형이 움직이는 칸 수(-1/0/1). calculateWeightStep, updateWeightByStep. Delta, Diff 금지 |
 
