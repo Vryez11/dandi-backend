@@ -175,6 +175,7 @@
 | 소유권 | Ownership | 리소스가 요청 사용자 소유인지. 검증은 validateOwnership — ownership은 한 단어 (OwnerShip 금지) |
 | 보안 인프라 | Security | Spring Security 메커니즘(설정·필터·principal)의 패키지명(security). 인증 API(컨트롤러/DTO)는 auth 패키지와 분리 |
 | JWT | Jwt | 식별자 표기는 Jwt (클래스 `JwtProvider`, 패키지 security.jwt). JWT 전체 대문자, JsonWebToken 금지 |
+| OAuth | OAuth | 소셜 로그인 프로토콜. 식별자 표기는 OAuth(대문자 A) — `OAuthService`, `OAuthClient`, `loginOAuth()`. Jwt와 달리 기존 코드에 굳은 표기를 따른다. Oauth 금지 |
 | 접근 토큰 | AccessToken | 30분 수명, API 인증용. type 클레임 값은 "access". 필드명 accessToken |
 | 갱신 토큰 | RefreshToken | 15일 수명, 재발급용. type 클레임 값은 "refresh". 필드명 refreshToken |
 | 시크릿 키 | SecretKey | 설정의 Base64 문자열(JwtProperties.secretKey, .env의 JWT_SECRET_KEY)과 디코딩된 키 객체 모두 secretKey |
