@@ -5,6 +5,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.home.dto.HomeResponse
 import com.dandi.nyummy.home.mapper.toHomeUser
+import com.dandi.nyummy.inquiry.service.InquiryService
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.user.repository.ProfileRepository
 import org.slf4j.LoggerFactory
@@ -12,7 +13,11 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class HomeService(private val mealService: MealService, private val profileRepository: ProfileRepository) {
+class HomeService(
+    private val mealService: MealService,
+    private val inquiryService: InquiryService,
+    private val profileRepository: ProfileRepository,
+) {
     companion object {
         val log = LoggerFactory.getLogger(HomeService::class.java)
     }
@@ -27,7 +32,7 @@ class HomeService(private val mealService: MealService, private val profileRepos
      * 그 사이에 기록이 바뀌어 화면 안에서 어긋난 값이 보일 수 있다.
      *
      * @param userId 조회하는 사용자 ID
-     * @return 코인·연속 기록·오늘 식사 현황을 담은 [HomeResponse]
+     * @return 코인·연속 기록·오늘 식사 현황·안 읽은 문의 답변 여부를 담은 [HomeResponse]
      * @throws BusinessException [UserErrorCode.PROFILE_NOT_FOUND] 사용자 프로필이 없는 경우
      */
     @Transactional(readOnly = true)
@@ -41,11 +46,13 @@ class HomeService(private val mealService: MealService, private val profileRepos
             }
         val streak = mealService.getStreak(userId)
         val todayMealSummary = mealService.getTodayMealSummary(userId)
+        val hasUnreadInquiryAnswer = inquiryService.existsUnreadAnswer(userId)
 
         val response = HomeResponse(
             user = profile.toHomeUser(),
             streak = streak,
             todayMealSummary = todayMealSummary,
+            hasUnreadInquiryAnswer = hasUnreadInquiryAnswer,
         )
 
         return response
