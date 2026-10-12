@@ -73,7 +73,7 @@
 | 계산 로직(최상위 함수 파일) | ~Calculator | ~Calc, ~Calculation, ~Util |
 | 서블릿/보안 필터 | ~Filter | ~Interceptor (인터셉터는 MVC 계층의 다른 개념) |
 | 예외를 에러 응답으로 변환 | ~ExceptionHandler | ~Writer, ~Responder — 예: `GlobalExceptionHandler`(@RestControllerAdvice), `SecurityExceptionHandler`(필터 단계 예외를 HandlerExceptionResolver로 위임) |
-| 토큰 발급/검증 컴포넌트 | ~Provider | ~Manager, ~Generator, ~Factory, ~TokenService — 예: `JwtProvider` |
+| 토큰 발급/검증 컴포넌트 | ~Provider | ~Manager, ~Generator, ~Factory, ~TokenService — 예: `JwtProvider`. 이를 감싸 무효화 확인까지 하는 서비스는 `JwtService`. 엔티티 이름이 Token으로 끝나는 도메인 서비스(`RefreshTokenService`)는 ~TokenService 금지 대상이 아님 |
 | 외부 호출과 분리한 짧은 트랜잭션 구간(별도 빈) | ~TransactionService | 같은 클래스의 @Transactional 메서드 호출은 프록시를 거치지 않아 별도 빈으로 둔다 — 예: `InquiryTransactionService` |
 | 외부 시스템 연동 | ~Client | ~Adapter, ~Gateway, ~Api — 예: `S3StorageClient`, `EmailClient`, `PushClient`, `OAuthClient`, `NutritionAnalysisClient` |
 | 입력값 검증 컴포넌트 | ~Validator | ~Checker, ~Verifier — 예: `ImageUploadValidator` |
