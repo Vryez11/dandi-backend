@@ -32,7 +32,7 @@ data class MealResponse(
     val iconId: Long? = 1,
 )
 
-data class MealStatusResponse(val id: Long, val status: String)
+data class MealStatusResponse(val id: Long, val status: MealStatus)
 
 data class DailyMealsResponse(
 

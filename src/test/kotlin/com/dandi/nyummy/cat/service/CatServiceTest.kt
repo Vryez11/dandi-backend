@@ -430,7 +430,7 @@ class CatServiceTest {
         val response = catService.getCat(userId)
 
         // then
-        assertThat(response.weight).isEqualTo(CatWeight.SLIM.name)
+        assertThat(response.weight).isEqualTo(CatWeight.SLIM)
         assertThat(response.weightName).isEqualTo(CatWeight.SLIM.description)
     }
 

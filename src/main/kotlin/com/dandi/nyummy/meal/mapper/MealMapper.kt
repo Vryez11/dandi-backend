@@ -26,7 +26,7 @@ fun Meal.toNutrition() = Nutrition(
 
 fun Meal.toMealStatusResponse() = MealStatusResponse(
     id = this.id,
-    status = this.status.name,
+    status = this.status,
 )
 
 fun Meal.toDailyMealResponse() = DailyMealResponse(

@@ -1,5 +1,7 @@
 package com.dandi.nyummy.cat.dto
 
+import com.dandi.nyummy.cat.enum.CatWeight
+import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
@@ -28,6 +30,7 @@ data class CreateCatRequest(
      * MealReminderTarget.convertMealTime이 when의 첫 매치를 고르기 때문이다.
      */
     @get:AssertTrue(message = "식사 시각은 서로 달라야 합니다.")
+    @get:Schema(hidden = true)
     val isMealHoursDistinct: Boolean
         get() = listOfNotNull(breakfastHour, lunchHour, dinnerHour)
             .let { it.size == it.toSet().size }
@@ -36,7 +39,7 @@ data class CreateCatRequest(
 data class CatResponse(
     val id: Long,
     val name: String,
-    val weight: String,
+    val weight: CatWeight,
     val weightName: String,
     val love: Int,
     val exp: Int,

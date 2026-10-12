@@ -86,7 +86,7 @@ class MealServiceTest {
 
         assertEquals(capturedAt, savedMeal.captured.mealAt)
         assertEquals(imageKey, savedMeal.captured.imageKey)
-        assertEquals(MealStatus.WAITING.name, result.status)
+        assertEquals(MealStatus.WAITING, result.status)
         verifyOrder {
             mealAttemptService.validateDailyCount(userId)
             imageService.confirmUpload(userId, ImagePurpose.MEAL, imageKey, any())
