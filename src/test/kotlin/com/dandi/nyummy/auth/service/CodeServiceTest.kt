@@ -126,14 +126,14 @@ class CodeServiceTest {
         assertEquals(1, existing.sendCount)
     }
 
-    // confirmAuthCodeByEmail
+    // validateAuthCodeByEmail
 
     @Test
     fun `이메일로 발급된 코드가 없으면 INCORRECT_EMAIL이다`() {
         every { codeRepository.findByEmail(email) } returns null
 
         assertBusinessException(AuthErrorCode.INCORRECT_EMAIL) {
-            codeService.confirmAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
+            codeService.validateAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
         }
     }
 
@@ -143,7 +143,7 @@ class CodeServiceTest {
         every { codeRepository.findByEmail(email) } returns existing
 
         assertBusinessException(AuthErrorCode.INCORRECT_EMAIL) {
-            codeService.confirmAuthCodeByEmail("123456", email, AuthPurpose.RESET_PASSWORD)
+            codeService.validateAuthCodeByEmail("123456", email, AuthPurpose.RESET_PASSWORD)
         }
         assertEquals(2, existing.attemptCount)
         verify(exactly = 0) { codeRepository.delete(any()) }
@@ -155,7 +155,7 @@ class CodeServiceTest {
         every { codeRepository.findByEmail(email) } returns existing
 
         assertBusinessException(AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED) {
-            codeService.confirmAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
+            codeService.validateAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
         }
         verify(exactly = 0) { codeRepository.delete(any()) }
     }
@@ -166,7 +166,7 @@ class CodeServiceTest {
         every { codeRepository.findByEmail(email) } returns existing
 
         assertBusinessException(AuthErrorCode.EMAIL_CODE_MISMATCH) {
-            codeService.confirmAuthCodeByEmail("000000", email, AuthPurpose.SIGNUP)
+            codeService.validateAuthCodeByEmail("000000", email, AuthPurpose.SIGNUP)
         }
         assertEquals(1, existing.attemptCount)
         verify(exactly = 0) { codeRepository.delete(any()) }
@@ -178,7 +178,7 @@ class CodeServiceTest {
         every { codeRepository.findByEmail(email) } returns existing
         every { codeRepository.delete(existing) } just Runs
 
-        codeService.confirmAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
+        codeService.validateAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
 
         verify(exactly = 1) { codeRepository.delete(existing) }
     }
@@ -189,7 +189,7 @@ class CodeServiceTest {
         every { codeRepository.findByEmail(email) } returns existing
         every { codeRepository.delete(existing) } just Runs
 
-        codeService.confirmAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
+        codeService.validateAuthCodeByEmail("123456", email, AuthPurpose.SIGNUP)
 
         verify(exactly = 1) { codeRepository.delete(existing) }
     }

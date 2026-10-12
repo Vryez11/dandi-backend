@@ -4,7 +4,7 @@ import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.auth.service.RefreshTokenService
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
-import com.dandi.nyummy.security.jwt.TokenService
+import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.user.dto.PasswordUpdateRequest
 import com.dandi.nyummy.user.dto.PasswordUpdateResponse
 import com.dandi.nyummy.user.dto.PushSettingResponse
@@ -29,7 +29,7 @@ class UserService(
     private val userRepository: UserRepository,
     private val profileRepository: ProfileRepository,
     private val passwordService: PasswordService,
-    private val tokenService: TokenService,
+    private val jwtService: JwtService,
     private val refreshTokenService: RefreshTokenService,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
     private val clock: Clock,
@@ -133,7 +133,7 @@ class UserService(
             logger.error("토큰 무효화 기록 실패: userId={}", userId, e)
         }
 
-        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+        val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
         refreshTokenService.createOrRestart(userId, refreshToken)
 

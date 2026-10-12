@@ -1,7 +1,5 @@
 package com.dandi.nyummy.auth.controller
 
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.OAuthLoginRequest
@@ -13,6 +11,8 @@ import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeRequest
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeResponse
 import com.dandi.nyummy.auth.service.AuthService
 import com.dandi.nyummy.auth.service.OAuthService
 import com.dandi.nyummy.config.openapi.ApiErrorCodes
@@ -136,8 +136,10 @@ class AuthController(private val authService: AuthService, private val oauthServ
         ],
     )
     @PostMapping("/email-verification/confirm")
-    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ResponseEntity<ConfirmAuthCodeResponse> {
-        val response = authService.confirmAuthCode(request)
+    fun validateAuthCode(
+        @Valid @RequestBody request: ValidateAuthCodeRequest,
+    ): ResponseEntity<ValidateAuthCodeResponse> {
+        val response = authService.validateAuthCode(request)
 
         return ResponseEntity.ok(response)
     }

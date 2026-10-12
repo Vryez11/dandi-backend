@@ -16,12 +16,12 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 
 @Service
-class TokenService(
+class JwtService(
     private val jwtProvider: JwtProvider,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
 ) {
     companion object {
-        private val logger = LoggerFactory.getLogger(TokenService::class.java)
+        private val logger = LoggerFactory.getLogger(JwtService::class.java)
     }
 
     fun getAuthentication(token: String): Authentication {

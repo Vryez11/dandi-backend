@@ -134,7 +134,7 @@ class AnalysisService(
                 notificationId = NotificationId.createAnalysisId(meal.id, status, analyzedAt),
                 title = "$catName 맛있게 먹었다냥 🐾",
                 body = "${meal.name} 분석이 끝났어요. 칼로리 확인해줘!",
-                appLink = appLinkProperties.createMealDetail(meal.id),
+                appLink = appLinkProperties.createMealDetailLink(meal.id),
             )
         } else {
             PushMessage(
@@ -142,7 +142,7 @@ class AnalysisService(
                 notificationId = NotificationId.createAnalysisId(meal.id, status, analyzedAt),
                 title = "사진을 못 알아봤다냥 🐾",
                 body = "다시 시도해줄래?",
-                appLink = appLinkProperties.createMealDetail(meal.id),
+                appLink = appLinkProperties.createMealDetailLink(meal.id),
             )
         }
 

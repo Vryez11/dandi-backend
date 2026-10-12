@@ -11,6 +11,6 @@ import org.springframework.transaction.annotation.Transactional
 class IconService(private val iconRepository: IconRepository) {
     @Cacheable(cacheNames = ["icons"])
     @Transactional(readOnly = true)
-    fun getAllIcons(): List<IconSummary> = iconRepository.findAll()
+    fun getIcons(): List<IconSummary> = iconRepository.findAll()
         .map { it.toIconSummary() }
 }

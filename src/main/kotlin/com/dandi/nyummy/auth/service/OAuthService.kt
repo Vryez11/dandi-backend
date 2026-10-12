@@ -8,7 +8,7 @@ import com.dandi.nyummy.config.AppLinkProperties
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.oauth.OAuthClient
-import com.dandi.nyummy.security.jwt.TokenService
+import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.security.jwt.VerifiedClaims
 import com.dandi.nyummy.user.repository.UserRepository
 import org.springframework.stereotype.Service
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service
 @Service
 class OAuthService(
     private val userRepository: UserRepository,
-    private val tokenService: TokenService,
+    private val jwtService: JwtService,
     private val refreshTokenService: RefreshTokenService,
     private val appLinkProperties: AppLinkProperties,
     oauthClients: List<OAuthClient>,
@@ -55,7 +55,7 @@ class OAuthService(
         val user = userRepository.findByProviderAndProviderUserId(userInfo.provider, userInfo.providerUserId)
 
         if (user == null) {
-            val verifiedToken = tokenService.createVerifiedToken(
+            val verifiedToken = jwtService.createVerifiedToken(
                 VerifiedClaims(
                     provider = userInfo.provider,
                     providerUserId = userInfo.providerUserId,
@@ -71,7 +71,7 @@ class OAuthService(
 
         val userId = user.id
 
-        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+        val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
         refreshTokenService.createOrRestart(userId, refreshToken)
 
