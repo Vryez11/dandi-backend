@@ -90,7 +90,7 @@ class AuthController(private val authService: AuthService, private val oauthServ
         ],
     )
     @PostMapping("/oauth/login")
-    fun oauthLogin(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = oauthService.login(request)
+    fun loginOAuth(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = oauthService.login(request)
 
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰을 검증하고 AccessToken·RefreshToken을 새로 발급한다(rotate).")
     @ApiErrorCodes(auth = [AuthErrorCode.INVALID_REFRESH_TOKEN])
