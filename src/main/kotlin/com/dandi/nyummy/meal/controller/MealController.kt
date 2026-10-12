@@ -125,7 +125,7 @@ class MealController(private val mealService: MealService, private val analysisS
     @Operation(summary = "영양 분석 재시도", description = "실패한 식사의 영양 분석을 다시 시도하고 변경된 분석 상태를 반환한다.")
     @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND, MealErrorCode.ANALYSIS_NOT_RETRYABLE])
     @PostMapping("/{mealId}/analysis")
-    fun retryAnalysis(
+    fun retryNutritionAnalysis(
         @CurrentUser user: AuthUser,
         @Parameter(description = "식사 ID") @PathVariable @NotNull @Valid mealId: Long,
     ): MealStatusResponse = analysisService.retryNutritionAnalysis(user.userId, mealId)

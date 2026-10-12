@@ -28,5 +28,5 @@ class HomeController(private val homeService: HomeService) {
     )
     @ApiErrorCodes(user = [UserErrorCode.PROFILE_NOT_FOUND])
     @GetMapping
-    fun home(@CurrentUser user: AuthUser): HomeResponse = homeService.getHome(user.userId)
+    fun getHome(@CurrentUser user: AuthUser): HomeResponse = homeService.getHome(user.userId)
 }
