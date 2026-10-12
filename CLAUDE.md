@@ -14,13 +14,15 @@
 | 개념 | 사용 단어 | 금지(동의어) | 예시 |
 |---|---|---|---|
 | 생성 | create | add, register, make, new | `createMeal()` |
-| 조회(단건) | get | find, fetch, retrieve, read | `getMeal()` |
-| 조회(목록) | get + 복수형 | list, findAll | `getMeals()` |
+| 조회(단건) | get | find(리포지토리 제외), fetch, retrieve, read | `getMeal()` |
+| 조회(목록) | get + 복수형 | list, findAll(리포지토리 제외) | `getMeals()` |
+| 리포지토리 조회 | find | get — Spring Data 관례. 단건·목록·Redis 리포지토리 모두. 리포지토리 밖에서는 get | `findByUserId()`, `findMealsByUserIdAndPeriod()` |
 | 수정 | update | modify, edit, change | `updateCat()` |
 | 삭제 | delete | remove, destroy, drop | `deleteMeal()` |
 | 검색(조건) | search | query, lookup | `searchMeals()` |
 | 존재 확인 | exists | has, contains | `existsUser()` |
-| 계산 | calculate | compute, count | `calculateScore()` |
+| 계산 | calculate | compute (개수 조회는 아래 count) | `calculateScore()` |
+| 개수 조회 | count | calculate (계산이 아니라 세기만 할 때) | `countDailyAttempts()`, `countMealsByUserIdAndPeriod()` |
 | 검증 | validate | check, verify | `validateEmail()` |
 | 증가 | increase | add, plus | `increaseCoin()` |
 | 감소 | decrease | minus, subtract | `decreaseCoin()` |
@@ -29,6 +31,17 @@
 | 분석 | analyze | analysis(명사를 동사 자리에 금지), analyse | `analyzeNutrition()` |
 | 확정(임시→최종 승격) | confirm | finalize, promote, complete | `confirmUpload()` |
 | 바이너리 콘텐츠 조회(외부 스토리지) | download | fetch, retrieve (단, `get`은 도메인 리소스 조회 전용) | `downloadObject()`, `downloadText()` |
+| 전송 | send | transmit, deliver, emit | `sendEmail()`, `sendAuthCode()`, `sendPushes()` |
+| 초기화 | reset | clear, init, reinitialize | `resetAttemptCount()`, `resetPassword()` |
+| 추출 | extract | pull (원본 데이터(헤더·EXIF 등)에서 일부를 꺼낼 때) | `extractCapturedAt()`, `extractToken()` |
+| 인코딩 / 디코딩 | encode / decode | hash, serialize, deserialize | `encodePassword()`, `decodeIdToken()` |
+| 수집 | collect | gather, accumulate | `collectEnumFields()` |
+| 선택(후보 중 일부) | pick | select, choose (조건 조회는 search) | `pickFoodIconIds()` |
+| 일치 확인(Boolean 반환) | matches | equals, compare | `matchesPassword()`, `matchesApiKey()` |
+| 정적 리소스 적재(~Loader) | load | read, fetch | `loadCatAnimation()` |
+| 배치 실행 요청(내부 배치 컨트롤러) | trigger | run, execute | `triggerMealReminders()` |
+| 세션 시작 / 재시작 | start / restart | begin, renew | `startSession()`, `restartSession()` |
+| 토큰 교체(세션 유지) | rotate | replace, swap, renew | `rotateToken()` |
 
 ※ 예외: Mapper의 변환 확장 함수는 Kotlin 관례에 따라 `toXxx`를 사용한다. Xxx는 반환 타입 이름과 일치시킨다. 예: `Meal.toNutrition()`, `CreateMealRequest.toEntity()`
 
@@ -37,17 +50,25 @@
 | 용도 | 접미사 | 금지 |
 |---|---|---|
 | 요청 DTO | ~Request | ~Req, ~Command |
-| 응답 DTO | ~Response | ~Res, ~Dto, ~Result (단, 컨트롤러에 노출되지 않는 서비스 내부 반환값은 예외 — 예: `S3UploadResult`) |
+| HTTP 응답 DTO | ~Response | ~Res, ~Dto, ~Result — 응답 안에 중첩된 DTO도 ~Response (예: `StreakResponse`). 값 객체 `Nutrition`은 예외 |
+| 내부 반환 DTO(HTTP 응답 아님) | ~Result | ~Response, ~Dto — 예: `S3UploadResult`, `PushResult`, `UploadedImageResult`. 입력용 DTO(`PushMessage`, `EmailMessage`), 외부 API 역직렬화 타입(`GeminiGenerateContentResponse` 등), ~Claims는 대상 아님 |
 | 서비스 | ~Service | ~Manager, ~Handler |
 | 리포지토리 | ~Repository | ~Dao |
 | 컨트롤러 | ~Controller | ~Api, ~Resource |
 | 설정 바인딩(@ConfigurationProperties) | ~Properties | ~Config |
+| 빈 등록 설정(@Configuration) | ~Config | ~Configuration, ~Provider — 예: `S3Config`, `ArgonConfig` |
 | DTO-엔티티 변환 | ~Mapper | ~Converter, ~Transformer |
 | 계산 로직(최상위 함수 파일) | ~Calculator | ~Calc, ~Calculation, ~Util |
 | 서블릿/보안 필터 | ~Filter | ~Interceptor (인터셉터는 MVC 계층의 다른 개념) |
 | 예외를 에러 응답으로 변환 | ~ExceptionHandler | ~Writer, ~Responder — 예: `GlobalExceptionHandler`(@RestControllerAdvice), `SecurityExceptionHandler`(필터 단계 예외를 HandlerExceptionResolver로 위임) |
 | 토큰 발급/검증 컴포넌트 | ~Provider | ~Manager, ~Generator, ~Factory, ~TokenService — 예: `JwtProvider` |
 | 외부 호출과 분리한 짧은 트랜잭션 구간(별도 빈) | ~TransactionService | 같은 클래스의 @Transactional 메서드 호출은 프록시를 거치지 않아 별도 빈으로 둔다 — 예: `InquiryTransactionService` |
+| 외부 시스템 연동 | ~Client | ~Adapter, ~Gateway, ~Api — 예: `S3StorageClient`, `EmailClient`, `PushClient`, `OAuthClient`, `NutritionAnalysisClient` |
+| 입력값 검증 컴포넌트 | ~Validator | ~Checker, ~Verifier — 예: `ImageUploadValidator` |
+| JWT 클레임 묶음 | ~Claims | ~Payload, ~Info — 예: `AccessTokenClaims`, `VerifiedClaims` |
+| 외부 저장소의 정적 리소스를 읽어 앱에서 쓰는 형태로 구성 | ~Loader | ~Fetcher — 예: `CatAnimationLoader`(S3의 애니메이션 JSON) |
+| 파일·바이너리 포맷을 해석해 값을 꺼냄 | ~Reader | ~Parser, ~Extractor — 예: `ExifCaptureTimeReader` |
+| 프레임워크 확장 인터페이스 구현 | 인터페이스 이름을 접미사로 | 예: `EnumOpenApiCustomizer`(springdoc Customizer) |
 
 ## Boolean 네이밍
 
@@ -56,6 +77,7 @@
 | 상태/여부 | is~ | `isActive`, `isDeleted` |
 | 보유/존재 여부 | has~ | `hasCat`, `hasNext`, `hasUnreadAnswer` — Boolean 프로퍼티 전용. 존재를 확인하는 메서드는 exists 동사 |
 | 가능 여부 | can~ | `canEvolve` |
+| 설정 켜짐 여부 | is~Enabled | `isServicePushEnabled`, `isMarketingPushEnabled` |
 
 ## 도메인 용어
 
@@ -67,6 +89,11 @@
 |---|---|---|
 | 임시 구현 | Stub | 프로덕션 코드의 임시 대역 접두 (예: StubPushClient). Fake, Mock 금지 — Mock은 테스트 전용 |
 | 커서 | Cursor | 무한 스크롤에서 다음 묶음의 기준점(직전 묶음의 마지막 id). 응답은 nextCursor + hasNext, 조회는 id < cursor. 페이지 번호 방식은 Offset으로 구분 |
+| 유효 기간 | TimeToLive | 토큰·인증 코드·presigned URL 등의 수명(Duration). accessTimeToLive / refreshTimeToLive / uploadUrlTimeToLiveMinutes. Expiration, Ttl, ExpiresIn, Validity 금지 |
+| 만료 시각 | ExpiresAt | 유효 기간이 끝나는 시점(Instant). expiresAt, absoluteExpiresAt. 기간은 TimeToLive |
+| 임시 | Temp | 확정 전 상태(S3 temp 태그)·임시 비밀번호(tempPassword). Temporary, Tmp 금지 |
+| 용도 | Purpose | 같은 기능을 어떤 흐름에 쓰는지 구분하는 enum (AuthPurpose, ImagePurpose). 토큰 종류는 TokenType |
+| 내부 API | Internal | 외부 스케줄러가 호출하는 배치 엔드포인트(/api/v1/internal/**, API 키 인증). 패키지 internal |
 
 ### 사용자
 
@@ -75,6 +102,8 @@
 | 사용자 | User | |
 | 프로필 | Profile | 신체/개인 정보 (users에서 분리됨) |
 | 성별 | Gender | MALE / FEMALE / OTHER. DB는 VARCHAR(20)에 enum 이름 저장 (V0.14에서 TINYINT 0/1 인코딩 대체) |
+| 본인 | Me | 인증된 사용자 자신의 리소스 경로(/users/me)와 조회(getMe) |
+| 로그인 제공자 | Provider | AuthProvider(EMAIL / KAKAO / GOOGLE / NAVER), users.provider, providerUserId. 클래스 접미사 ~Provider(토큰 컴포넌트)와 다른 의미 |
 
 ### 고양이
 
@@ -95,6 +124,9 @@
 | 아이콘 | Icon | |
 | 식사 상태 | MealStatus | WAITING / ANALYZING / COMPLETED / FAILED / UNKNOWN. DB status 문자열을 enum으로 변환해 응답 |
 | 분석 | Analysis | 영양 분석. 명사 위치에 사용 (AnalysisService, retryNutritionAnalysis). 진행 중 상태는 MealStatus.ANALYZING |
+| 끼니 | MealTime | BREAKFAST / LUNCH / DINNER |
+| 기록 시도 | Attempt | 식사 기록 요청 횟수(하루 제한 대상). todayAttemptCount, countDailyAttempts |
+| 연속 기록 | Streak | 연속으로 식사를 기록한 일수. streakDays |
 
 ### 영양
 
@@ -109,7 +141,7 @@
 | 하루 평가 | DailyNutritionEvaluation | POSITIVE / NEGATIVE / UNRECORDED |
 | 권장 섭취량 | RecommendedDailyIntake | Recommended(권장) + Intake(섭취량). 전용 클래스 없음 — calculateRecommendedDailyIntake()가 Nutrition을 반환 |
 | 현재 섭취량 | Current | 하루 영양 합계. 응답에서 Target과 쌍으로 사용 |
-| 목표 섭취량 | Target | 응답 표기용. 값은 RecommendedDailyIntake 계산 결과 |
+| 목표 섭취량 | Target | 응답 표기용. 값은 RecommendedDailyIntake 계산 결과. 알림의 발송 대상(Target)과 다른 의미 |
 
 ### 기간·캘린더
 
@@ -133,8 +165,12 @@
 | JWT | Jwt | 식별자 표기는 Jwt (클래스 `JwtProvider`, 패키지 security.jwt). JWT 전체 대문자, JsonWebToken 금지 |
 | 접근 토큰 | AccessToken | 30분 수명, API 인증용. type 클레임 값은 "access". 필드명 accessToken |
 | 갱신 토큰 | RefreshToken | 15일 수명, 재발급용. type 클레임 값은 "refresh". 필드명 refreshToken |
-| 토큰 수명 | TimeToLive | accessTimeToLive / refreshTimeToLive. Expiration, Ttl, ExpiresIn, Validity 금지 |
 | 시크릿 키 | SecretKey | 설정의 Base64 문자열(JwtProperties.secretKey, .env의 JWT_SECRET_KEY)과 디코딩된 키 객체 모두 secretKey |
+| 인증 코드 | AuthCode | 이메일로 보내는 확인 코드. 엔티티·테이블은 Code(codes), 메서드·DTO는 AuthCode (sendAuthCode, validateAuthCode) |
+| 이메일 확인 토큰 | EmailChallengeToken | 코드 발송 후 확인까지 들고 다니는 토큰. type 클레임 "emailChallenge", JWE |
+| 확인 완료 토큰 | VerifiedToken | 코드 확인 후 발급, 회원가입·비밀번호 재설정에 제출. type 클레임 "verified", JWE |
+| 세션 | Session | RefreshToken 행 하나 = 로그인 1회의 유효 구간. 절대 만료 absoluteExpiresAt. 재발급은 rotate, 재로그인은 restart |
+| 토큰 무효화 | Invalidation | 비밀번호 변경 등으로 그 이전에 발급된 AccessToken을 무효 처리. 시각은 invalidatedAt |
 
 ### 알림
 
@@ -144,6 +180,12 @@
 | 마케팅 알림 | MarketingPush | 광고성 정보로 볼 여지가 있는 알림(리텐션 복귀 유도 등). 사전 동의 필요, 기본 거부 |
 | 알림 수신 설정 | PushSetting | profile의 수신 여부 묶음. PushConfig, PushPreference, PushOption 금지 |
 | 동의 | Agreed | 광고성 정보 수신 동의. 시점은 marketingAgreedAt. Consent, Approval, Accept 금지 |
+| 기기 토큰 | DeviceToken | FCM 기기 토큰. 테이블 device_tokens |
+| 기기 플랫폼 | DevicePlatform | ANDROID / IOS |
+| 식사 리마인더 | MealReminder | 끼니 시각에 보내는 서비스 알림. 시각은 profile의 breakfastHour / lunchHour / dinnerHour(0~23) |
+| 리텐션 | Retention | 미접속 사용자 복귀 유도 알림(마케팅 알림) |
+| 발송 대상 | Target | 알림을 받을 사용자 묶음 (MealReminderTargetResult, findRetentionPushTargets). 영양의 Target과 다른 의미 |
+| 중복 발송 방지 | SentMark | 같은 알림을 두 번 보내지 않도록 Redis에 남기는 발송 표시 (createSentMark, deleteSentMarks) |
 
 ### 문의
 
@@ -157,6 +199,15 @@
 | 답변 읽음 | Read | 사용자가 답변을 읽음. 시각은 answerReadAt(처음 읽은 시각 고정). 조회 동사 read 금지와는 별개의 도메인 의미이며, 메서드 동사로는 쓰지 않는다 |
 | 안 읽은 답변 | UnreadAnswer | 답변이 있고 아직 읽지 않음. hasUnreadAnswer(문의 단건), hasUnreadInquiryAnswer(홈), existsUnreadAnswer(조회). New 금지 |
 
+### 이미지
+
+| 개념 | 사용 단어 | 비고 |
+|---|---|---|
+| 이미지 키 | ImageKey | 도메인에서 이미지를 가리키는 S3 객체 키(필드 imageKey). 스토리지 계층(S3StorageClient) 파라미터는 objectKey |
+| 업로드 URL | UploadUrl | 업로드용 presigned PUT URL (createUploadUrl) |
+| 이미지 URL | ImageUrl | 조회용 presigned GET URL (createImageUrl) |
+| 촬영 시각 | CapturedAt | EXIF에서 읽은 촬영 시각. TakenAt, ShotAt 금지 |
+
 ## 케이스 규칙
 
 | 대상 | 규칙 | 예시 |
@@ -165,3 +216,9 @@
 | 함수/프로퍼티 | camelCase | `getMeal`, `imageUrl` |
 | DB 테이블/컬럼 | snake_case | `meals`, `image_url` |
 | DB 테이블 이름 | 복수형 | `meals`, `refresh_tokens` (V0.31에서 통일). 엔티티 클래스는 단수형(`Meal`) + `@Table(name = "meals")` |
+
+## 기타
+
+| 대상 | 규칙 | 비고 |
+|---|---|---|
+| 로거 변수명 | logger | log 금지. `companion object { private val logger = LoggerFactory.getLogger(Xxx::class.java) }` |
