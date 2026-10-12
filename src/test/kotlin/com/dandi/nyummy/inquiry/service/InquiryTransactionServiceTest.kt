@@ -46,7 +46,7 @@ class InquiryTransactionServiceTest {
     fun `다시 읽은 문의에 변경을 적용한다`() {
         every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry()
 
-        val result = inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
+        val result = inquiryTransactionService.updateQuestion(userId, inquiryId, request, imageKey)
 
         assertEquals(InquiryCategory.SUGGESTION, result.category)
         assertEquals("새 제목", result.questionTitle)
@@ -60,7 +60,7 @@ class InquiryTransactionServiceTest {
             inquiry(answeredAt = Instant.parse("2026-10-10T03:00:00Z"))
 
         assertBusinessException(InquiryErrorCode.ALREADY_ANSWERED) {
-            inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
+            inquiryTransactionService.updateQuestion(userId, inquiryId, request, imageKey)
         }
     }
 
@@ -69,7 +69,7 @@ class InquiryTransactionServiceTest {
         every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns null
 
         assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) {
-            inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
+            inquiryTransactionService.updateQuestion(userId, inquiryId, request, imageKey)
         }
     }
 

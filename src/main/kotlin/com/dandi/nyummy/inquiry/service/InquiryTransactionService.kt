@@ -36,7 +36,8 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
     }
 
     /**
-     * 문의를 다시 읽어 검증한 뒤 변경을 적용하고 커밋한다.
+     * 문의를 다시 읽어 검증한 뒤 질문(유형·제목·내용·첨부 이미지) 변경을 적용하고 커밋한다.
+     * 이미지 확정과 응답 변환까지 포함한 수정 흐름 전체는 [InquiryService.updateInquiry]가 맡는다.
      *
      * 호출 전에 읽은 엔티티를 받아 merge하지 않는다. 그사이 답변이 등록됐다면 merge가 answered_at을 덮어써
      * 답변을 지울 수 있기 때문이다. 다시 읽으면 그사이 답변·삭제도 다시 검증된다.
@@ -47,7 +48,7 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
      * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
      */
     @Transactional
-    fun updateInquiry(userId: Long, inquiryId: Long, request: UpdateInquiryRequest, imageKey: String?): Inquiry {
+    fun updateQuestion(userId: Long, inquiryId: Long, request: UpdateInquiryRequest, imageKey: String?): Inquiry {
         val inquiry = getUpdatableInquiry(userId, inquiryId)
 
         inquiry.updateQuestion(request.category, request.questionTitle, request.questionContent, imageKey)

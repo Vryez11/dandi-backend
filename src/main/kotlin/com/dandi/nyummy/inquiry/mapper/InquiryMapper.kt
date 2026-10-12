@@ -19,7 +19,7 @@ fun Inquiry.toInquirySummaryResponse(): InquirySummaryResponse = InquirySummaryR
     questionTitle = this.questionTitle,
     createdAt = this.createdAt,
     isAnswered = this.isAnswered,
-    hasNewAnswer = this.hasNewAnswer,
+    hasUnreadAnswer = this.hasUnreadAnswer,
 )
 
 fun Inquiry.toInquiryResponse(imageUrl: String?): InquiryResponse = InquiryResponse(

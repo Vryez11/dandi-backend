@@ -234,7 +234,7 @@ class InquiryServiceTest {
 
     private fun givenUpdatable(current: Inquiry) {
         every { inquiryTransactionService.getUpdatableInquiry(userId, inquiryId) } returns current
-        every { inquiryTransactionService.updateInquiry(userId, inquiryId, any(), any()) } answers {
+        every { inquiryTransactionService.updateQuestion(userId, inquiryId, any(), any()) } answers {
             current.apply {
                 updateQuestion(
                     thirdArg<UpdateInquiryRequest>().category,
@@ -253,7 +253,7 @@ class InquiryServiceTest {
         val result = inquiryService.updateInquiry(userId, inquiryId, updateRequest(imageKey = null))
 
         assertNull(result.imageUrl)
-        verify { inquiryTransactionService.updateInquiry(userId, inquiryId, any(), null) }
+        verify { inquiryTransactionService.updateQuestion(userId, inquiryId, any(), null) }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
     }
 
@@ -263,7 +263,7 @@ class InquiryServiceTest {
 
         inquiryService.updateInquiry(userId, inquiryId, updateRequest(imageKey = imageKey))
 
-        verify { inquiryTransactionService.updateInquiry(userId, inquiryId, any(), imageKey) }
+        verify { inquiryTransactionService.updateQuestion(userId, inquiryId, any(), imageKey) }
         verify(exactly = 0) { inquiryRepository.existsByImageKey(any()) }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
     }
@@ -279,7 +279,7 @@ class InquiryServiceTest {
             inquiryTransactionService.getUpdatableInquiry(userId, inquiryId)
             inquiryRepository.existsByImageKey(newImageKey)
             imageService.confirmUpload(userId, ImagePurpose.INQUIRY, newImageKey, any())
-            inquiryTransactionService.updateInquiry(userId, inquiryId, any(), newImageKey)
+            inquiryTransactionService.updateQuestion(userId, inquiryId, any(), newImageKey)
         }
     }
 
@@ -293,7 +293,7 @@ class InquiryServiceTest {
             inquiryService.updateInquiry(userId, inquiryId, updateRequest(imageKey = newImageKey))
         }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
-        verify(exactly = 0) { inquiryTransactionService.updateInquiry(any(), any(), any(), any()) }
+        verify(exactly = 0) { inquiryTransactionService.updateQuestion(any(), any(), any(), any()) }
     }
 
     @Test
@@ -305,7 +305,7 @@ class InquiryServiceTest {
             inquiryService.updateInquiry(userId, inquiryId, updateRequest(imageKey = newImageKey))
         }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
-        verify(exactly = 0) { inquiryTransactionService.updateInquiry(any(), any(), any(), any()) }
+        verify(exactly = 0) { inquiryTransactionService.updateQuestion(any(), any(), any(), any()) }
     }
 
     // deleteInquiry

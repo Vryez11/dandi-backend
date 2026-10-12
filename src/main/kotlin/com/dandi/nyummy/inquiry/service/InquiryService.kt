@@ -141,7 +141,7 @@ class InquiryService(
             else -> confirmImage(userId, requestImageKey)
         }
 
-        val updatedInquiry = inquiryTransactionService.updateInquiry(userId, inquiryId, request, imageKey)
+        val updatedInquiry = inquiryTransactionService.updateQuestion(userId, inquiryId, request, imageKey)
 
         return convertInquiryResponse(updatedInquiry)
     }

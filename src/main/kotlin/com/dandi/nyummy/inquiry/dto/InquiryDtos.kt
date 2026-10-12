@@ -43,7 +43,7 @@ data class InquirySummaryResponse(
     val questionTitle: String,
     val createdAt: Instant,
     val isAnswered: Boolean,
-    val hasNewAnswer: Boolean,
+    val hasUnreadAnswer: Boolean,
 )
 
 data class InquiryResponse(

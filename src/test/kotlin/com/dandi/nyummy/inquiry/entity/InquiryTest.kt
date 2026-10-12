@@ -34,21 +34,21 @@ class InquiryTest {
         assertEquals(expected, exception.errorCode)
     }
 
-    // hasNewAnswer
+    // hasUnreadAnswer
 
     @Test
-    fun `답변이 없으면 새 답변이 아니다`() {
-        assertFalse(inquiry().hasNewAnswer)
+    fun `답변이 없으면 안 읽은 답변이 없다`() {
+        assertFalse(inquiry().hasUnreadAnswer)
     }
 
     @Test
-    fun `답변이 있고 읽지 않았으면 새 답변이다`() {
-        assertTrue(inquiry(answeredAt = answeredAt).hasNewAnswer)
+    fun `답변이 있고 읽지 않았으면 안 읽은 답변이 있다`() {
+        assertTrue(inquiry(answeredAt = answeredAt).hasUnreadAnswer)
     }
 
     @Test
-    fun `답변을 읽었으면 새 답변이 아니다`() {
-        assertFalse(inquiry(answeredAt = answeredAt, answerReadAt = readAt).hasNewAnswer)
+    fun `답변을 읽었으면 안 읽은 답변이 없다`() {
+        assertFalse(inquiry(answeredAt = answeredAt, answerReadAt = readAt).hasUnreadAnswer)
     }
 
     // updateAnswerReadAt
