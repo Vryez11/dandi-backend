@@ -1,5 +1,7 @@
 package com.dandi.nyummy.home.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.home.dto.HomeResponse
 import com.dandi.nyummy.home.service.HomeService
 import com.dandi.nyummy.security.AuthUser
@@ -24,7 +26,7 @@ class HomeController(private val homeService: HomeService) {
             "시도 횟수다. 등록 가능 여부는 todayAttemptCount와 todayMaxAttemptCount를 비교해 판단한다. " +
             "화면 단위로 묶은 응답이므로 각 값의 의미는 도메인별 API와 동일하다.",
     )
-    @ApiResponse(responseCode = "500", description = "사용자 프로필이 존재하지 않음 (가입 시 생성되어야 하므로 데이터 이상)")
+    @ApiErrorCodes(user = [UserErrorCode.PROFILE_NOT_FOUND])
     @GetMapping
     fun home(@CurrentUser user: AuthUser): HomeResponse = homeService.getHome(user.userId)
 }

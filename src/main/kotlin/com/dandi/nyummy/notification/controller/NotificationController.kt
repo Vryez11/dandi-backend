@@ -25,7 +25,6 @@ class NotificationController(private val notificationService: NotificationServic
             "토큰은 FCM이 갱신할 수 있으므로 앱 실행마다 호출해도 된다.",
     )
     @ApiResponse(responseCode = "200", description = "등록 완료")
-    @ApiResponse(responseCode = "401", description = "인증이 필요합니다.")
     @PostMapping("/device-tokens")
     fun createDeviceToken(@CurrentUser user: AuthUser, @RequestBody request: CreateDeviceTokenRequest) {
         notificationService.createDeviceToken(user.userId, request)

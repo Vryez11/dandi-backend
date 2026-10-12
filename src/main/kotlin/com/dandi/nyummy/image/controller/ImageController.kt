@@ -1,5 +1,7 @@
 package com.dandi.nyummy.image.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.image.dto.CreateUploadUrlRequest
 import com.dandi.nyummy.image.dto.UploadUrlResponse
 import com.dandi.nyummy.image.service.ImageService
@@ -23,6 +25,7 @@ class ImageController(private val imageService: ImageService) {
         description = "용도(purpose)별 경로에 이미지를 외부 스토리지로 직접 업로드할 수 있는 presigned URL과 이미지 키를 발급한다. " +
             "업로드한 이미지는 각 도메인의 생성 API(예: 식사 기록 생성)에 imageKey를 넘겨야 확정된다.",
     )
+    @ApiErrorCodes(s3 = [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE, S3ErrorCode.FILE_SIZE_EXCEEDED])
     @PostMapping("/presigned-url")
     fun createUploadUrl(
         @CurrentUser user: AuthUser,

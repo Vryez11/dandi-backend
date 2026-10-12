@@ -1,5 +1,8 @@
 package com.dandi.nyummy.inquiry.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
+import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
 import com.dandi.nyummy.inquiry.dto.InquiriesResponse
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
@@ -33,15 +36,19 @@ class InquiryController(private val inquiryService: InquiryService) {
 
     @Operation(
         summary = "문의하기",
-        description = "문의 유형(BUG_REPORT · QUESTION · SUGGESTION)과 제목, 내용으로 문의를 생성한다. " +
+        description = "문의 유형과 제목, 내용으로 문의를 생성한다. " +
             "이미지는 선택이며, 이미지 업로드 URL 발급 API에 purpose=INQUIRY로 받은 imageKey로 업로드한 뒤 imageKey를 함께 보낸다.",
     )
-    @ApiResponse(
-        responseCode = "400",
-        description = "제목·내용이 비었거나 길이 제한(100 · 2000자)을 넘었거나, " +
-            "imageKey가 요청자의 문의 경로가 아니거나, 업로드된 이미지가 없거나, 이미지 크기·형식이 허용되지 않습니다.",
+    @ApiResponse(responseCode = "201", description = "문의 생성 성공")
+    @ApiErrorCodes(
+        inquiry = [InquiryErrorCode.DUPLICATE_IMAGE_KEY],
+        s3 = [
+            S3ErrorCode.INVALID_KEY,
+            S3ErrorCode.OBJECT_NOT_FOUND,
+            S3ErrorCode.FILE_SIZE_EXCEEDED,
+            S3ErrorCode.UNSUPPORTED_CONTENT_TYPE,
+        ],
     )
-    @ApiResponse(responseCode = "409", description = "이미 문의에 사용된 imageKey입니다.")
     @PostMapping
     fun createInquiry(
         @CurrentUser user: AuthUser,
@@ -57,7 +64,6 @@ class InquiryController(private val inquiryService: InquiryService) {
             "첫 요청은 cursor 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor를 cursor로 보낸다. " +
             "hasNext가 false면 마지막 묶음이며 nextCursor는 null이다.",
     )
-    @ApiResponse(responseCode = "400", description = "size가 1~50 범위를 벗어났습니다.")
     @GetMapping
     fun getInquiries(
         @CurrentUser user: AuthUser,
@@ -74,7 +80,7 @@ class InquiryController(private val inquiryService: InquiryService) {
         description = "문의 하나의 질문과 답변을 조회한다. 답변이 달린 문의를 처음 조회하면 답변을 읽은 것으로 기록한다. " +
             "이미지가 있으면 imageUrl에 일정 시간 동안만 유효한 조회 URL이 들어 있고, 없으면 null이다.",
     )
-    @ApiResponse(responseCode = "404", description = "문의가 없거나 접근할 수 없습니다.")
+    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND])
     @GetMapping("/{inquiryId}")
     fun getInquiry(
         @CurrentUser user: AuthUser,
@@ -87,13 +93,19 @@ class InquiryController(private val inquiryService: InquiryService) {
             "imageKey는 null이면 이미지 삭제, 기존과 같으면 유지, 다르면 새 이미지로 교체한다. " +
             "이미지를 유지하려면 기존 imageKey를 그대로 보내야 한다.",
     )
-    @ApiResponse(
-        responseCode = "400",
-        description = "제목·내용이 비었거나 길이 제한(100 · 2000자)을 넘었거나, " +
-            "새 imageKey가 요청자의 문의 경로가 아니거나, 업로드된 이미지가 없거나, 이미지 크기·형식이 허용되지 않습니다.",
+    @ApiErrorCodes(
+        inquiry = [
+            InquiryErrorCode.INQUIRY_NOT_FOUND,
+            InquiryErrorCode.ALREADY_ANSWERED,
+            InquiryErrorCode.DUPLICATE_IMAGE_KEY,
+        ],
+        s3 = [
+            S3ErrorCode.INVALID_KEY,
+            S3ErrorCode.OBJECT_NOT_FOUND,
+            S3ErrorCode.FILE_SIZE_EXCEEDED,
+            S3ErrorCode.UNSUPPORTED_CONTENT_TYPE,
+        ],
     )
-    @ApiResponse(responseCode = "404", description = "문의가 없거나 접근할 수 없습니다.")
-    @ApiResponse(responseCode = "409", description = "답변이 등록된 문의이거나, 새 imageKey가 이미 문의에 사용됐습니다.")
     @PutMapping("/{inquiryId}")
     fun updateInquiry(
         @CurrentUser user: AuthUser,
@@ -103,7 +115,7 @@ class InquiryController(private val inquiryService: InquiryService) {
 
     @Operation(summary = "문의 삭제", description = "문의를 삭제한다. 답변이 등록된 문의도 삭제할 수 있다.")
     @ApiResponse(responseCode = "204", description = "삭제 성공")
-    @ApiResponse(responseCode = "404", description = "문의가 없거나 접근할 수 없습니다.")
+    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND])
     @DeleteMapping("/{inquiryId}")
     fun deleteInquiry(
         @CurrentUser user: AuthUser,

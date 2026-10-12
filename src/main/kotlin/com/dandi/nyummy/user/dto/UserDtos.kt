@@ -3,6 +3,7 @@
 package com.dandi.nyummy.user.dto
 
 import com.dandi.nyummy.user.enum.Gender
+import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.AssertTrue
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
@@ -43,6 +44,7 @@ data class PasswordUpdateRequest(
     val confirmNewPassword: String,
 ) {
     @get:AssertTrue(message = "새 비밀번호가 일치하지 않습니다.")
+    @get:Schema(hidden = true)
     val isPasswordConfirmed: Boolean
         get() = newPassword == confirmNewPassword
 }
@@ -78,6 +80,7 @@ data class UpdateMealTimeRequest(
      * MealReminderTarget.convertMealTime이 when의 첫 매치를 고르기 때문이다.
      */
     @get:AssertTrue(message = "식사 시각은 서로 달라야 합니다.")
+    @get:Schema(hidden = true)
     val isMealHoursDistinct: Boolean
         get() = listOfNotNull(breakfastHour, lunchHour, dinnerHour)
             .let { it.size == it.toSet().size }

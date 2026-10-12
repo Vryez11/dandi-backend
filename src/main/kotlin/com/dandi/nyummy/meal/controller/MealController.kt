@@ -1,5 +1,9 @@
 package com.dandi.nyummy.meal.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.exception.errorcode.MealErrorCode
+import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.MealResponse
@@ -34,7 +38,9 @@ class MealController(private val mealService: MealService, private val analysisS
 
     @Operation(
         summary = "월간 식사 캘린더 조회",
-        description = "해당 연·월의 캘린더 범위(주 시작 일요일, 앞뒤 달 날짜 포함)에 대해 날짜별 하루 평가와 음식 아이콘 목록을 조회한다.",
+        description = "해당 연·월의 캘린더 범위(주 시작 일요일, 앞뒤 달 날짜 포함)에 대해 날짜별 하루 평가와 음식 아이콘 목록을 조회한다. " +
+            "하루 평가는 칼로리·탄수화물·단백질·지방이 모두 권장 섭취량의 90% 이상 150% 미만이면 POSITIVE, " +
+            "하나라도 벗어나면 NEGATIVE, 그날 식사 기록이 없으면 UNRECORDED다.",
     )
     @GetMapping("/monthly")
     fun getMonthlyMeals(
@@ -56,6 +62,7 @@ class MealController(private val mealService: MealService, private val analysisS
     ): DailyMealsResponse = mealService.getDailyMeals(user.userId, year, month, day)
 
     @Operation(summary = "식사 단건 조회", description = "식사 하나의 상세 정보(이름, 시각, 상태, 영양, 이미지 URL)를 조회한다.")
+    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @GetMapping("/{mealId}")
     fun getMeal(
         @CurrentUser user: AuthUser,
@@ -63,6 +70,7 @@ class MealController(private val mealService: MealService, private val analysisS
     ): MealResponse = mealService.getMeal(user.userId, mealId)
 
     @Operation(summary = "식사 이름 수정", description = "식사의 이름을 수정하고 수정된 식사 정보를 반환한다.")
+    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @PutMapping("/{mealId}")
     fun updateMeal(
         @CurrentUser user: AuthUser,
@@ -72,6 +80,7 @@ class MealController(private val mealService: MealService, private val analysisS
 
     @Operation(summary = "식사 삭제", description = "식사 기록을 삭제한다.")
     @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @DeleteMapping("/{mealId}")
     fun deleteMeal(
         @CurrentUser user: AuthUser,
@@ -87,15 +96,26 @@ class MealController(private val mealService: MealService, private val analysisS
         description = "업로드된 이미지 키로 식사를 생성하고 영양 분석을 수행한 뒤, 식사 ID와 분석 상태를 반환한다. " +
             "영양 정보가 필요하면 식사 단건 조회 API를 사용한다.",
     )
+    @ApiErrorCodes(
+        meal = [MealErrorCode.DUPLICATE_IMAGE_KEY, MealErrorCode.DAILY_COUNT_EXCEEDED, MealErrorCode.STALE_IMAGE],
+        s3 = [
+            S3ErrorCode.INVALID_KEY,
+            S3ErrorCode.OBJECT_NOT_FOUND,
+            S3ErrorCode.FILE_SIZE_EXCEEDED,
+            S3ErrorCode.UNSUPPORTED_CONTENT_TYPE,
+        ],
+    )
     @PostMapping
     fun createMeal(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateMealRequest): MealStatusResponse =
         mealService.createMeal(user.userId, request)
 
     @Operation(
         summary = "영양 분석 상태 조회",
-        description = "식사의 영양 분석 상태(WAITING/ANALYZING/COMPLETED/FAILED/UNKNOWN)를 조회한다. " +
+        description = "식사의 영양 분석 상태를 조회한다. " +
+            "UNKNOWN은 enum에 정의만 되어 있고 현재 서버가 내려주지 않는다. " +
             "영양 정보는 포함하지 않으며, COMPLETED 이후 식사 단건 조회 API로 가져온다.",
     )
+    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND])
     @GetMapping("/{mealId}/analysis")
     fun getStatus(
         @CurrentUser user: AuthUser,
@@ -103,6 +123,7 @@ class MealController(private val mealService: MealService, private val analysisS
     ): MealStatusResponse = analysisService.getStatus(user.userId, mealId)
 
     @Operation(summary = "영양 분석 재시도", description = "실패한 식사의 영양 분석을 다시 시도하고 변경된 분석 상태를 반환한다.")
+    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND, MealErrorCode.ANALYSIS_NOT_RETRYABLE])
     @PostMapping("/{mealId}/analysis")
     fun retryAnalysis(
         @CurrentUser user: AuthUser,
