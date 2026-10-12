@@ -86,6 +86,7 @@ class AnalysisService(
             val analysisResult = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
             updateMealService.updateAnalysisResult(meal, analysisResult)
         } catch (e: RuntimeException) {
+            logger.error("영양 분석 실패: userId={}, {}", meal.userId, e.message)
             status = MealStatus.FAILED
         }
 
