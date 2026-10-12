@@ -27,10 +27,5 @@ class ImageController(private val imageService: ImageService) {
     fun createUploadUrl(
         @CurrentUser user: AuthUser,
         @Valid @RequestBody request: CreateUploadUrlRequest,
-    ): UploadUrlResponse = imageService.createUploadUrl(
-        userId = user.userId,
-        purpose = request.purpose,
-        contentType = request.contentType,
-        fileSizeBytes = request.fileSizeBytes,
-    )
+    ): UploadUrlResponse = imageService.createUploadUrl(user.userId, request)
 }

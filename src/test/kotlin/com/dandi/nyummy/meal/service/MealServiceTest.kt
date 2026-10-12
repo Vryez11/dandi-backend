@@ -63,12 +63,13 @@ class MealServiceTest {
 
     /** ImageService가 공통 검증을 통과시킨 뒤 콜백을 실행하는 동작을 흉내 낸다. */
     private fun givenConfirmUpload(capturedAt: Instant?) {
-        val validate = slot<(UploadedImage) -> Unit>()
-        every { imageService.confirmUpload(userId, ImagePurpose.MEAL, imageKey, capture(validate)) } answers {
-            val uploadedImage = UploadedImage(imageKey, capturedAt)
-            validate.captured(uploadedImage)
-            uploadedImage
-        }
+        val validateAfterUpload = slot<(UploadedImage) -> Unit>()
+        every { imageService.confirmUpload(userId, ImagePurpose.MEAL, imageKey, capture(validateAfterUpload)) } answers
+            {
+                val uploadedImage = UploadedImage(imageKey, capturedAt)
+                validateAfterUpload.captured(uploadedImage)
+                uploadedImage
+            }
     }
 
     private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {

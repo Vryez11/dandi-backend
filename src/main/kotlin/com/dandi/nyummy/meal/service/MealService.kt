@@ -98,7 +98,7 @@ class MealService(
             userId = userId,
             purpose = ImagePurpose.MEAL,
             imageKey = request.imageKey,
-            validate = { mealAttemptService.validateCapturedToday(userId, it) },
+            validateAfterUpload = { mealAttemptService.validateCapturedToday(userId, it) },
         )
 
         // EXIF가 없으면 거부하지 않고 서버 시각으로 채운다. 기기·앱에 따라 EXIF가 아예 없거나

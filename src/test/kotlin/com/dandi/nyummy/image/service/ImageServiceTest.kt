@@ -6,6 +6,7 @@ import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.image.ExifCaptureTimeReader
 import com.dandi.nyummy.image.config.ImageProperties
+import com.dandi.nyummy.image.dto.CreateUploadUrlRequest
 import com.dandi.nyummy.image.dto.UploadedImage
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.validator.ImageUploadValidator
@@ -46,7 +47,7 @@ class ImageServiceTest {
     private val exifCaptureTimeReader = mockk<ExifCaptureTimeReader>()
     private val mealValidator = mockk<ImageUploadValidator> {
         every { purpose } returns ImagePurpose.MEAL
-        every { validate(any()) } just Runs
+        every { validateBeforeUpload(any()) } just Runs
     }
 
     private val imageService = createImageService(listOf(mealValidator))
@@ -94,7 +95,10 @@ class ImageServiceTest {
     fun `식사 용도면 meals 경로에 날짜와 UUID로 키를 만들고 발급 정보를 반환한다`() {
         givenPresign()
 
-        val result = imageService.createUploadUrl(userId, ImagePurpose.MEAL, "image/jpeg", 1000L)
+        val result = imageService.createUploadUrl(
+            userId,
+            CreateUploadUrlRequest(ImagePurpose.MEAL, "image/jpeg", 1000L),
+        )
 
         assertTrue(
             result.imageKey.matches(Regex("""^meals/1/2026/10/10/[0-9a-f-]{36}\.jpg$""")),
@@ -111,19 +115,23 @@ class ImageServiceTest {
     fun `문의 용도면 inquiries 경로로 발급하고 식사 검증기는 실행하지 않는다`() {
         givenPresign()
 
-        val result = imageService.createUploadUrl(userId, ImagePurpose.INQUIRY, "image/png", 1000L)
+        val result = imageService.createUploadUrl(
+            userId,
+            CreateUploadUrlRequest(ImagePurpose.INQUIRY, "image/png", 1000L),
+        )
 
         assertTrue(result.imageKey.startsWith("inquiries/1/2026/10/10/"), result.imageKey)
         assertTrue(result.imageKey.endsWith(".png"), result.imageKey)
-        verify(exactly = 0) { mealValidator.validate(any()) }
+        verify(exactly = 0) { mealValidator.validateBeforeUpload(any()) }
     }
 
     @Test
     fun `용도의 검증기가 거부하면 그 예외를 그대로 던지고 URL을 발급하지 않는다`() {
-        every { mealValidator.validate(userId) } throws BusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED)
+        every { mealValidator.validateBeforeUpload(userId) } throws
+            BusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED)
 
         assertBusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED) {
-            imageService.createUploadUrl(userId, ImagePurpose.MEAL, "image/jpeg", 1000L)
+            imageService.createUploadUrl(userId, CreateUploadUrlRequest(ImagePurpose.MEAL, "image/jpeg", 1000L))
         }
         verify(exactly = 0) { s3StorageClient.createPresignedPutUrl(any(), any(), any()) }
     }
@@ -131,7 +139,7 @@ class ImageServiceTest {
     @Test
     fun `허용하지 않는 MIME 타입이면 발급을 거부한다`() {
         assertBusinessException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE) {
-            imageService.createUploadUrl(userId, ImagePurpose.MEAL, "image/gif", 1000L)
+            imageService.createUploadUrl(userId, CreateUploadUrlRequest(ImagePurpose.MEAL, "image/gif", 1000L))
         }
         verify(exactly = 0) { s3StorageClient.createPresignedPutUrl(any(), any(), any()) }
     }
@@ -141,10 +149,10 @@ class ImageServiceTest {
         val max = ImagePurpose.MEAL.maxFileSizeBytes
 
         assertBusinessException(S3ErrorCode.FILE_SIZE_EXCEEDED) {
-            imageService.createUploadUrl(userId, ImagePurpose.MEAL, "image/jpeg", -1L)
+            imageService.createUploadUrl(userId, CreateUploadUrlRequest(ImagePurpose.MEAL, "image/jpeg", -1L))
         }
         assertBusinessException(S3ErrorCode.FILE_SIZE_EXCEEDED) {
-            imageService.createUploadUrl(userId, ImagePurpose.MEAL, "image/jpeg", max + 1)
+            imageService.createUploadUrl(userId, CreateUploadUrlRequest(ImagePurpose.MEAL, "image/jpeg", max + 1))
         }
     }
 
@@ -152,7 +160,10 @@ class ImageServiceTest {
     fun `신고한 크기가 최대 크기와 같으면 발급한다`() {
         givenPresign()
 
-        imageService.createUploadUrl(userId, ImagePurpose.MEAL, "image/jpeg", ImagePurpose.MEAL.maxFileSizeBytes)
+        imageService.createUploadUrl(
+            userId,
+            CreateUploadUrlRequest(ImagePurpose.MEAL, "image/jpeg", ImagePurpose.MEAL.maxFileSizeBytes),
+        )
 
         verify { s3StorageClient.createPresignedPutUrl(any(), "image/jpeg", any()) }
     }

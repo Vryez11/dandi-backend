@@ -4,6 +4,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.image.ExifCaptureTimeReader
 import com.dandi.nyummy.image.config.ImageProperties
+import com.dandi.nyummy.image.dto.CreateUploadUrlRequest
 import com.dandi.nyummy.image.dto.UploadUrlResponse
 import com.dandi.nyummy.image.dto.UploadedImage
 import com.dandi.nyummy.image.enum.ImagePurpose
@@ -63,16 +64,15 @@ class ImageService(
      * 클라이언트는 임의의 키에 업로드할 수 없다. 업로드된 객체는 `status=temp` 상태이며,
      * [confirmUpload]로 확정되지 않으면 버킷의 라이프사이클 룰이 정리한다.
      *
-     * [fileSizeBytes]는 사전 검증용 값일 뿐 presigned URL에 서명되지 않는다.
+     * [CreateUploadUrlRequest.fileSizeBytes]는 사전 검증용 값일 뿐 presigned URL에 서명되지 않는다.
      * 실제 업로드된 크기는 [confirmUpload]에서 다시 확인한다.
      *
-     * [purpose]에 [ImageUploadValidator] 구현이 있으면 다른 검사보다 먼저 실행하며,
+     * [CreateUploadUrlRequest.purpose]에 [ImageUploadValidator] 구현이 있으면 다른 검사보다 먼저 실행하며,
      * 그 검증이 던진 예외는 그대로 전파된다.
      *
      * @param userId 업로드를 요청한 사용자 ID. 객체 키의 소유자 경로로 사용된다
-     * @param purpose 업로드 용도. 객체 키 경로와 최대 크기를 정한다
-     * @param contentType 업로드할 파일의 MIME 타입. [ALLOWED_CONTENT_TYPES]에 포함된 값만 허용
-     * @param fileSizeBytes 클라이언트가 신고한 파일 크기(byte)
+     * @param request 업로드 용도(객체 키 경로와 최대 크기를 정함), MIME 타입([ALLOWED_CONTENT_TYPES]에 포함된 값만 허용),
+     *   클라이언트가 신고한 파일 크기(byte)
      * @return 업로드 URL/메서드/헤더와 이미지 키를 담은 [UploadUrlResponse].
      *   [UploadUrlResponse.uploadHeaders]는 업로드 요청에 그대로 포함해야 하며,
      *   누락하면 서명이 일치하지 않아 업로드가 거부된다
@@ -80,13 +80,10 @@ class ImageService(
      * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] fileSizeBytes가 음수이거나
      *   [ImagePurpose.maxFileSizeBytes]를 초과할 경우
      */
-    fun createUploadUrl(
-        userId: Long,
-        purpose: ImagePurpose,
-        contentType: String,
-        fileSizeBytes: Long,
-    ): UploadUrlResponse {
-        validatorsByPurpose[purpose]?.validate(userId)
+    fun createUploadUrl(userId: Long, request: CreateUploadUrlRequest): UploadUrlResponse {
+        val (purpose, contentType, fileSizeBytes) = request
+
+        validatorsByPurpose[purpose]?.validateBeforeUpload(userId)
 
         if (contentType !in ALLOWED_CONTENT_TYPES) {
             throw BusinessException(S3ErrorCode.UNSUPPORTED_CONTENT_TYPE)
@@ -123,7 +120,7 @@ class ImageService(
     /**
      * 업로드된 이미지를 검증한 뒤 확정(`status=committed`)한다.
      *
-     * 공통 검증(소유 경로, 존재, 크기, 실제 MIME)을 통과하면 [validate]로 도메인 고유 검증을 실행하고,
+     * 공통 검증(소유 경로, 존재, 크기, 실제 MIME)을 통과하면 [validateAfterUpload]로 도메인 고유 검증을 실행하고,
      * 그것까지 통과해야만 확정한다. 순서를 이 메서드가 강제하므로, 어느 검증에서 거부되든
      * 객체는 `status=temp`로 남아 라이프사이클 룰이 정리한다.
      *
@@ -132,7 +129,7 @@ class ImageService(
      * @param userId 확정을 요청한 사용자 ID. [imageKey]의 소유권 검증에 사용된다
      * @param purpose 업로드 용도. 다른 용도로 발급된 키는 거부된다
      * @param imageKey [createUploadUrl]로 발급받아 업로드에 사용한 객체 키
-     * @param validate 도메인 고유 검증. 예외를 던지면 확정하지 않는다
+     * @param validateAfterUpload 업로드된 이미지에 대한 도메인 고유 검증. 예외를 던지면 확정하지 않는다
      * @return 확정된 키와 EXIF 촬영 시각을 담은 [UploadedImage]
      * @throws BusinessException [S3ErrorCode.INVALID_KEY] imageKey가 `{purpose.prefix}/{userId}/`로 시작하지 않을 경우
      * @throws BusinessException [S3ErrorCode.OBJECT_NOT_FOUND] imageKey에 해당하는 객체가 S3에 존재하지 않을 경우
@@ -145,7 +142,7 @@ class ImageService(
         userId: Long,
         purpose: ImagePurpose,
         imageKey: String,
-        validate: (UploadedImage) -> Unit = {},
+        validateAfterUpload: (UploadedImage) -> Unit = {},
     ): UploadedImage = runBlocking {
         // 1. imageKey가 이 용도·이 사용자의 경로인지 확인
         if (!imageKey.startsWith("${purpose.prefix}/$userId/")) {
@@ -176,7 +173,7 @@ class ImageService(
             capturedAt = exifCaptureTimeReader.extractCapturedAt(objectBytes),
         )
 
-        validate(uploadedImage)
+        validateAfterUpload(uploadedImage)
 
         // 6. 모든 검증을 통과했으므로 라이프사이클 정리 대상에서 제외되도록 확정 처리
         s3StorageClient.confirmObject(imageKey)
