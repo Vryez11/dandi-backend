@@ -1,5 +1,6 @@
 package com.dandi.nyummy.exception
 
+import com.dandi.nyummy.exception.errorcode.CommonErrorCode
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -40,7 +41,7 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
             .status(statusCode)
             .body(
                 ErrorResponse.of(
-                    "api.common.invalidInputValue",
+                    CommonErrorCode.INVALID_INPUT_VALUE.code,
                     ex.message
                         ?: statusCode.toString(),
                 ),
@@ -90,6 +91,6 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         log.error("Unhandled exception", e)
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ErrorResponse.of("api.common.internalServerError", "서버 내부 오류가 발생했습니다."))
+            .body(ErrorResponse.of(CommonErrorCode.INTERNAL_SERVER_ERROR))
     }
 }
