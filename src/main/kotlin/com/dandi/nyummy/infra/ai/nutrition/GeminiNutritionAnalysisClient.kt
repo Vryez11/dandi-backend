@@ -92,6 +92,7 @@ class GeminiNutritionAnalysisClient(
         val requestBody = mapOf(
             "contents" to listOf(
                 mapOf(
+                    "role" to "user",
                     "parts" to listOf(
                         mapOf(
                             "inlineData" to mapOf(
@@ -110,7 +111,7 @@ class GeminiNutritionAnalysisClient(
         )
 
         val response = restClient.post()
-            .uri("/v1beta/models/{model}:generateContent", aiProperties.model)
+            .uri("/v1/publishers/google/models/{model}:generateContent", aiProperties.model)
             .header("x-goog-api-key", aiProperties.apiKey)
             .body(requestBody)
             .retrieve()
