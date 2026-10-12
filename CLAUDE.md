@@ -69,7 +69,7 @@
 | 컨트롤러 | ~Controller | ~Api, ~Resource |
 | 설정 바인딩(@ConfigurationProperties) | ~Properties | ~Config |
 | 빈 등록 설정(@Configuration) | ~Config | ~Configuration, ~Provider — 예: `S3Config`, `ArgonConfig` |
-| DTO-엔티티 변환 | ~Mapper | ~Converter, ~Transformer |
+| 변환(DTO↔엔티티, 요청 → 값 객체) | ~Mapper | ~Converter, ~Transformer — 예: `CatMapper`, `CommonHeaderMapper`(HttpServletRequest → CommonHeader) |
 | 계산 로직(최상위 함수 파일) | ~Calculator | ~Calc, ~Calculation, ~Util |
 | 서블릿/보안 필터 | ~Filter | ~Interceptor (인터셉터는 MVC 계층의 다른 개념) |
 | 예외를 에러 응답으로 변환 | ~ExceptionHandler | ~Writer, ~Responder — 예: `GlobalExceptionHandler`(@RestControllerAdvice), `SecurityExceptionHandler`(필터 단계 예외를 HandlerExceptionResolver로 위임) |
@@ -81,6 +81,7 @@
 | 외부 저장소의 정적 리소스를 읽어 앱에서 쓰는 형태로 구성 | ~Loader | ~Fetcher — 예: `CatAnimationLoader`(S3의 애니메이션 JSON) |
 | 파일·바이너리 포맷을 해석해 값을 꺼냄 | ~Reader | ~Parser, ~Extractor — 예: `ExifCaptureTimeReader` |
 | 프레임워크 확장 인터페이스 구현 | 인터페이스 이름을 접미사로 | 예: `EnumOpenApiCustomizer`(springdoc Customizer) |
+| 컨트롤러 파라미터 주입 | ~ArgumentResolver | ~Resolver 단독, ~Injector — 예: `CommonHeaderArgumentResolver` |
 
 ## Boolean 네이밍
 
