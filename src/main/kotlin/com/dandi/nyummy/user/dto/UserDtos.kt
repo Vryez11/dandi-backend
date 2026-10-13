@@ -26,9 +26,9 @@ data class UserResponse(
     val dinnerHour: Int?,
 )
 
-data class HomeUser(val coin: Int)
+data class HomeUserResponse(val coin: Int)
 
-data class PasswordUpdateRequest(
+data class UpdatePasswordRequest(
     @field:NotBlank
     val currentPassword: String,
 
@@ -49,7 +49,7 @@ data class PasswordUpdateRequest(
         get() = newPassword == confirmNewPassword
 }
 
-data class PasswordUpdateResponse(val accessToken: String, val refreshToken: String)
+data class UpdatePasswordResponse(val accessToken: String, val refreshToken: String)
 
 /**
  * 알림 수신 설정 변경 요청. 바꾸려는 항목만 담고 나머지는 생략한다(생략 = null = 유지).
@@ -77,7 +77,7 @@ data class UpdateMealTimeRequest(
 ) {
     /**
      * 끼니 시각이 겹치면 리마인더가 한 끼니만 발송된다.
-     * MealReminderTarget.convertMealTime이 when의 첫 매치를 고르기 때문이다.
+     * MealReminderTargetResult.convertMealTime이 when의 첫 매치를 고르기 때문이다.
      */
     @get:AssertTrue(message = "식사 시각은 서로 달라야 합니다.")
     @get:Schema(hidden = true)

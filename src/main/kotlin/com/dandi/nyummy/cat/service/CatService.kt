@@ -65,7 +65,7 @@ class CatService(
 
         val cat = request.toCat(userId)
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
             ?: run {
                 logger.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
                 throw BusinessException(UserErrorCode.PROFILE_NOT_FOUND)
@@ -82,7 +82,7 @@ class CatService(
     }
 
     /**
-     * 사용자의 고양이 정보를 조회한다. [getCatWithWeightUpdate]가 평가 주기를 보고 체형을 먼저 갱신한다.
+     * 사용자의 고양이 정보를 조회한다. [updateCatWeight]가 평가 주기를 보고 체형을 먼저 갱신한다.
      *
      * 고양이는 사용자당 하나이고 userId로 조회하므로, 다른 사용자의 고양이가 조회될 수 없다.
      *
@@ -92,7 +92,7 @@ class CatService(
      */
     @Transactional
     fun getCat(userId: Long): CatResponse {
-        val cat = getCatWithWeightUpdate(userId)
+        val cat = updateCatWeight(userId)
 
         return cat.toCatResponse()
     }
@@ -126,14 +126,14 @@ class CatService(
      */
     @Transactional
     fun getCatAnimations(userId: Long): CatAnimationResponse {
-        val cat = getCatWithWeightUpdate(userId)
+        val cat = updateCatWeight(userId)
 
         // 저장된 체형 값(-2~2)을 CatWeight로 바꿔 S3의 체형별 메타데이터를 찾는다.
-        return catAnimationLoader.load(CatWeight.fromWeight(cat.weight))
+        return catAnimationLoader.loadCatAnimation(CatWeight.fromWeight(cat.weight))
     }
 
     /**
-     * 체형이 최신인 고양이를 가져온다. 마지막 평가 이후 지난 구간을 **모두** 평가해,
+     * 체형을 최신으로 갱신하고 그 고양이를 돌려준다. 마지막 평가 이후 지난 구간을 **모두** 평가해,
      * 구간마다 한 단계씩 누적 적용한다. 3일 굶으면 한 단계, 6일이면 두 단계 내려간다.
      *
      * 체형을 읽는 모든 경로가 이걸 거친다. 그래서 `/cats`와 `/cats/animations`를 어떤 순서로
@@ -157,7 +157,7 @@ class CatService(
      * @param userId 조회하는 사용자 ID
      * @throws BusinessException [CatErrorCode.CAT_NOT_FOUND] 사용자의 고양이가 없는 경우
      */
-    private fun getCatWithWeightUpdate(userId: Long): Cat {
+    private fun updateCatWeight(userId: Long): Cat {
         val cat = catRepository.findByUserId(userId)
             ?: throw BusinessException(CatErrorCode.CAT_NOT_FOUND)
 
@@ -180,7 +180,7 @@ class CatService(
 
         val caloryByInterval = IntArray(intervalCount)
         mealRepository
-            .getMealsByUserIdAndPeriod(
+            .findMealsByUserIdAndPeriod(
                 userId,
                 windowStartDate.atStartOfDay(zone).toInstant(),
                 windowEndDate.atStartOfDay(zone).toInstant(),
@@ -193,7 +193,7 @@ class CatService(
                 caloryByInterval[index] += meal.calory ?: 0
             }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
         val targetCalory = calculateRecommendedDailyIntake(profile, today).calory * intervalDays
 
         for (index in 0 until intervalCount) {

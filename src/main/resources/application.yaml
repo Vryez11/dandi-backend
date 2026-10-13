@@ -84,8 +84,8 @@ app:
     dry-run: false
   image:
     upload-method: "PUT"
-    upload-url-expiration-minutes: 10
-    image-url-expiration-minutes: 10
+    upload-url-time-to-live-minutes: 10
+    image-url-time-to-live-minutes: 10
   meal:
     max-daily-count: 5
   cat:

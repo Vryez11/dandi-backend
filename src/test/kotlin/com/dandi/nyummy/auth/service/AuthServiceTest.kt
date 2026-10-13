@@ -1,9 +1,9 @@
 package com.dandi.nyummy.auth.service
 
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
-import com.dandi.nyummy.auth.dto.PasswordResetRequest
+import com.dandi.nyummy.auth.dto.ResetPasswordRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SignUpRequest
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeRequest
 import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
@@ -17,7 +17,7 @@ import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.infra.email.EmailService
 import com.dandi.nyummy.notification.repository.DeviceTokenRepository
 import com.dandi.nyummy.security.jwt.EmailChallengeClaims
-import com.dandi.nyummy.security.jwt.TokenService
+import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.security.jwt.VerifiedClaims
 import com.dandi.nyummy.user.entity.Profile
 import com.dandi.nyummy.user.entity.User
@@ -60,7 +60,7 @@ class AuthServiceTest {
     private val profileRepository = mockk<ProfileRepository>()
     private val refreshTokenRepository = mockk<RefreshTokenRepository>()
     private val refreshTokenService = mockk<RefreshTokenService>(relaxUnitFun = true)
-    private val tokenService = mockk<TokenService>()
+    private val jwtService = mockk<JwtService>()
     private val codeService = mockk<CodeService>()
     private val emailService = mockk<EmailService>(relaxUnitFun = true)
     private val passwordService = mockk<PasswordService>()
@@ -73,7 +73,7 @@ class AuthServiceTest {
         profileRepository = profileRepository,
         refreshTokenRepository = refreshTokenRepository,
         refreshTokenService = refreshTokenService,
-        tokenService = tokenService,
+        jwtService = jwtService,
         codeService = codeService,
         emailService = emailService,
         passwordService = passwordService,
@@ -96,12 +96,12 @@ class AuthServiceTest {
     )
 
     private fun stubVerifiedToken(purpose: AuthPurpose) {
-        every { tokenService.getVerifiedClaims("verified-token") } returns
+        every { jwtService.getVerifiedClaims("verified-token") } returns
             VerifiedClaims(provider = AuthProvider.EMAIL, email = email, purpose = purpose)
     }
 
     private fun stubChallengeToken(purpose: AuthPurpose) {
-        every { tokenService.getEmailChallengeClaims("challenge-token") } returns
+        every { jwtService.getEmailChallengeClaims("challenge-token") } returns
             EmailChallengeClaims(email = email, purpose = purpose)
     }
 
@@ -151,7 +151,7 @@ class AuthServiceTest {
         stubVerifiedToken(AuthPurpose.RESET_PASSWORD)
 
         assertBusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN) {
-            authService.signup(createSignUpRequest())
+            authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -162,7 +162,7 @@ class AuthServiceTest {
         every { userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email) } returns true
 
         assertBusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS) {
-            authService.signup(createSignUpRequest())
+            authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { userRepository.save(any()) }
     }
@@ -175,7 +175,7 @@ class AuthServiceTest {
         every { userRepository.save(any()) } throws DataIntegrityViolationException("duplicate email")
 
         assertBusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS) {
-            authService.signup(createSignUpRequest())
+            authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { profileRepository.save(any()) }
     }
@@ -189,9 +189,9 @@ class AuthServiceTest {
         every { userRepository.save(capture(savedUser)) } answers { firstArg() }
         val savedProfile = slot<Profile>()
         every { profileRepository.save(capture(savedProfile)) } answers { firstArg() }
-        every { tokenService.createTokenPair(any()) } returns ("access-token" to "refresh-token")
+        every { jwtService.createTokenPair(any()) } returns ("access-token" to "refresh-token")
 
-        val response = authService.signup(createSignUpRequest())
+        val response = authService.signUp(createSignUpRequest())
 
         assertEquals("access-token", response.accessToken)
         assertEquals("refresh-token", response.refreshToken)
@@ -207,7 +207,7 @@ class AuthServiceTest {
         assertEquals(165, savedProfile.captured.height)
         assertEquals(55, savedProfile.captured.weight)
 
-        verify(exactly = 1) { refreshTokenService.createOrRestart(savedUser.captured.id, "refresh-token") }
+        verify(exactly = 1) { refreshTokenService.startSession(savedUser.captured.id, "refresh-token") }
     }
 
     // sendAuthCode
@@ -216,7 +216,7 @@ class AuthServiceTest {
     fun `코드 발급, 이메일 발송, 챌린지 토큰 발급 순으로 진행한다`() {
         every { userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email) } returns false
         every { codeService.createCodeByEmail(email, AuthPurpose.SIGNUP) } returns "123456"
-        every { tokenService.createEmailChallengeToken(email, AuthPurpose.SIGNUP) } returns "challenge-token"
+        every { jwtService.createEmailChallengeToken(email, AuthPurpose.SIGNUP) } returns "challenge-token"
 
         val response = authService.sendAuthCode(SendAuthCodeRequest(email = email, purpose = AuthPurpose.SIGNUP))
 
@@ -225,7 +225,7 @@ class AuthServiceTest {
             userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email)
             codeService.createCodeByEmail(email, AuthPurpose.SIGNUP)
             emailService.sendAuthCode(email, "123456")
-            tokenService.createEmailChallengeToken(email, AuthPurpose.SIGNUP)
+            jwtService.createEmailChallengeToken(email, AuthPurpose.SIGNUP)
         }
     }
 
@@ -249,23 +249,23 @@ class AuthServiceTest {
         assertBusinessException(EmailErrorCode.EMAIL_SEND_FAILED) {
             authService.sendAuthCode(SendAuthCodeRequest(email = email, purpose = AuthPurpose.SIGNUP))
         }
-        verify(exactly = 0) { tokenService.createEmailChallengeToken(any(), any()) }
+        verify(exactly = 0) { jwtService.createEmailChallengeToken(any(), any()) }
     }
 
-    // confirmAuthCode
+    // validateAuthCode
 
     @Test
     fun `코드가 맞으면 챌린지 토큰의 용도를 승계한 인증 완료 토큰을 발급한다`() {
         stubChallengeToken(AuthPurpose.RESET_PASSWORD)
-        every { codeService.confirmAuthCodeByEmail("123456", email, AuthPurpose.RESET_PASSWORD) } just Runs
+        every { codeService.validateAuthCodeByEmail("123456", email, AuthPurpose.RESET_PASSWORD) } just Runs
         every {
-            tokenService.createVerifiedToken(
+            jwtService.createVerifiedToken(
                 VerifiedClaims(provider = AuthProvider.EMAIL, email = email, purpose = AuthPurpose.RESET_PASSWORD),
             )
         } returns "verified-token"
 
-        val response = authService.confirmAuthCode(
-            ConfirmAuthCodeRequest(authCode = "123456", emailChallengeToken = "challenge-token"),
+        val response = authService.validateAuthCode(
+            ValidateAuthCodeRequest(authCode = "123456", emailChallengeToken = "challenge-token"),
         )
 
         assertEquals("verified-token", response.verifiedToken)
@@ -275,15 +275,15 @@ class AuthServiceTest {
     fun `코드 검증에 실패하면 인증 완료 토큰을 발급하지 않는다`() {
         stubChallengeToken(AuthPurpose.SIGNUP)
         every {
-            codeService.confirmAuthCodeByEmail("000000", email, AuthPurpose.SIGNUP)
+            codeService.validateAuthCodeByEmail("000000", email, AuthPurpose.SIGNUP)
         } throws BusinessException(AuthErrorCode.EMAIL_CODE_MISMATCH)
 
         assertBusinessException(AuthErrorCode.EMAIL_CODE_MISMATCH) {
-            authService.confirmAuthCode(
-                ConfirmAuthCodeRequest(authCode = "000000", emailChallengeToken = "challenge-token"),
+            authService.validateAuthCode(
+                ValidateAuthCodeRequest(authCode = "000000", emailChallengeToken = "challenge-token"),
             )
         }
-        verify(exactly = 0) { tokenService.createVerifiedToken(any()) }
+        verify(exactly = 0) { jwtService.createVerifiedToken(any()) }
     }
 
     // resetPassword
@@ -293,7 +293,7 @@ class AuthServiceTest {
         stubVerifiedToken(AuthPurpose.SIGNUP)
 
         assertBusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN) {
-            authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+            authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
         }
         verify(exactly = 0) { passwordService.createTempPasswordByEmail(any()) }
     }
@@ -304,7 +304,7 @@ class AuthServiceTest {
         every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns null
 
         assertBusinessException(AuthErrorCode.EMAIL_NOT_FOUND) {
-            authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+            authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
         }
         verify(exactly = 0) { passwordService.createTempPasswordByEmail(any()) }
     }
@@ -316,7 +316,7 @@ class AuthServiceTest {
         every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns user
         every { passwordService.createTempPasswordByEmail(email) } returns "Temp12345678"
 
-        authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+        authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
 
         verifyOrder {
             passwordService.createTempPasswordByEmail(email)
@@ -335,7 +335,7 @@ class AuthServiceTest {
             tokenInvalidationRepository.createInvalidatedAt(user.id, now)
         } throws DataAccessResourceFailureException("redis down")
 
-        authService.resetPassword(PasswordResetRequest(verifiedToken = "verified-token"))
+        authService.resetPassword(ResetPasswordRequest(verifiedToken = "verified-token"))
 
         verify(exactly = 1) { emailService.sendTempPassword(email, "Temp12345678") }
     }

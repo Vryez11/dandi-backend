@@ -3,7 +3,7 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.meal.config.MealProperties
@@ -56,17 +56,17 @@ class MealServiceTest {
     init {
         every { mealRepository.existsByImageKey(imageKey) } returns false
         every { mealAttemptService.validateDailyCount(userId) } just Runs
-        every { mealAttemptService.validateCapturedToday(userId, any()) } just Runs
+        every { mealAttemptService.validateCapturedAt(userId, any()) } just Runs
         every { mealRepository.save(capture(savedMeal)) } answers { firstArg() }
         every { analysisService.analyzeNutrition(any()) } just Runs
     }
 
     /** ImageService가 공통 검증을 통과시킨 뒤 콜백을 실행하는 동작을 흉내 낸다. */
     private fun givenConfirmUpload(capturedAt: Instant?) {
-        val validateAfterUpload = slot<(UploadedImage) -> Unit>()
+        val validateAfterUpload = slot<(UploadedImageResult) -> Unit>()
         every { imageService.confirmUpload(userId, ImagePurpose.MEAL, imageKey, capture(validateAfterUpload)) } answers
             {
-                val uploadedImage = UploadedImage(imageKey, capturedAt)
+                val uploadedImage = UploadedImageResult(imageKey, capturedAt)
                 validateAfterUpload.captured(uploadedImage)
                 uploadedImage
             }
@@ -101,7 +101,7 @@ class MealServiceTest {
 
         mealService.createMeal(userId, request)
 
-        verify { mealAttemptService.validateCapturedToday(userId, UploadedImage(imageKey, now)) }
+        verify { mealAttemptService.validateCapturedAt(userId, UploadedImageResult(imageKey, now)) }
     }
 
     @Test
@@ -136,7 +136,7 @@ class MealServiceTest {
     @Test
     fun `오늘 촬영 검증에서 거부되면 식사를 저장하지 않는다`() {
         givenConfirmUpload(now.minusSeconds(86_400))
-        every { mealAttemptService.validateCapturedToday(userId, any()) } throws
+        every { mealAttemptService.validateCapturedAt(userId, any()) } throws
             BusinessException(MealErrorCode.STALE_IMAGE)
 
         assertBusinessException(MealErrorCode.STALE_IMAGE) { mealService.createMeal(userId, request) }

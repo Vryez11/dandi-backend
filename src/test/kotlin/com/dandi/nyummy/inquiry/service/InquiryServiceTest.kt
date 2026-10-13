@@ -4,7 +4,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
@@ -60,7 +60,7 @@ class InquiryServiceTest {
         every { inquiryRepository.save(capture(savedInquiry)) } answers { firstArg() }
         every { inquiryRepository.existsByImageKey(any()) } returns false
         every { imageService.confirmUpload(userId, ImagePurpose.INQUIRY, any(), any()) } answers {
-            UploadedImage(imageKey = thirdArg(), capturedAt = null)
+            UploadedImageResult(imageKey = thirdArg(), capturedAt = null)
         }
         every { imageService.createImageUrl(any()) } answers { "https://image.example/${firstArg<String>()}" }
     }
@@ -151,18 +151,18 @@ class InquiryServiceTest {
 
     @Test
     fun `첫 요청은 가장 큰 id를 기준으로 size만큼 조회한다`() {
-        every { inquiryRepository.getInquiriesByUserIdBeforeCursor(any(), any(), any()) } returns
+        every { inquiryRepository.findInquiriesByUserIdBeforeCursor(any(), any(), any()) } returns
             SliceImpl(emptyList(), PageRequest.of(0, 10), false)
 
         inquiryService.getInquiries(userId, cursor = null, size = 10)
 
-        verify { inquiryRepository.getInquiriesByUserIdBeforeCursor(userId, Long.MAX_VALUE, PageRequest.of(0, 10)) }
+        verify { inquiryRepository.findInquiriesByUserIdBeforeCursor(userId, Long.MAX_VALUE, PageRequest.of(0, 10)) }
     }
 
     @Test
     fun `다음 묶음이 있으면 마지막 문의 id를 nextCursor로 준다`() {
         val inquiries = listOf(inquiry(id = 9), inquiry(id = 7))
-        every { inquiryRepository.getInquiriesByUserIdBeforeCursor(userId, 10L, PageRequest.of(0, 2)) } returns
+        every { inquiryRepository.findInquiriesByUserIdBeforeCursor(userId, 10L, PageRequest.of(0, 2)) } returns
             SliceImpl(inquiries, PageRequest.of(0, 2), true)
 
         val result = inquiryService.getInquiries(userId, cursor = 10L, size = 2)
@@ -174,7 +174,7 @@ class InquiryServiceTest {
 
     @Test
     fun `마지막 묶음이면 nextCursor는 null이다`() {
-        every { inquiryRepository.getInquiriesByUserIdBeforeCursor(userId, 10L, PageRequest.of(0, 2)) } returns
+        every { inquiryRepository.findInquiriesByUserIdBeforeCursor(userId, 10L, PageRequest.of(0, 2)) } returns
             SliceImpl(listOf(inquiry(id = 3)), PageRequest.of(0, 2), false)
 
         val result = inquiryService.getInquiries(userId, cursor = 10L, size = 2)
@@ -188,7 +188,7 @@ class InquiryServiceTest {
     @Test
     fun `답변이 달린 문의를 조회하면 읽음 시각을 기록한다`() {
         val inquiry = inquiry(answeredAt = now.minusSeconds(600))
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
 
         inquiryService.getInquiry(userId, inquiryId)
 
@@ -197,7 +197,7 @@ class InquiryServiceTest {
 
     @Test
     fun `이미지가 있으면 조회 URL을 만들어 준다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry(imageKey = imageKey)
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry(imageKey = imageKey)
 
         val result = inquiryService.getInquiry(userId, inquiryId)
 
@@ -206,7 +206,7 @@ class InquiryServiceTest {
 
     @Test
     fun `이미지가 없으면 조회 URL을 만들지 않는다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry()
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry()
 
         val result = inquiryService.getInquiry(userId, inquiryId)
 
@@ -216,7 +216,7 @@ class InquiryServiceTest {
 
     @Test
     fun `없거나 삭제된 문의는 조회하지 않는다`() {
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns null
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns null
 
         assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiryService.getInquiry(userId, inquiryId) }
     }
@@ -224,7 +224,7 @@ class InquiryServiceTest {
     @Test
     fun `다른 사용자의 문의는 읽음 처리하지 않고 존재하지 않는 것으로 거부한다`() {
         val inquiry = inquiry(ownerId = userId + 1, answeredAt = now.minusSeconds(600))
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
 
         assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiryService.getInquiry(userId, inquiryId) }
         assertNull(inquiry.answerReadAt)
@@ -313,7 +313,7 @@ class InquiryServiceTest {
     @Test
     fun `답변이 달린 문의도 삭제 시각을 기록한다`() {
         val inquiry = inquiry(answeredAt = now.minusSeconds(600))
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
 
         inquiryService.deleteInquiry(userId, inquiryId)
 
@@ -323,7 +323,7 @@ class InquiryServiceTest {
     @Test
     fun `다른 사용자의 문의는 삭제하지 않는다`() {
         val inquiry = inquiry(ownerId = userId + 1)
-        every { inquiryRepository.getInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
+        every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
 
         assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiryService.deleteInquiry(userId, inquiryId) }
         assertNull(inquiry.deletedAt)

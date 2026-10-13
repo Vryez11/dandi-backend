@@ -16,19 +16,19 @@ import org.springframework.stereotype.Service
 import java.time.Instant
 
 @Service
-class TokenService(
+class JwtService(
     private val jwtProvider: JwtProvider,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
 ) {
     companion object {
-        private val logger = LoggerFactory.getLogger(TokenService::class.java)
+        private val logger = LoggerFactory.getLogger(JwtService::class.java)
     }
 
     fun getAuthentication(token: String): Authentication {
         val (userId, issuedAt) = jwtProvider.getAccessTokenClaims(token)
 
         val invalidatedAt = try {
-            tokenInvalidationRepository.getInvalidatedAt(userId)
+            tokenInvalidationRepository.findInvalidatedAt(userId)
         } catch (e: DataAccessException) {
             logger.warn("토큰 무효화 조회 실패: userId={}", userId, e)
             null

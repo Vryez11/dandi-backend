@@ -23,13 +23,13 @@ import org.springframework.stereotype.Component
 class SesEmailClient(private val sesV2Client: SesV2Client, private val emailProperties: EmailProperties) : EmailClient {
 
     companion object {
-        val log = LoggerFactory.getLogger(SesEmailClient::class.java)
+        private val logger = LoggerFactory.getLogger(SesEmailClient::class.java)
     }
 
     /**
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] SES 발송 요청이 실패한 경우
      */
-    override fun send(message: EmailMessage) {
+    override fun sendEmail(message: EmailMessage) {
         val request = SendEmailRequest {
             fromEmailAddress = "${emailProperties.fromName} <${emailProperties.fromAddress}>"
             destination = Destination {
@@ -49,7 +49,7 @@ class SesEmailClient(private val sesV2Client: SesV2Client, private val emailProp
             try {
                 sesV2Client.sendEmail(request)
             } catch (e: SdkBaseException) {
-                log.error("이메일 발송이 실패했습니다. ${e.message}")
+                logger.error("이메일 발송이 실패했습니다. ${e.message}")
                 throw BusinessException(EmailErrorCode.EMAIL_SEND_FAILED)
             }
         }

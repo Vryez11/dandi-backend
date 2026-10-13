@@ -2,7 +2,7 @@ package com.dandi.nyummy.filter
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
-import com.dandi.nyummy.security.jwt.TokenService
+import com.dandi.nyummy.security.jwt.JwtService
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
 import jakarta.servlet.FilterChain
@@ -12,7 +12,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
 
-class JwtAuthorizationFilter(private val tokenService: TokenService) : OncePerRequestFilter() {
+class JwtAuthorizationFilter(private val jwtService: JwtService) : OncePerRequestFilter() {
 
     companion object {
         const val AUTH_EXCEPTION = "authException"
@@ -27,7 +27,7 @@ class JwtAuthorizationFilter(private val tokenService: TokenService) : OncePerRe
 
         if (token != null) {
             try {
-                val authentication = tokenService.getAuthentication(token)
+                val authentication = jwtService.getAuthentication(token)
                 SecurityContextHolder.getContextHolderStrategy().context =
                     SecurityContextHolder.createEmptyContext().apply { this.authentication = authentication }
             } catch (e: ExpiredJwtException) {

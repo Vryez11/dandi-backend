@@ -85,7 +85,7 @@ data class SendAuthCodeRequest(
 
 data class SendAuthCodeResponse(val emailChallengeToken: String)
 
-data class ConfirmAuthCodeRequest(
+data class ValidateAuthCodeRequest(
 
     @field:NotBlank
     @field:Pattern(regexp = "^\\d{6}$")
@@ -95,9 +95,9 @@ data class ConfirmAuthCodeRequest(
     val emailChallengeToken: String,
 )
 
-data class ConfirmAuthCodeResponse(val verifiedToken: String)
+data class ValidateAuthCodeResponse(val verifiedToken: String)
 
-data class PasswordResetRequest(
+data class ResetPasswordRequest(
 
     @field:NotBlank
     val verifiedToken: String,

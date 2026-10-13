@@ -15,5 +15,5 @@ class AppLinkProperties(
     private val mealDetail: String = baseUrl + mealDetailUrl
     val onboarding: String = baseUrl + onboardingUrl
 
-    fun createMealDetail(mealId: Long): String = "$mealDetail/$mealId"
+    fun createMealDetailLink(mealId: Long): String = "$mealDetail/$mealId"
 }

@@ -31,7 +31,7 @@ class InternalApiKeyFilter(private val batchKey: String) : OncePerRequestFilter(
     ) {
         val provided = request.getHeader(BATCH_KEY_HEADER)
 
-        if (provided != null && matches(provided)) {
+        if (provided != null && matchesApiKey(provided)) {
             val authentication = UsernamePasswordAuthenticationToken(
                 "internal-batch",
                 null,
@@ -50,6 +50,6 @@ class InternalApiKeyFilter(private val batchKey: String) : OncePerRequestFilter(
         filterChain.doFilter(request, response)
     }
 
-    private fun matches(provided: String): Boolean =
+    private fun matchesApiKey(provided: String): Boolean =
         MessageDigest.isEqual(batchKey.toByteArray(), provided.toByteArray())
 }

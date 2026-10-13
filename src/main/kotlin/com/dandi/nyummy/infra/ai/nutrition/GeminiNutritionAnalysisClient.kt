@@ -84,7 +84,7 @@ class GeminiNutritionAnalysisClient(
         val encodedContent = Base64.encode(objectContent.bytes, 0, objectContent.bytes.size)
         val mimeType = objectContent.contentType
 
-        val icons = iconService.getAllIcons()
+        val icons = iconService.getIcons()
         val iconsJson = objectMapper.writeValueAsString(icons)
 
         val prompt = "$PROMPT 음식 아이콘 목록은 다음과 같아: $iconsJson 만약 뚜렷하게 맞는 것이 없으면 5(밥)를 골라줘."

@@ -27,7 +27,7 @@ data class CreateCatRequest(
 ) {
     /**
      * 끼니 시각이 겹치면 리마인더가 한 끼니만 발송된다.
-     * MealReminderTarget.convertMealTime이 when의 첫 매치를 고르기 때문이다.
+     * MealReminderTargetResult.convertMealTime이 when의 첫 매치를 고르기 때문이다.
      */
     @get:AssertTrue(message = "식사 시각은 서로 달라야 합니다.")
     @get:Schema(hidden = true)
@@ -45,16 +45,16 @@ data class CatResponse(
     val exp: Int,
 )
 
-data class CatAnimationResponse(val weight: String, val baseUrl: String, val animations: List<CatAnimation>)
+data class CatAnimationResponse(val weight: String, val baseUrl: String, val animations: List<CatAnimationItemResponse>)
 
-data class CatAnimation(
+data class CatAnimationItemResponse(
     val state: String,
     val moment: String,
-    val frame: Frame,
-    val animation: List<List<AnimationSource>>,
+    val frame: FrameResponse,
+    val animation: List<List<AnimationSourceResponse>>,
     val text: List<String>,
 )
 
-data class Frame(val width: Int, val height: Int, val framesPerRow: Int, val durationMs: Int)
+data class FrameResponse(val width: Int, val height: Int, val framesPerRow: Int, val durationMs: Int)
 
-data class AnimationSource(val src: String, val frames: Int, val loop: Boolean = false)
+data class AnimationSourceResponse(val src: String, val frames: Int, val loop: Boolean = false)

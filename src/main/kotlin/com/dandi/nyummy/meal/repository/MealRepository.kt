@@ -20,9 +20,9 @@ interface MealRepository : JpaRepository<Meal, Long> {
         AND m.mealAt < :end
     """,
     )
-    fun getMealsByUserIdAndPeriod(userId: Long, start: Instant, end: Instant): List<Meal>
+    fun findMealsByUserIdAndPeriod(userId: Long, start: Instant, end: Instant): List<Meal>
 
-    fun getMealByIdAndDeletedAtIsNull(mealId: Long): Meal?
+    fun findMealByIdAndDeletedAtIsNull(mealId: Long): Meal?
 
     fun existsByImageKey(imageKey: String): Boolean
 

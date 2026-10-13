@@ -17,8 +17,8 @@ import com.dandi.nyummy.meal.dto.MealStatusResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.Nutrition
-import com.dandi.nyummy.meal.dto.Streak
-import com.dandi.nyummy.meal.dto.TodayMealSummary
+import com.dandi.nyummy.meal.dto.StreakResponse
+import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
@@ -66,7 +66,7 @@ class MealService(
      * 반환되는 상태는 이미 COMPLETED 또는 FAILED로 확정된 값이다.
      *
      * [Meal.mealAt]에는 이미지 EXIF에서 추출한 촬영 시각이 저장되고, EXIF가 없으면 서버 시각이
-     * 들어간다. [MealAttemptService.validateCapturedToday]가 촬영 날짜를 오늘로 강제하므로 저장되는
+     * 들어간다. [MealAttemptService.validateCapturedAt]가 촬영 날짜를 오늘로 강제하므로 저장되는
      * 값은 어느 쪽이든 오늘 안의 시각이다.
      *
      * EXIF에서 온 값은 촬영 기기의 시계에 의존하므로 서버 시각과 최대 하루만큼 어긋날 수 있다.
@@ -98,7 +98,7 @@ class MealService(
             userId = userId,
             purpose = ImagePurpose.MEAL,
             imageKey = request.imageKey,
-            validateAfterUpload = { mealAttemptService.validateCapturedToday(userId, it) },
+            validateAfterUpload = { mealAttemptService.validateCapturedAt(userId, it) },
         )
 
         // EXIF가 없으면 거부하지 않고 서버 시각으로 채운다. 기기·앱에 따라 EXIF가 아예 없거나
@@ -133,11 +133,11 @@ class MealService(
         val start = date.atStartOfDay(zone).toInstant()
         val end = date.plusDays(1).atStartOfDay(zone).toInstant()
 
-        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
+        val mealsByPeriod = mealRepository.findMealsByUserIdAndPeriod(userId, start, end)
 
         val meals = mealsByPeriod.map { it.toDailyMealResponse() }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
 
         val recommended = calculateRecommendedDailyIntake(profile, LocalDate.of(year, month, day))
 
@@ -166,7 +166,7 @@ class MealService(
         val zone = ZoneId.of("Asia/Seoul")
         val (startDate, endDate) = calculateMonthlyCalendarRange(YearMonth.of(year, month))
 
-        val mealsByPeriod = mealRepository.getMealsByUserIdAndPeriod(
+        val mealsByPeriod = mealRepository.findMealsByUserIdAndPeriod(
             userId,
             startDate.atStartOfDay(zone).toInstant(),
             endDate.plusDays(1).atStartOfDay(zone).toInstant(),
@@ -176,7 +176,7 @@ class MealService(
             mealsByPeriod
                 .groupBy { it.mealAt.atZone(zone).toLocalDate() }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
         val recommended = calculateRecommendedDailyIntake(profile, LocalDate.now())
 
         val days = mutableListOf<MonthlyMealDayResponse>()
@@ -230,7 +230,7 @@ class MealService(
      */
     @Transactional(readOnly = true)
     fun getMeal(userId: Long, mealId: Long): MealResponse {
-        val meal = mealRepository.getMealByIdAndDeletedAtIsNull(mealId)
+        val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         if (meal.userId != userId) {
@@ -254,7 +254,7 @@ class MealService(
      */
     @Transactional
     fun updateMeal(userId: Long, mealId: Long, name: String): MealResponse {
-        val meal = mealRepository.getMealByIdAndDeletedAtIsNull(mealId)
+        val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         if (meal.userId != userId) {
@@ -278,7 +278,7 @@ class MealService(
      */
     @Transactional
     fun deleteMeal(userId: Long, mealId: Long) {
-        val meal = mealRepository.getMealByIdAndDeletedAtIsNull(mealId)
+        val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
         if (meal.userId != userId) {
@@ -289,9 +289,9 @@ class MealService(
     }
 
     @Transactional(readOnly = true)
-    fun getStreak(userId: Long): Streak {
+    fun getStreak(userId: Long): StreakResponse {
         // TODO: 스트릭 구현하기
-        return Streak(0, 0)
+        return StreakResponse(0, 0)
     }
 
     /**
@@ -304,10 +304,10 @@ class MealService(
      * 목표 칼로리는 프로필에서 계산하며, 프로필이 비어 있으면 기본 권장량이 쓰인다.
      *
      * @param userId 조회하는 사용자 ID
-     * @return 오늘 기록한 끼니 수·기록 시도 횟수와 상한, 섭취·목표 칼로리를 담은 [TodayMealSummary]
+     * @return 오늘 기록한 끼니 수·기록 시도 횟수와 상한, 섭취·목표 칼로리를 담은 [TodayMealSummaryResponse]
      */
     @Transactional(readOnly = true)
-    fun getTodayMealSummary(userId: Long): TodayMealSummary {
+    fun getTodayMealSummary(userId: Long): TodayMealSummaryResponse {
         // TODO: 사용자별 timezone에 맞게 계산
         val zone = ZoneId.of("Asia/Seoul")
         val today = Instant.now(clock).atZone(zone).toLocalDate()
@@ -317,17 +317,17 @@ class MealService(
         val start = today.atStartOfDay(zone).toInstant()
         val end = today.plusDays(1).atStartOfDay(zone).toInstant()
 
-        val meals = mealRepository.getMealsByUserIdAndPeriod(userId, start, end)
+        val meals = mealRepository.findMealsByUserIdAndPeriod(userId, start, end)
 
         // 분석 전·실패한 식사는 calory가 null이므로 집계에서 제외한다.
         val currentCalory = meals
             .filter { it.status == MealStatus.COMPLETED }
             .sumOf { it.calory ?: 0 }
 
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
         val targetCalory = calculateRecommendedDailyIntake(profile, today).calory
 
-        return TodayMealSummary(
+        return TodayMealSummaryResponse(
             todayRecordedCount = meals.size,
             todayAttemptCount = mealAttemptService.countDailyAttempts(userId, today).toInt(),
             todayMaxAttemptCount = mealProperties.maxDailyCount,

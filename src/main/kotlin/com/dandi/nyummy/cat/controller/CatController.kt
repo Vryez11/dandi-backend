@@ -63,5 +63,5 @@ class CatController(private val catService: CatService) {
         s3 = [S3ErrorCode.OBJECT_READ_FAILED],
     )
     @GetMapping("/animations")
-    fun getAnimations(@CurrentUser user: AuthUser): CatAnimationResponse = catService.getCatAnimations(user.userId)
+    fun getCatAnimations(@CurrentUser user: AuthUser): CatAnimationResponse = catService.getCatAnimations(user.userId)
 }

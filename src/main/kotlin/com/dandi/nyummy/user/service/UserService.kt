@@ -4,11 +4,11 @@ import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.auth.service.RefreshTokenService
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
-import com.dandi.nyummy.security.jwt.TokenService
-import com.dandi.nyummy.user.dto.PasswordUpdateRequest
-import com.dandi.nyummy.user.dto.PasswordUpdateResponse
+import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.user.dto.PushSettingResponse
 import com.dandi.nyummy.user.dto.UpdateMealTimeRequest
+import com.dandi.nyummy.user.dto.UpdatePasswordRequest
+import com.dandi.nyummy.user.dto.UpdatePasswordResponse
 import com.dandi.nyummy.user.dto.UpdatePushSettingRequest
 import com.dandi.nyummy.user.dto.UserResponse
 import com.dandi.nyummy.user.entity.Profile
@@ -29,7 +29,7 @@ class UserService(
     private val userRepository: UserRepository,
     private val profileRepository: ProfileRepository,
     private val passwordService: PasswordService,
-    private val tokenService: TokenService,
+    private val jwtService: JwtService,
     private val refreshTokenService: RefreshTokenService,
     private val tokenInvalidationRepository: TokenInvalidationRepository,
     private val clock: Clock,
@@ -43,7 +43,7 @@ class UserService(
         val user = userRepository.findByIdOrNull(id)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
 
-        val profile = profileRepository.getProfileByUserId(user.id)
+        val profile = profileRepository.findProfileByUserId(user.id)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
 
         return user.toUserResponse(profile)
@@ -90,7 +90,7 @@ class UserService(
      *
      * @throws BusinessException [UserErrorCode.PROFILE_NOT_FOUND] 프로필이 없는 경우
      */
-    private fun getProfile(userId: Long): Profile = profileRepository.getProfileByUserId(userId)
+    private fun getProfile(userId: Long): Profile = profileRepository.findProfileByUserId(userId)
         ?: run {
             logger.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
             throw BusinessException(UserErrorCode.PROFILE_NOT_FOUND)
@@ -117,14 +117,14 @@ class UserService(
      * 롤백되는데, 옛 AccessToken은 어차피 남은 수명(최대 30분) 안에 만료되기 때문이다.
      *
      * @param userId 비밀번호를 변경할 사용자 ID
-     * @param request 비밀번호 변경 요청 정보를 담은 [PasswordUpdateRequest] (현재 비밀번호, 새 비밀번호)
-     * @return 새로 발급된 AccessToken·RefreshToken을 담은 [PasswordUpdateResponse]
+     * @param request 비밀번호 변경 요청 정보를 담은 [UpdatePasswordRequest] (현재 비밀번호, 새 비밀번호)
+     * @return 새로 발급된 AccessToken·RefreshToken을 담은 [UpdatePasswordResponse]
      * @throws BusinessException [UserErrorCode.USER_NOT_FOUND] 사용자가 없는 경우
      * @throws BusinessException [UserErrorCode.PASSWORD_NOT_SET] 소셜 로그인 계정이라 비밀번호가 없는 경우
      * @throws BusinessException [UserErrorCode.PASSWORD_MISMATCH] 현재 비밀번호가 일치하지 않는 경우
      */
     @Transactional
-    fun updatePassword(userId: Long, request: PasswordUpdateRequest): PasswordUpdateResponse {
+    fun updatePassword(userId: Long, request: UpdatePasswordRequest): UpdatePasswordResponse {
         passwordService.updatePassword(userId, request.currentPassword, request.newPassword)
 
         try {
@@ -133,10 +133,10 @@ class UserService(
             logger.error("토큰 무효화 기록 실패: userId={}", userId, e)
         }
 
-        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+        val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
-        refreshTokenService.createOrRestart(userId, refreshToken)
+        refreshTokenService.startSession(userId, refreshToken)
 
-        return PasswordUpdateResponse(accessToken, refreshToken)
+        return UpdatePasswordResponse(accessToken, refreshToken)
     }
 }

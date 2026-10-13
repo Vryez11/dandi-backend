@@ -4,7 +4,7 @@ import com.dandi.nyummy.cat.service.CatService
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.home.dto.HomeResponse
-import com.dandi.nyummy.home.mapper.toHomeUser
+import com.dandi.nyummy.home.mapper.toHomeUserResponse
 import com.dandi.nyummy.inquiry.service.InquiryService
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.user.repository.ProfileRepository
@@ -19,7 +19,7 @@ class HomeService(
     private val profileRepository: ProfileRepository,
 ) {
     companion object {
-        val log = LoggerFactory.getLogger(HomeService::class.java)
+        private val logger = LoggerFactory.getLogger(HomeService::class.java)
     }
 
     /**
@@ -39,9 +39,9 @@ class HomeService(
     fun getHome(userId: Long): HomeResponse {
         // 프로필은 가입 트랜잭션에서 함께 생성되므로 없을 수 없다.
         // 없다면 요청이 잘못된 게 아니라 데이터가 깨진 것이므로, 추적할 수 있게 userId를 남긴다.
-        val profile = profileRepository.getProfileByUserId(userId)
+        val profile = profileRepository.findProfileByUserId(userId)
             ?: run {
-                log.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
+                logger.error("가입 시 생성되어야 할 프로필이 없습니다: userId={}", userId)
                 throw BusinessException(UserErrorCode.PROFILE_NOT_FOUND)
             }
         val streak = mealService.getStreak(userId)
@@ -49,7 +49,7 @@ class HomeService(
         val hasUnreadInquiryAnswer = inquiryService.existsUnreadAnswer(userId)
 
         val response = HomeResponse(
-            user = profile.toHomeUser(),
+            user = profile.toHomeUserResponse(),
             streak = streak,
             todayMealSummary = todayMealSummary,
             hasUnreadInquiryAnswer = hasUnreadInquiryAnswer,

@@ -31,7 +31,7 @@ class NotificationService(
     fun createDeviceToken(userId: Long, request: CreateDeviceTokenRequest) {
         deviceTokenRepository.deleteByTokenAndNotUserId(request.token, userId)
 
-        val existing = deviceTokenRepository.getDeviceTokenByUserId(userId)
+        val existing = deviceTokenRepository.findDeviceTokenByUserId(userId)
 
         if (existing != null) {
             existing.updateToken(request.token, request.platform)
@@ -51,7 +51,7 @@ class NotificationService(
      * 서비스 알림 한 건을 보낸다. 수신 거부거나 기기 토큰이 없으면 발송하지 않고 빈 결과를 돌려준다.
      */
     fun sendServicePush(userId: Long, message: PushMessage): PushResult {
-        val token = deviceTokenRepository.getServicePushToken(userId) ?: return PushResult.EMPTY
+        val token = deviceTokenRepository.findServicePushToken(userId) ?: return PushResult.EMPTY
 
         return sendPushes(mapOf(token to message))
     }

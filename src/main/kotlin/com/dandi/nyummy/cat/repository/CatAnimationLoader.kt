@@ -40,7 +40,7 @@ class CatAnimationLoader(private val s3StorageClient: S3StorageClient, private v
      * @throws BusinessException [CatErrorCode.ANIMATION_METADATA_INVALID] 메타데이터가 기대한 형식이 아닐 경우
      */
     @Cacheable(cacheNames = ["catAnimations"])
-    fun load(weight: CatWeight): CatAnimationResponse {
+    fun loadCatAnimation(weight: CatWeight): CatAnimationResponse {
         // 체형은 경로에만 담기고 파일명은 모든 체형이 같으므로, slug가 어긋나면 엉뚱한 체형을 읽는다.
         val key = "$CAT_PREFIX/${weight.slug}/$METADATA_FILE"
         val json = s3StorageClient.downloadText(key)

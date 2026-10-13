@@ -1,6 +1,6 @@
 package com.dandi.nyummy.user.repository
 
-import com.dandi.nyummy.internal.batch.dto.MealReminderTarget
+import com.dandi.nyummy.internal.batch.dto.MealReminderTargetResult
 import com.dandi.nyummy.user.entity.Profile
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -8,11 +8,11 @@ import org.springframework.data.repository.query.Param
 
 interface ProfileRepository : JpaRepository<Profile, Long> {
 
-    fun getProfileByUserId(userId: Long): Profile?
+    fun findProfileByUserId(userId: Long): Profile?
 
     @Query(
         """
-            select new com.dandi.nyummy.internal.batch.dto.MealReminderTarget(
+            select new com.dandi.nyummy.internal.batch.dto.MealReminderTargetResult(
                 p.userId, c.name, p.breakfastHour, p.lunchHour, p.dinnerHour, d.token
             )
             from Profile as p
@@ -22,5 +22,5 @@ interface ProfileRepository : JpaRepository<Profile, Long> {
                 and (p.breakfastHour = :hour or p.lunchHour = :hour or p.dinnerHour = :hour)
         """,
     )
-    fun getMealReminderTargets(@Param("hour") hour: Int): List<MealReminderTarget>
+    fun findMealReminderTargets(@Param("hour") hour: Int): List<MealReminderTargetResult>
 }

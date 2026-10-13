@@ -95,7 +95,7 @@ VALUES (1, 1, '냥이', 80, 1200, 3, NOW()),
 -- 아래 12건은 2026-09-11 기준 실제 icon 테이블을 그대로 옮긴 것이다.
 -- 운영에 아이콘을 추가하면 이 목록에도 같은 id/name/image_url로 추가할 것.
 --
--- GeminiNutritionAnalysisClient는 IconService.getAllIcons()로 이 테이블을 읽어
+-- GeminiNutritionAnalysisClient는 IconService.getIcons()로 이 테이블을 읽어
 -- 프롬프트에 아이콘 목록을 넣는다. 즉 여기 없는 id는 AI도 고를 수 없다.
 -- 프롬프트가 "뚜렷하게 맞는 것이 없으면 5(밥)"를 fallback으로 지정하므로 id 5는 반드시 있어야 한다.
 --

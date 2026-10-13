@@ -1,16 +1,16 @@
 package com.dandi.nyummy.auth.service
 
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
-import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.ResetPasswordRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeRequest
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeResponse
 import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
@@ -21,7 +21,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.email.EmailService
 import com.dandi.nyummy.notification.repository.DeviceTokenRepository
-import com.dandi.nyummy.security.jwt.TokenService
+import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.security.jwt.VerifiedClaims
 import com.dandi.nyummy.user.entity.Profile
@@ -43,7 +43,7 @@ class AuthService(
     private val profileRepository: ProfileRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val refreshTokenService: RefreshTokenService,
-    private val tokenService: TokenService,
+    private val jwtService: JwtService,
     private val codeService: CodeService,
     private val emailService: EmailService,
     private val passwordService: PasswordService,
@@ -62,7 +62,7 @@ class AuthService(
      *
      * 조회는 EMAIL 계정으로 한정한다 — 같은 이메일의 소셜 계정은 다른 사용자이며 비밀번호 로그인 대상이 아니다.
      *
-     * 로그인은 새 세션의 시작이므로 RefreshToken 저장은 [RefreshTokenService.createOrRestart]에 맡긴다.
+     * 로그인은 새 세션의 시작이므로 RefreshToken 저장은 [RefreshTokenService.startSession]에 맡긴다.
      *
      * @param request 로그인 요청 정보를 담은 [LoginRequest] (이메일, 비밀번호)
      * @return 리다이렉트 URL과 AccessToken·RefreshToken을 담은 [LoginResponse]
@@ -82,9 +82,9 @@ class AuthService(
 
         val userId = user.id
 
-        val (newAccessToken, newRefreshToken) = tokenService.createTokenPair(userId)
+        val (newAccessToken, newRefreshToken) = jwtService.createTokenPair(userId)
 
-        refreshTokenService.createOrRestart(userId, newRefreshToken)
+        refreshTokenService.startSession(userId, newRefreshToken)
 
         val redirectUrl = if (catRepository.existsByUserId(userId)) {
             appLinkProperties.home
@@ -98,7 +98,7 @@ class AuthService(
     /**
      * 회원가입 용도의 verifiedToken을 검증하고 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
      *
-     * 이메일 인증([confirmAuthCode])과 소셜 로그인([OAuthService.login])이 발급한 verifiedToken을 같은 경로로 받는다.
+     * 이메일 인증([validateAuthCode])과 소셜 로그인([OAuthService.login])이 발급한 verifiedToken을 같은 경로로 받는다.
      * 토큰의 provider에 따라 달라지는 것은 둘뿐이다 — 신원 키의 중복 검사와 비밀번호 필수 여부.
      * 비밀번호는 EMAIL 계정의 속성이므로 소셜 가입 요청에 비밀번호가 실려 와도 무시한다.
      *
@@ -114,8 +114,8 @@ class AuthService(
      * @throws BusinessException [AuthErrorCode.OAUTH_ACCOUNT_ALREADY_EXISTS] 이미 가입된 소셜 계정인 경우
      */
     @Transactional
-    fun signup(request: SignUpRequest): SignUpResponse {
-        val claims = tokenService.getVerifiedClaims(request.verifiedToken)
+    fun signUp(request: SignUpRequest): SignUpResponse {
+        val claims = jwtService.getVerifiedClaims(request.verifiedToken)
 
         if (claims.purpose != AuthPurpose.SIGNUP) {
             throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)
@@ -166,9 +166,9 @@ class AuthService(
             ),
         )
 
-        val (accessToken, refreshToken) = tokenService.createTokenPair(userId)
+        val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
-        refreshTokenService.createOrRestart(userId, refreshToken)
+        refreshTokenService.startSession(userId, refreshToken)
 
         return SignUpResponse(
             accessToken = accessToken,
@@ -210,7 +210,7 @@ class AuthService(
     @Transactional
     fun refresh(request: RefreshRequest): RefreshResponse {
         val userId = try {
-            tokenService.getUserId(request.refreshToken, TokenType.REFRESH)
+            jwtService.getUserId(request.refreshToken, TokenType.REFRESH)
         } catch (e: Exception) {
             throw BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN)
         }
@@ -226,9 +226,9 @@ class AuthService(
             throw BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN)
         }
 
-        val (newAccessToken, newRefreshToken) = tokenService.createTokenPair(userId)
+        val (newAccessToken, newRefreshToken) = jwtService.createTokenPair(userId)
 
-        existingToken.rotate(newRefreshToken)
+        existingToken.rotateToken(newRefreshToken)
 
         return RefreshResponse(newAccessToken, newRefreshToken)
     }
@@ -238,7 +238,7 @@ class AuthService(
      *
      * RefreshToken 행을 지워 재발급을 막고, 무효화 기준 시각을 남겨 이미 발급된 AccessToken도 끊는다.
      * AccessToken은 서명만으로 검증되는 stateless 토큰이라 회수할 방법이 없으므로,
-     * "이 시각 이전에 발급된 토큰은 거부"를 기록해두고 [TokenService]가 요청마다 확인하게 한다.
+     * "이 시각 이전에 발급된 토큰은 거부"를 기록해두고 [JwtService]가 요청마다 확인하게 한다.
      *
      * 저장된 RefreshToken이 없으면 이미 로그아웃된 상태로 보고 정상 처리한다(멱등).
      *
@@ -288,7 +288,7 @@ class AuthService(
 
         emailService.sendAuthCode(email, authCode)
 
-        val emailChallengeToken = tokenService.createEmailChallengeToken(email, purpose)
+        val emailChallengeToken = jwtService.createEmailChallengeToken(email, purpose)
 
         return SendAuthCodeResponse(emailChallengeToken)
     }
@@ -298,27 +298,27 @@ class AuthService(
      *
      * 인증 코드의 유효 시간은 emailChallengeToken의 만료(exp)가 유일한 기준이며, DB에서 시간 계산은 하지 않는다.
      *
-     * @param request 인증 코드 확인 요청 정보를 담은 [ConfirmAuthCodeRequest] (인증 코드, emailChallengeToken)
-     * @return 발급된 verifiedToken을 담은 [ConfirmAuthCodeResponse]
+     * @param request 인증 코드 확인 요청 정보를 담은 [ValidateAuthCodeRequest] (인증 코드, emailChallengeToken)
+     * @return 발급된 verifiedToken을 담은 [ValidateAuthCodeResponse]
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_EXPIRED] emailChallengeToken이 만료된 경우 (코드 재발송 필요)
      * @throws BusinessException [AuthErrorCode.INVALID_EMAIL_CHALLENGE_TOKEN] 토큰의 서명·형식·타입·용도가 유효하지 않은 경우
      * @throws BusinessException [AuthErrorCode.INCORRECT_EMAIL] 해당 이메일·용도로 발급된 인증 코드가 없는 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_ATTEMPT_EXCEEDED] 오답이 5회 누적된 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
      */
-    fun confirmAuthCode(request: ConfirmAuthCodeRequest): ConfirmAuthCodeResponse {
+    fun validateAuthCode(request: ValidateAuthCodeRequest): ValidateAuthCodeResponse {
         val challengeToken = request.emailChallengeToken
         val challengeCode = request.authCode
 
-        val (email, purpose) = tokenService.getEmailChallengeClaims(challengeToken)
+        val (email, purpose) = jwtService.getEmailChallengeClaims(challengeToken)
 
-        codeService.confirmAuthCodeByEmail(challengeCode, email, purpose)
+        codeService.validateAuthCodeByEmail(challengeCode, email, purpose)
 
-        val verifiedToken = tokenService.createVerifiedToken(
+        val verifiedToken = jwtService.createVerifiedToken(
             VerifiedClaims(provider = AuthProvider.EMAIL, email = email, purpose = purpose),
         )
 
-        return ConfirmAuthCodeResponse(verifiedToken)
+        return ValidateAuthCodeResponse(verifiedToken)
     }
 
     /**
@@ -333,16 +333,16 @@ class AuthService(
      * 토큰 파싱(트랜잭션 없음) → 비밀번호 교체([PasswordService] 트랜잭션) → 토큰 무효화 → 이메일 발송 순으로
      * 순차 실행된다 — 발송이 실패하면 사용자는 코드 발송부터 플로우를 재시작해야 한다.
      *
-     * @param request 비밀번호 재설정 요청 정보를 담은 [PasswordResetRequest] (verifiedToken)
+     * @param request 비밀번호 재설정 요청 정보를 담은 [ResetPasswordRequest] (verifiedToken)
      * @throws BusinessException [AuthErrorCode.VERIFICATION_EXPIRED] verifiedToken이 만료된 경우
      * @throws BusinessException [AuthErrorCode.INVALID_VERIFIED_TOKEN] 토큰의 서명·형식·타입이 유효하지 않거나, 이메일 계정의 비밀번호 찾기 용도가 아닌 경우
      * @throws BusinessException [AuthErrorCode.EMAIL_NOT_FOUND] 토큰의 이메일에 해당하는 사용자가 없는 경우
      * @throws BusinessException [EmailErrorCode.EMAIL_SEND_FAILED] 임시 비밀번호 이메일 발송이 실패한 경우
      */
-    fun resetPassword(request: PasswordResetRequest) {
+    fun resetPassword(request: ResetPasswordRequest) {
         // TODO: 레디스 도입 시 사용한 verifiedToken을 블랙리스트로 등록해 일회성 보장
 
-        val claims = tokenService.getVerifiedClaims(request.verifiedToken)
+        val claims = jwtService.getVerifiedClaims(request.verifiedToken)
 
         if (claims.provider != AuthProvider.EMAIL || claims.purpose != AuthPurpose.RESET_PASSWORD) {
             throw BusinessException(AuthErrorCode.INVALID_VERIFIED_TOKEN)

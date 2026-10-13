@@ -18,5 +18,5 @@ interface ImageUploadValidator {
      *
      * @param userId 업로드를 요청한 사용자 ID
      */
-    fun validateBeforeUpload(userId: Long)
+    fun validateUploadRequest(userId: Long)
 }

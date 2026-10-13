@@ -7,11 +7,11 @@ import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.image.ExifCaptureTimeReader
 import com.dandi.nyummy.image.config.ImageProperties
 import com.dandi.nyummy.image.dto.CreateUploadUrlRequest
-import com.dandi.nyummy.image.dto.UploadedImage
+import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.validator.ImageUploadValidator
 import com.dandi.nyummy.infra.storage.s3.S3StorageClient
-import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContent
+import com.dandi.nyummy.infra.storage.s3.dto.S3ObjectContentResult
 import com.dandi.nyummy.infra.storage.s3.dto.S3UploadResult
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -39,15 +39,15 @@ class ImageServiceTest {
 
     private val imageProperties = ImageProperties(
         uploadMethod = "PUT",
-        uploadUrlExpirationMinutes = 10,
-        imageUrlExpirationMinutes = 10,
+        uploadUrlTimeToLiveMinutes = 10,
+        imageUrlTimeToLiveMinutes = 10,
     )
 
     private val s3StorageClient = mockk<S3StorageClient>()
     private val exifCaptureTimeReader = mockk<ExifCaptureTimeReader>()
     private val mealValidator = mockk<ImageUploadValidator> {
         every { purpose } returns ImagePurpose.MEAL
-        every { validateBeforeUpload(any()) } just Runs
+        every { validateUploadRequest(any()) } just Runs
     }
 
     private val imageService = createImageService(listOf(mealValidator))
@@ -79,7 +79,7 @@ class ImageServiceTest {
         capturedAt: Instant? = now,
     ) {
         coEvery { s3StorageClient.getObjectSize(key) } returns size
-        coEvery { s3StorageClient.downloadObject(key) } returns S3ObjectContent(bytes, null)
+        coEvery { s3StorageClient.downloadObject(key) } returns S3ObjectContentResult(bytes, null)
         every { exifCaptureTimeReader.extractCapturedAt(bytes) } returns capturedAt
         coEvery { s3StorageClient.confirmObject(key) } just Runs
     }
@@ -122,12 +122,12 @@ class ImageServiceTest {
 
         assertTrue(result.imageKey.startsWith("inquiries/1/2026/10/10/"), result.imageKey)
         assertTrue(result.imageKey.endsWith(".png"), result.imageKey)
-        verify(exactly = 0) { mealValidator.validateBeforeUpload(any()) }
+        verify(exactly = 0) { mealValidator.validateUploadRequest(any()) }
     }
 
     @Test
     fun `용도의 검증기가 거부하면 그 예외를 그대로 던지고 URL을 발급하지 않는다`() {
-        every { mealValidator.validateBeforeUpload(userId) } throws
+        every { mealValidator.validateUploadRequest(userId) } throws
             BusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED)
 
         assertBusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED) {
@@ -185,13 +185,13 @@ class ImageServiceTest {
         val events = mutableListOf<String>()
         coEvery { s3StorageClient.confirmObject(mealKey) } answers { events += "confirm" }
 
-        var received: UploadedImage? = null
+        var received: UploadedImageResult? = null
         val result = imageService.confirmUpload(userId, ImagePurpose.MEAL, mealKey) {
             received = it
             events += "validate"
         }
 
-        assertEquals(UploadedImage(mealKey, now), result)
+        assertEquals(UploadedImageResult(mealKey, now), result)
         assertEquals(result, received)
         assertEquals(listOf("validate", "confirm"), events)
     }

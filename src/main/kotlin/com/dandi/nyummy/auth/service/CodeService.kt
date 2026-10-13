@@ -80,7 +80,7 @@ class CodeService(
      * @throws BusinessException [AuthErrorCode.EMAIL_CODE_MISMATCH] 인증 코드가 일치하지 않는 경우
      */
     @Transactional(noRollbackFor = [BusinessException::class])
-    fun confirmAuthCodeByEmail(challengeCode: String, email: String, type: AuthPurpose) {
+    fun validateAuthCodeByEmail(challengeCode: String, email: String, type: AuthPurpose) {
         val existingCode = codeRepository.findByEmail(email)
             ?: throw BusinessException(AuthErrorCode.INCORRECT_EMAIL)
 

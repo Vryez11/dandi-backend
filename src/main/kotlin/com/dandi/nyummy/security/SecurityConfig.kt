@@ -3,7 +3,7 @@ package com.dandi.nyummy.security
 import com.dandi.nyummy.filter.InternalApiKeyFilter
 import com.dandi.nyummy.filter.JwtAuthorizationFilter
 import com.dandi.nyummy.internal.config.InternalProperties
-import com.dandi.nyummy.security.jwt.TokenService
+import com.dandi.nyummy.security.jwt.JwtService
 import jakarta.servlet.DispatcherType
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,7 +17,7 @@ import org.springframework.security.web.util.matcher.DispatcherTypeRequestMatche
 
 @Configuration
 class SecurityConfig(
-    private val tokenService: TokenService,
+    private val jwtService: JwtService,
     private val securityExceptionHandler: SecurityExceptionHandler,
 ) {
 
@@ -42,7 +42,7 @@ class SecurityConfig(
                 authenticationEntryPoint = securityExceptionHandler
                 accessDeniedHandler = securityExceptionHandler
             }
-            addFilterBefore<UsernamePasswordAuthenticationFilter>(JwtAuthorizationFilter(tokenService))
+            addFilterBefore<UsernamePasswordAuthenticationFilter>(JwtAuthorizationFilter(jwtService))
             addFilterBefore<UsernamePasswordAuthenticationFilter>(
                 InternalApiKeyFilter(internalProperties.batchKey),
             )

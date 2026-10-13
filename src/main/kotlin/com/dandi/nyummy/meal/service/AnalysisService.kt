@@ -46,7 +46,7 @@ class AnalysisService(
      * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, userId가 소유자가 아닌 경우
      */
     @Transactional(readOnly = true)
-    fun getStatus(userId: Long, mealId: Long): MealStatusResponse {
+    fun getMealStatus(userId: Long, mealId: Long): MealStatusResponse {
         val meal = mealRepository.findByIdOrNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND, "Meal Not Found")
 
@@ -60,7 +60,7 @@ class AnalysisService(
      * 분석 상태 전이(WAITING/FAILED → ANALYZING → COMPLETED/FAILED)를 전담한다.
      *
      * 상태 변경은 [UpdateMealService]를 통해 각각 독립 트랜잭션으로 즉시 커밋되므로,
-     * 분석이 진행되는 동안에도 [getStatus] 폴링이 ANALYZING 상태를 조회할 수 있다.
+     * 분석이 진행되는 동안에도 [getMealStatus] 폴링이 ANALYZING 상태를 조회할 수 있다.
      * 분석 실패는 예외로 전파하지 않고 FAILED 상태로 기록한다.
      * 소유권 검증은 호출자가 보장한다.
      *
@@ -134,7 +134,7 @@ class AnalysisService(
                 notificationId = NotificationId.createAnalysisId(meal.id, status, analyzedAt),
                 title = "$catName 맛있게 먹었다냥 🐾",
                 body = "${meal.name} 분석이 끝났어요. 칼로리 확인해줘!",
-                appLink = appLinkProperties.createMealDetail(meal.id),
+                appLink = appLinkProperties.createMealDetailLink(meal.id),
             )
         } else {
             PushMessage(
@@ -142,7 +142,7 @@ class AnalysisService(
                 notificationId = NotificationId.createAnalysisId(meal.id, status, analyzedAt),
                 title = "사진을 못 알아봤다냥 🐾",
                 body = "다시 시도해줄래?",
-                appLink = appLinkProperties.createMealDetail(meal.id),
+                appLink = appLinkProperties.createMealDetailLink(meal.id),
             )
         }
 

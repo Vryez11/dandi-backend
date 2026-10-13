@@ -1,18 +1,18 @@
 package com.dandi.nyummy.auth.controller
 
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeRequest
-import com.dandi.nyummy.auth.dto.ConfirmAuthCodeResponse
 import com.dandi.nyummy.auth.dto.LoginRequest
 import com.dandi.nyummy.auth.dto.LoginResponse
 import com.dandi.nyummy.auth.dto.OAuthLoginRequest
 import com.dandi.nyummy.auth.dto.OAuthLoginResponse
-import com.dandi.nyummy.auth.dto.PasswordResetRequest
 import com.dandi.nyummy.auth.dto.RefreshRequest
 import com.dandi.nyummy.auth.dto.RefreshResponse
+import com.dandi.nyummy.auth.dto.ResetPasswordRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeRequest
 import com.dandi.nyummy.auth.dto.SendAuthCodeResponse
 import com.dandi.nyummy.auth.dto.SignUpRequest
 import com.dandi.nyummy.auth.dto.SignUpResponse
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeRequest
+import com.dandi.nyummy.auth.dto.ValidateAuthCodeResponse
 import com.dandi.nyummy.auth.service.AuthService
 import com.dandi.nyummy.auth.service.OAuthService
 import com.dandi.nyummy.config.openapi.ApiErrorCodes
@@ -61,8 +61,8 @@ class AuthController(private val authService: AuthService, private val oauthServ
         ],
     )
     @PostMapping("/signup")
-    fun signup(@Valid @RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> {
-        val response = authService.signup(request)
+    fun signUp(@Valid @RequestBody request: SignUpRequest): ResponseEntity<SignUpResponse> {
+        val response = authService.signUp(request)
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
@@ -90,7 +90,7 @@ class AuthController(private val authService: AuthService, private val oauthServ
         ],
     )
     @PostMapping("/oauth/login")
-    fun oauthLogin(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = oauthService.login(request)
+    fun loginOAuth(@Valid @RequestBody request: OAuthLoginRequest): OAuthLoginResponse = oauthService.login(request)
 
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰을 검증하고 AccessToken·RefreshToken을 새로 발급한다(rotate).")
     @ApiErrorCodes(auth = [AuthErrorCode.INVALID_REFRESH_TOKEN])
@@ -136,8 +136,10 @@ class AuthController(private val authService: AuthService, private val oauthServ
         ],
     )
     @PostMapping("/email-verification/confirm")
-    fun confirmAuthCode(@Valid @RequestBody request: ConfirmAuthCodeRequest): ResponseEntity<ConfirmAuthCodeResponse> {
-        val response = authService.confirmAuthCode(request)
+    fun validateAuthCode(
+        @Valid @RequestBody request: ValidateAuthCodeRequest,
+    ): ResponseEntity<ValidateAuthCodeResponse> {
+        val response = authService.validateAuthCode(request)
 
         return ResponseEntity.ok(response)
     }
@@ -157,7 +159,7 @@ class AuthController(private val authService: AuthService, private val oauthServ
         email = [EmailErrorCode.EMAIL_SEND_FAILED],
     )
     @PostMapping("/password/reset")
-    fun resetPassword(@Valid @RequestBody request: PasswordResetRequest): ResponseEntity<Void> {
+    fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest): ResponseEntity<Void> {
         authService.resetPassword(request)
 
         return ResponseEntity

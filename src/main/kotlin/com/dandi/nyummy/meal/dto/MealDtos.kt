@@ -65,7 +65,7 @@ data class MonthlyMealDayResponse(
     val foodIconIds: List<Long>,
 )
 
-data class Streak(val streakDays: Int, val recordsUntilNextReward: Int)
+data class StreakResponse(val streakDays: Int, val recordsUntilNextReward: Int)
 
 /**
  * 오늘의 식사 현황.
@@ -75,7 +75,7 @@ data class Streak(val streakDays: Int, val recordsUntilNextReward: Int)
  * 제한([todayMaxAttemptCount])과 비교할 값은 후자이므로, 5번 올리고 2개를 지운 사용자는
  * `recorded=3`, `attempt=5`가 되어 더 등록할 수 없다.
  */
-data class TodayMealSummary(
+data class TodayMealSummaryResponse(
     val todayRecordedCount: Int,
     val todayAttemptCount: Int,
     val todayMaxAttemptCount: Int,

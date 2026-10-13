@@ -65,7 +65,7 @@ class CatServiceTest {
 
     @BeforeEach
     fun setUp() {
-        every { profileRepository.getProfileByUserId(userId) } returns null
+        every { profileRepository.findProfileByUserId(userId) } returns null
         givenMeals()
     }
 
@@ -83,7 +83,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(0)
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(2))
-        verify(exactly = 0) { mealRepository.getMealsByUserIdAndPeriod(any(), any(), any()) }
+        verify(exactly = 0) { mealRepository.findMealsByUserIdAndPeriod(any(), any(), any()) }
     }
 
     @Test
@@ -98,7 +98,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(0)
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
-        verify(exactly = 0) { mealRepository.getMealsByUserIdAndPeriod(any(), any(), any()) }
+        verify(exactly = 0) { mealRepository.findMealsByUserIdAndPeriod(any(), any(), any()) }
     }
 
     @Test
@@ -114,7 +114,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(0)
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(-3))
-        verify(exactly = 0) { mealRepository.getMealsByUserIdAndPeriod(any(), any(), any()) }
+        verify(exactly = 0) { mealRepository.findMealsByUserIdAndPeriod(any(), any(), any()) }
     }
 
     // ---------------------------------------------------------------- 한 구간
@@ -132,7 +132,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(1)
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(1))
-        verify { mealRepository.getMealsByUserIdAndPeriod(userId, midnight(4), midnight(1)) }
+        verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(4), midnight(1)) }
     }
 
     @Test
@@ -286,7 +286,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(-2)
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
-        verify { mealRepository.getMealsByUserIdAndPeriod(userId, midnight(6), midnight(0)) }
+        verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(6), midnight(0)) }
     }
 
     @Test
@@ -387,7 +387,7 @@ class CatServiceTest {
         assertThat(cat.weight).isEqualTo(-2)
         // 창을 줄여도 평가 경계는 지난 구간 전체의 끝(= 오늘)으로 전진한다.
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
-        verify { mealRepository.getMealsByUserIdAndPeriod(userId, midnight(12), midnight(0)) }
+        verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(12), midnight(0)) }
     }
 
     @Test
@@ -403,7 +403,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(-1)
         assertThat(cat.weightUpdatedAt).isEqualTo(midnight(2))
-        verify { mealRepository.getMealsByUserIdAndPeriod(userId, midnight(5), midnight(2)) }
+        verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(5), midnight(2)) }
     }
 
     // ---------------------------------------------------------------- 진입점
@@ -444,7 +444,7 @@ class CatServiceTest {
             baseUrl = "https://example.com/",
             animations = emptyList(),
         )
-        every { catAnimationLoader.load(CatWeight.SLIM) } returns animations
+        every { catAnimationLoader.loadCatAnimation(CatWeight.SLIM) } returns animations
 
         // when
         val response = catService.getCatAnimations(userId)
@@ -452,7 +452,7 @@ class CatServiceTest {
         // then
         assertThat(cat.weight).isEqualTo(-1)
         assertThat(response).isEqualTo(animations)
-        verify { catAnimationLoader.load(CatWeight.SLIM) }
+        verify { catAnimationLoader.loadCatAnimation(CatWeight.SLIM) }
     }
 
     // ---------------------------------------------------------------- 픽스처
@@ -482,7 +482,7 @@ class CatServiceTest {
      * 창 밖 식사가 구간 배열의 범위를 벗어나 터지는 것도 감춰진다.
      */
     private fun givenMeals(vararg meals: Meal) {
-        every { mealRepository.getMealsByUserIdAndPeriod(userId, any(), any()) } answers {
+        every { mealRepository.findMealsByUserIdAndPeriod(userId, any(), any()) } answers {
             val start = secondArg<Instant>()
             val end = thirdArg<Instant>()
 

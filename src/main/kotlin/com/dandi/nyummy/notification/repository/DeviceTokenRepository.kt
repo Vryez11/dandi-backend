@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
-    fun getDeviceTokenByUserId(userId: Long): DeviceToken?
+    fun findDeviceTokenByUserId(userId: Long): DeviceToken?
 
     @Modifying(clearAutomatically = true)
     @Query("delete from DeviceToken d where d.token = :token and d.userId <> :userId")
@@ -30,7 +30,7 @@ interface DeviceTokenRepository : JpaRepository<DeviceToken, Long> {
                 and p.isServicePushEnabled = true
         """,
     )
-    fun getServicePushToken(@Param("userId") userId: Long): String?
+    fun findServicePushToken(@Param("userId") userId: Long): String?
 
     @Modifying(clearAutomatically = true)
     @Query("delete from DeviceToken d where d.token in :tokens")
