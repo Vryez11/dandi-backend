@@ -101,7 +101,10 @@ class Inquiry(
         }
     }
 
-    fun updateDeletedAt(deletedAt: Instant) {
+    /**
+     * 삭제 시각을 기록한다. null이면 소프트 삭제를 되돌린다.
+     */
+    fun updateDeletedAt(deletedAt: Instant?) {
         this.deletedAt = deletedAt
     }
 

@@ -24,6 +24,7 @@
 | 리포지토리 조회 | find | get — Spring Data 관례. 단건·목록·Redis 리포지토리 모두. 리포지토리 밖에서는 get | `findByUserId()`, `findMealsByUserIdAndPeriod()` |
 | 수정 | update | modify, edit, change | `updateCat()` |
 | 삭제 | delete | remove, destroy, drop | `deleteMeal()` |
+| 복구(소프트 삭제 취소) | restore | undo, recover, undelete | `restoreInquiry()` |
 | 검색(조건) | search | query, lookup | `searchMeals()` |
 | 존재 확인 | exists | has, contains | `existsUser()` |
 | 계산 | calculate | compute (개수 조회는 아래 count) | `calculateScore()` |
