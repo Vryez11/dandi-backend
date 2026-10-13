@@ -24,7 +24,7 @@ data class MealResponse(
     val imageUrl: String,
     val canCreateAnalysisFeedback: Boolean,
     val catComment: String? = "",
-    val iconId: Long? = 1,
+    val iconId: Long?,
 )
 
 data class MealStatusResponse(val id: Long, val status: MealStatus)
@@ -45,7 +45,7 @@ data class DailyMealResponse(
     val protein: Int,
     val fat: Int,
     val status: MealStatus,
-    val iconId: Long,
+    val iconId: Long?,
 )
 
 data class DailyNutritionResponse(val current: Nutrition, val target: Nutrition)

@@ -205,7 +205,12 @@ class MealService(
     }
 
     private fun pickFoodIconIds(meals: List<Meal>): List<Long> {
-        val iconIdsByMealAt = meals.sortedBy { it.mealAt }.map { it.iconId }
+        // 분석이 끝나지 않았거나 실패한 식사는 아이콘이 정해지지 않았으므로 후보에서 뺀다.
+        // 캘린더 응답에는 status가 없어 클라이언트가 걸러낼 수 없다.
+        val iconIdsByMealAt = meals
+            .filter { it.status == MealStatus.COMPLETED }
+            .sortedBy { it.mealAt }
+            .mapNotNull { it.iconId }
         if (iconIdsByMealAt.size <= 2) {
             return iconIdsByMealAt
         }

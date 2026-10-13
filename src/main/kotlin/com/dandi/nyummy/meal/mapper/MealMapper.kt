@@ -38,8 +38,7 @@ fun Meal.toDailyMealResponse() = DailyMealResponse(
     protein = this.protein ?: 0,
     fat = this.fat ?: 0,
     status = this.status,
-    // 영양 값과 달리 iconId는 nullable이 아니라 [Meal]의 기본값이 들어 있다. 분석 전이거나
-    // 실패한 식사도 그 값이 내려가므로, 아이콘을 보여줄지는 status로 판단해야 한다.
+    // 영양 값은 0으로 채우지만 iconId는 0이 가리킬 아이콘이 없으므로 null 그대로 내려준다.
     iconId = this.iconId,
 )
 
