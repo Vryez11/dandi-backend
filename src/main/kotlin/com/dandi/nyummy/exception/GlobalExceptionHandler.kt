@@ -36,16 +36,28 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         statusCode: HttpStatusCode,
         request: WebRequest,
     ): ResponseEntity<Any>? {
-        log.warn("Spring MVC exception: {}", ex.message)
+        val errorCode = convertErrorCode(statusCode)
+        if (statusCode.is5xxServerError) {
+            log.error("Spring MVC exception: status={}", statusCode.value(), ex)
+        } else {
+            log.warn("Spring MVC exception: status={}, message={}", statusCode.value(), ex.message)
+        }
+
+        // 입력 오류만 원인 파악용으로 Spring 메시지를 내보내고, 나머지는 내부 문구를 숨긴다
+        val message = when (errorCode) {
+            CommonErrorCode.INVALID_INPUT_VALUE -> ex.message ?: errorCode.message
+            else -> errorCode.message
+        }
         return ResponseEntity
             .status(statusCode)
-            .body(
-                ErrorResponse.of(
-                    CommonErrorCode.INVALID_INPUT_VALUE.code,
-                    ex.message
-                        ?: statusCode.toString(),
-                ),
-            )
+            .body(ErrorResponse.of(errorCode.code, message))
+    }
+
+    // 상태코드는 Spring이 정한 값을 그대로 쓰고, 응답 code만 상태에 맞춰 고른다
+    private fun convertErrorCode(statusCode: HttpStatusCode): CommonErrorCode = when {
+        statusCode.isSameCodeAs(HttpStatus.NOT_FOUND) -> CommonErrorCode.NOT_FOUND
+        statusCode.is5xxServerError -> CommonErrorCode.INTERNAL_SERVER_ERROR
+        else -> CommonErrorCode.INVALID_INPUT_VALUE
     }
 
     /*

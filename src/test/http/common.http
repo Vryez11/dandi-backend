@@ -1,0 +1,13 @@
+### 없는 경로 (토큰 있음) → 404, code: api.common.notFound
+GET {{url}}/api/v1/not-exists
+Authorization: Bearer {{accessToken}}
+
+### 없는 경로 (토큰 없음) → 401 (필터 단계에서 인증부터 검사해 매핑 여부를 모른다, 추후 개선)
+GET {{url}}/api/v1/not-exists
+
+### 깨진 JSON 바디 (역직렬화 실패) → 400, code: api.common.invalidInputValue
+POST {{url}}/api/v1/inquiries
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "category": "BUG_REPORT",
