@@ -158,3 +158,12 @@ Authorization: Bearer {{accessToken}}
 ### [실패] 이미 삭제된 문의 삭제 → api.inquiry.notFound
 DELETE {{url}}/api/v1/inquiries/{{inquiryId}}
 Authorization: Bearer {{accessToken}}
+
+### 문의 복구 API (삭제한 문의 되돌리기)
+# 삭제되지 않은 문의에 다시 보내도 204다(멱등).
+POST {{url}}/api/v1/inquiries/{{inquiryId}}/restore
+Authorization: Bearer {{accessToken}}
+
+### [실패] 다른 사용자의 문의 복구 → api.auth.forbidden
+POST {{url}}/api/v1/inquiries/{{otherUserInquiryId}}/restore
+Authorization: Bearer {{accessToken}}

@@ -17,6 +17,7 @@ import com.dandi.nyummy.inquiry.mapper.toInquirySummaryResponse
 import com.dandi.nyummy.inquiry.repository.InquiryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -192,5 +193,25 @@ class InquiryService(
 
         inquiry.validateOwnership(userId)
         inquiry.updateDeletedAt(Instant.now(clock))
+    }
+
+    /**
+     * 소프트 삭제한 문의를 되돌린다. 삭제 직후 앱의 되돌리기에서 호출하며, 복구 기한은 두지 않는다.
+     *
+     * 삭제되지 않은 문의도 그대로 성공한다(멱등). 되돌리기를 여러 번 눌러도 결과가 같게 하기 위함이다.
+     * deletedAt이 이미 null이면 같은 값을 넣어도 변경 감지에 걸리지 않아 UPDATE가 나가지 않으므로 따로 분기하지 않는다.
+     *
+     * 첨부 이미지는 삭제할 때 S3에 그대로 두었으므로 복구하면 다시 조회된다.
+     *
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없는 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 문의인 경우
+     */
+    @Transactional
+    fun restoreInquiry(userId: Long, inquiryId: Long) {
+        val inquiry = inquiryRepository.findByIdOrNull(inquiryId)
+            ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+
+        inquiry.validateOwnership(userId)
+        inquiry.updateDeletedAt(null)
     }
 }

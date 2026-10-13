@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
-@Tag(name = "Inquiry", description = "문의 생성 · 조회 · 수정 · 삭제 API")
+@Tag(name = "Inquiry", description = "문의 생성 · 조회 · 수정 · 삭제 · 복구 API")
 @RestController
 @RequestMapping("/api/v1/inquiries")
 class InquiryController(private val inquiryService: InquiryService) {
@@ -127,6 +127,21 @@ class InquiryController(private val inquiryService: InquiryService) {
         @Parameter(description = "문의 ID") @PathVariable("inquiryId") inquiryId: Long,
     ): ResponseEntity<Void> {
         inquiryService.deleteInquiry(user.userId, inquiryId)
+        return ResponseEntity.noContent().build()
+    }
+
+    @Operation(
+        summary = "문의 복구",
+        description = "삭제한 문의를 되돌린다. 복구 기한은 없다. 삭제되지 않은 문의에 요청해도 그대로 두고 성공한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "복구 성공")
+    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
+    @PostMapping("/{inquiryId}/restore")
+    fun restoreInquiry(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "문의 ID") @PathVariable("inquiryId") inquiryId: Long,
+    ): ResponseEntity<Void> {
+        inquiryService.restoreInquiry(user.userId, inquiryId)
         return ResponseEntity.noContent().build()
     }
 }
