@@ -63,8 +63,9 @@ class Meal(
     @Column(name = "cat_comment", length = 255)
     var catComment: String? = null
 
-    @Column(name = "icon_id", nullable = false)
-    var iconId: Long = 1L
+    // 분석이 완료되어야 정해진다. 분석 전이거나 실패한 식사는 null.
+    @Column(name = "icon_id")
+    var iconId: Long? = null
 
     @CreatedDate
     @Column(name = "created_at", nullable = false)

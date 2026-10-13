@@ -210,7 +210,7 @@ class MealService(
         val iconIdsByMealAt = meals
             .filter { it.status == MealStatus.COMPLETED }
             .sortedBy { it.mealAt }
-            .map { it.iconId }
+            .mapNotNull { it.iconId }
         if (iconIdsByMealAt.size <= 2) {
             return iconIdsByMealAt
         }
