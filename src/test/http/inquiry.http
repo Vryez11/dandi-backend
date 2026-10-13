@@ -131,7 +131,7 @@ Content-Type: application/json
   "questionContent": "거부되어야 합니다."
 }
 
-### [실패] 다른 사용자의 문의 조회 → api.inquiry.notFound
+### [실패] 다른 사용자의 문의 조회 → api.auth.forbidden
 @otherUserInquiryId = 999
 GET {{url}}/api/v1/inquiries/{{otherUserInquiryId}}
 Authorization: Bearer {{accessToken}}

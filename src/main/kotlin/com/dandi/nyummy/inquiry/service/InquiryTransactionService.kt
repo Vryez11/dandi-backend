@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
 import com.dandi.nyummy.inquiry.entity.Inquiry
@@ -21,7 +22,8 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
     /**
      * 수정할 수 있는 문의를 조회한다. 삭제되지 않았고, 요청자의 문의이며, 답변이 없어야 한다.
      *
-     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 문의인 경우
      * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
      */
     @Transactional(readOnly = true)
@@ -44,7 +46,8 @@ class InquiryTransactionService(private val inquiryRepository: InquiryRepository
      *
      * @param imageKey 확정이 끝난 이미지 키. null이면 이미지를 지운다
      * @return 변경이 커밋된 [Inquiry]
-     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 문의인 경우
      * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
      */
     @Transactional

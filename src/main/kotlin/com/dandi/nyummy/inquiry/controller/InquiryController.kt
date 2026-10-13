@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.controller
 
 import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
@@ -80,7 +81,7 @@ class InquiryController(private val inquiryService: InquiryService) {
         description = "문의 하나의 질문과 답변을 조회한다. 답변이 달린 문의를 처음 조회하면 답변을 읽은 것으로 기록한다. " +
             "이미지가 있으면 imageUrl에 일정 시간 동안만 유효한 조회 URL이 들어 있고, 없으면 null이다.",
     )
-    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND])
+    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @GetMapping("/{inquiryId}")
     fun getInquiry(
         @CurrentUser user: AuthUser,
@@ -99,6 +100,7 @@ class InquiryController(private val inquiryService: InquiryService) {
             InquiryErrorCode.ALREADY_ANSWERED,
             InquiryErrorCode.DUPLICATE_IMAGE_KEY,
         ],
+        auth = [AuthErrorCode.FORBIDDEN],
         s3 = [
             S3ErrorCode.INVALID_KEY,
             S3ErrorCode.OBJECT_NOT_FOUND,
@@ -115,7 +117,7 @@ class InquiryController(private val inquiryService: InquiryService) {
 
     @Operation(summary = "문의 삭제", description = "문의를 삭제한다. 답변이 등록된 문의도 삭제할 수 있다.")
     @ApiResponse(responseCode = "204", description = "삭제 성공")
-    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND])
+    @ApiErrorCodes(inquiry = [InquiryErrorCode.INQUIRY_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @DeleteMapping("/{inquiryId}")
     fun deleteInquiry(
         @CurrentUser user: AuthUser,

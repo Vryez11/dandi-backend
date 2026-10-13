@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.image.enum.ImagePurpose
@@ -100,7 +101,8 @@ class InquiryService(
      * 답변이 달린 문의를 처음 조회하면 답변 읽음 시각을 기록한다. home의 안 읽은 답변 여부가 이 값으로 계산되므로,
      * 조회 API지만 쓰기 트랜잭션으로 연다.
      *
-     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 문의인 경우
      */
     @Transactional
     fun getInquiry(userId: Long, inquiryId: Long): InquiryResponse {
@@ -125,7 +127,8 @@ class InquiryService(
      * 3. 변경은 [InquiryTransactionService]의 별도 트랜잭션에서 문의를 다시 읽어 적용한다. 확정하는 사이 답변이
      *    등록되거나 삭제됐을 수 있어 다시 검증하고, 처음 읽은 엔티티를 merge하면 그사이 등록된 답변을 덮어쓸 수 있기 때문이다.
      *
-     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제됐거나, 다른 사용자의 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 문의인 경우
      * @throws BusinessException [InquiryErrorCode.ALREADY_ANSWERED] 답변이 등록된 문의인 경우
      * @throws BusinessException [InquiryErrorCode.DUPLICATE_IMAGE_KEY] 새 imageKey가 이미 문의에 사용된 경우
      * @throws BusinessException [S3ErrorCode.INVALID_KEY] 새 imageKey가 요청자의 문의 경로(`inquiries/{userId}/`)가 아닌 경우
@@ -157,7 +160,8 @@ class InquiryService(
      *
      * 첨부 이미지는 S3에서 지우지 않고 그대로 둔다.
      *
-     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 이미 삭제됐거나, 다른 사용자의 문의인 경우
+     * @throws BusinessException [InquiryErrorCode.INQUIRY_NOT_FOUND] 문의가 없거나, 이미 삭제된 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 문의인 경우
      */
     @Transactional
     fun deleteInquiry(userId: Long, inquiryId: Long) {

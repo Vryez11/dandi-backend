@@ -234,9 +234,7 @@ class MealService(
         val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        if (meal.userId != userId) {
-            throw BusinessException(AuthErrorCode.FORBIDDEN)
-        }
+        meal.validateOwnership(userId)
 
         val imageUrl = imageService.createImageUrl(meal.imageKey)
         val canCreateAnalysisFeedback = analysisFeedbackService.canCreateAnalysisFeedback(meal)
@@ -259,9 +257,7 @@ class MealService(
         val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        if (meal.userId != userId) {
-            throw BusinessException(AuthErrorCode.FORBIDDEN)
-        }
+        meal.validateOwnership(userId)
 
         val imageUrl = imageService.createImageUrl(meal.imageKey)
 
@@ -283,9 +279,7 @@ class MealService(
         val meal = mealRepository.findMealByIdAndDeletedAtIsNull(mealId)
             ?: throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
 
-        if (meal.userId != userId) {
-            throw BusinessException(AuthErrorCode.FORBIDDEN)
-        }
+        meal.validateOwnership(userId)
 
         meal.updateDeletedAt(Instant.now())
     }
