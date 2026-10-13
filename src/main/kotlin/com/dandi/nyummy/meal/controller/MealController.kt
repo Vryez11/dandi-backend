@@ -4,11 +4,13 @@ import com.dandi.nyummy.config.openapi.ApiErrorCodes
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.meal.dto.CreateAnalysisFeedbackRequest
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.MealResponse
 import com.dandi.nyummy.meal.dto.MealStatusResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
+import com.dandi.nyummy.meal.service.AnalysisFeedbackService
 import com.dandi.nyummy.meal.service.AnalysisService
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.security.AuthUser
@@ -21,6 +23,7 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotNull
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -34,7 +37,11 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Meal", description = "식사 기록 조회 · 생성 · 수정 · 삭제 및 영양 분석 API")
 @RestController
 @RequestMapping("/api/v1/meals")
-class MealController(private val mealService: MealService, private val analysisService: AnalysisService) {
+class MealController(
+    private val mealService: MealService,
+    private val analysisService: AnalysisService,
+    private val analysisFeedbackService: AnalysisFeedbackService,
+) {
 
     @Operation(
         summary = "월간 식사 캘린더 조회",
@@ -61,7 +68,12 @@ class MealController(private val mealService: MealService, private val analysisS
         @Parameter(description = "조회 일 (1~31)") @RequestParam day: Int,
     ): DailyMealsResponse = mealService.getDailyMeals(user.userId, year, month, day)
 
-    @Operation(summary = "식사 단건 조회", description = "식사 하나의 상세 정보(이름, 시각, 상태, 영양, 이미지 URL)를 조회한다.")
+    @Operation(
+        summary = "식사 단건 조회",
+        description = "식사 하나의 상세 정보(이름, 시각, 상태, 영양, 이미지 URL)를 조회한다. " +
+            "영양 분석 평가 가능 여부(canCreateAnalysisFeedback)가 들어 있다. " +
+            "분석이 완료됐고 아직 평가하지 않은 식사만 true이므로, 이 값만 보고 별점 UI를 띄우면 된다.",
+    )
     @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @GetMapping("/{mealId}")
     fun getMeal(
@@ -129,4 +141,20 @@ class MealController(private val mealService: MealService, private val analysisS
         @CurrentUser user: AuthUser,
         @Parameter(description = "식사 ID") @PathVariable @NotNull @Valid mealId: Long,
     ): MealStatusResponse = analysisService.retryNutritionAnalysis(user.userId, mealId)
+
+    @Operation(
+        summary = "영양 분석 평가 등록",
+        description = "영양 분석 결과를 별점(0.5~5.0, 0.5 단위)과 이유로 평가한다. " +
+            "분석이 완료된(COMPLETED) 식사만 평가할 수 있고, 식사당 한 번만 등록할 수 있다.",
+    )
+    @ApiResponse(responseCode = "201", description = "평가 등록 성공")
+    @PostMapping("/{mealId}/analysis/feedback")
+    fun createAnalysisFeedback(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "식사 ID") @PathVariable @NotNull @Valid mealId: Long,
+        @Valid @RequestBody request: CreateAnalysisFeedbackRequest,
+    ): ResponseEntity<Void> {
+        analysisFeedbackService.createAnalysisFeedback(user.userId, mealId, request)
+        return ResponseEntity.status(HttpStatus.CREATED).build()
+    }
 }

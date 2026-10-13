@@ -40,6 +40,7 @@ class MealServiceTest {
     private val imageService = mockk<ImageService>()
     private val mealAttemptService = mockk<MealAttemptService>()
     private val profileRepository = mockk<ProfileRepository>()
+    private val analysisFeedbackService = mockk<AnalysisFeedbackService>()
 
     private val mealService = MealService(
         analysisService = analysisService,
@@ -48,7 +49,8 @@ class MealServiceTest {
         mealAttemptService = mealAttemptService,
         clock = clock,
         profileRepository = profileRepository,
-        mealProperties = MealProperties(maxDailyCount = 5),
+        mealProperties = MealProperties(maxDailyCount = 5, analysisFeedbackRate = 100),
+        analysisFeedbackService = analysisFeedbackService,
     )
 
     private val savedMeal = slot<Meal>()

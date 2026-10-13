@@ -46,6 +46,7 @@ class MealService(
     private val clock: Clock,
     private val profileRepository: ProfileRepository,
     private val mealProperties: MealProperties,
+    private val analysisFeedbackService: AnalysisFeedbackService,
 ) {
 
     companion object {
@@ -224,7 +225,7 @@ class MealService(
      *
      * @param userId 조회하는 사용자 ID
      * @param mealId 조회할 식사 ID
-     * @return 식사 정보와 이미지 URL을 담은 [MealResponse]
+     * @return 식사 정보와 이미지 URL, 평가 가능 여부를 담은 [MealResponse]
      * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제된 경우
      * @throws BusinessException [AuthErrorCode.FORBIDDEN] mealId에 해당하는 userId가 아닌 경우
      */
@@ -238,8 +239,9 @@ class MealService(
         }
 
         val imageUrl = imageService.createImageUrl(meal.imageKey)
+        val canCreateAnalysisFeedback = analysisFeedbackService.canCreateAnalysisFeedback(meal)
 
-        return meal.toMealResponse(imageUrl)
+        return meal.toMealResponse(imageUrl, canCreateAnalysisFeedback)
     }
 
     /**
@@ -248,7 +250,7 @@ class MealService(
      * @param userId 수정하는 사용자 ID
      * @param mealId 수정할 식사 ID
      * @param name 변경할 식사 이름
-     * @return 수정된 식사 정보와 이미지 URL을 담은 [MealResponse]
+     * @return 수정된 식사 정보와 이미지 URL, 평가 가능 여부를 담은 [MealResponse]
      * @throws BusinessException [MealErrorCode.MEAL_NOT_FOUND] mealId에 해당하는 식사가 없거나, 삭제된 경우
      * @throws BusinessException [AuthErrorCode.FORBIDDEN] mealId에 해당하는 userId가 아닌 경우
      */
@@ -265,7 +267,7 @@ class MealService(
 
         meal.updateName(name)
 
-        return meal.toMealResponse(imageUrl)
+        return meal.toMealResponse(imageUrl, analysisFeedbackService.canCreateAnalysisFeedback(meal))
     }
 
     /**
