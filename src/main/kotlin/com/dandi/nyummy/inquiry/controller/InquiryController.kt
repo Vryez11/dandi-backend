@@ -4,6 +4,8 @@ import com.dandi.nyummy.config.openapi.ApiErrorCodes
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.header.CommonHeader
+import com.dandi.nyummy.header.CurrentCommonHeader
 import com.dandi.nyummy.inquiry.dto.CreateInquiryRequest
 import com.dandi.nyummy.inquiry.dto.InquiriesResponse
 import com.dandi.nyummy.inquiry.dto.InquiryResponse
@@ -53,9 +55,10 @@ class InquiryController(private val inquiryService: InquiryService) {
     @PostMapping
     fun createInquiry(
         @CurrentUser user: AuthUser,
+        @CurrentCommonHeader commonHeader: CommonHeader,
         @Valid @RequestBody request: CreateInquiryRequest,
     ): ResponseEntity<Void> {
-        inquiryService.createInquiry(user.userId, request)
+        inquiryService.createInquiry(user.userId, request, commonHeader.appVersion)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
 

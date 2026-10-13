@@ -106,7 +106,7 @@ class InquiryServiceTest {
 
     @Test
     fun `이미지가 없으면 확정 없이 저장한다`() {
-        inquiryService.createInquiry(userId, createRequest())
+        inquiryService.createInquiry(userId, createRequest(), appVersion = null)
 
         assertNull(savedInquiry.captured.imageKey)
         assertEquals(userId, savedInquiry.captured.userId)
@@ -115,7 +115,7 @@ class InquiryServiceTest {
 
     @Test
     fun `이미지가 있으면 중복 검사 후 문의 용도로 확정하고 저장한다`() {
-        inquiryService.createInquiry(userId, createRequest(imageKey))
+        inquiryService.createInquiry(userId, createRequest(imageKey), appVersion = null)
 
         assertEquals(imageKey, savedInquiry.captured.imageKey)
         verifyOrder {
@@ -131,7 +131,7 @@ class InquiryServiceTest {
         every { inquiryRepository.existsByImageKey(imageKey) } returns true
 
         assertBusinessException(InquiryErrorCode.DUPLICATE_IMAGE_KEY) {
-            inquiryService.createInquiry(userId, createRequest(imageKey))
+            inquiryService.createInquiry(userId, createRequest(imageKey), appVersion = null)
         }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
         verify(exactly = 0) { inquiryRepository.save(any()) }
@@ -143,7 +143,7 @@ class InquiryServiceTest {
             BusinessException(S3ErrorCode.INVALID_KEY)
 
         assertBusinessException(S3ErrorCode.INVALID_KEY) {
-            inquiryService.createInquiry(userId, createRequest(imageKey))
+            inquiryService.createInquiry(userId, createRequest(imageKey), appVersion = null)
         }
         verify(exactly = 0) { inquiryRepository.save(any()) }
     }

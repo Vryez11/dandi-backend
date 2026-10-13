@@ -39,9 +39,13 @@ class Inquiry(
     @Column(name = "image_key", length = 512)
     var imageKey: String? = null,
 
-    @Column(name = "app_version", length = 20)
+    @Column(name = "app_version", length = APP_VERSION_MAX_LENGTH)
     val appVersion: String? = null,
 ) {
+
+    companion object {
+        const val APP_VERSION_MAX_LENGTH = 20
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

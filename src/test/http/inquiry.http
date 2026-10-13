@@ -4,9 +4,11 @@
 #   WHERE id = {inquiryId} AND answered_at IS NULL;
 
 ### 문의하기 API (이미지 없음)
+# X-App-Version이 inquiries.app_version에 저장된다.
 POST {{url}}/api/v1/inquiries
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
+X-App-Version: 1.0.0
 
 {
   "category": "BUG_REPORT",
@@ -24,6 +26,19 @@ Content-Type: application/json
   "questionTitle": "캘린더 색은 무슨 뜻인가요?",
   "questionContent": "스크린샷의 초록색과 빨간색 차이가 궁금합니다.",
   "imageKey": "{{inquiryImageKey}}"
+}
+
+### 문의하기 API (앱 버전이 20자 초과)
+# 문의는 생성되고 app_version은 null로 저장된다. 서버 로그에 warn이 남는다.
+POST {{url}}/api/v1/inquiries
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+X-App-Version: 1.0.0-very-long-build-name
+
+{
+  "category": "QUESTION",
+  "questionTitle": "앱 버전이 긴 문의",
+  "questionContent": "app_version은 null이어야 합니다."
 }
 
 ### [실패] 이미 문의에 사용된 imageKey로 문의하기 → api.inquiry.duplicateImageKey
