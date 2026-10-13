@@ -14,6 +14,7 @@ import com.dandi.nyummy.inquiry.mapper.toInquiry
 import com.dandi.nyummy.inquiry.mapper.toInquiryResponse
 import com.dandi.nyummy.inquiry.mapper.toInquirySummaryResponse
 import com.dandi.nyummy.inquiry.repository.InquiryRepository
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,6 +28,9 @@ class InquiryService(
     private val inquiryTransactionService: InquiryTransactionService,
     private val clock: Clock,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(InquiryService::class.java)
+    }
 
     /**
      * 사용자의 문의를 생성한다. 이미지는 선택이며, 있으면 확정(status=committed)한 뒤 저장한다.
@@ -34,7 +38,8 @@ class InquiryService(
      * 트랜잭션을 열지 않는다. 이미지 확정은 S3 조회·다운로드를 거치므로, 그동안 DB 커넥션을 잡아두지 않는다.
      * 저장은 save 자체의 트랜잭션으로 충분하다.
      *
-     * 앱 버전(appVersion)은 아직 받지 않는다. 공통 헤더가 구현된 뒤에 추가한다.
+     * 앱 버전은 공통 헤더(X-App-Version)에서 받아 문의를 쓴 시점의 값으로 남긴다. 헤더가 없으면 null이다.
+     * 컬럼 길이를 넘으면 저장하지 않고 null로 둔다. 부가 정보 때문에 문의 생성이 실패하지 않게 하기 위함이다.
      *
      * @throws BusinessException [InquiryErrorCode.DUPLICATE_IMAGE_KEY] 이미 문의에 사용된 imageKey인 경우
      * @throws BusinessException [S3ErrorCode.INVALID_KEY] imageKey가 요청자의 문의 경로(`inquiries/{userId}/`)가 아닌 경우
@@ -42,10 +47,27 @@ class InquiryService(
      * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] 실제 업로드된 크기가 0이거나 [ImagePurpose.INQUIRY]의 최대 크기를 초과하는 경우
      * @throws BusinessException [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE] 실제 콘텐츠의 MIME 타입이 허용되지 않거나, imageKey의 확장자와 다른 경우
      */
-    fun createInquiry(userId: Long, request: CreateInquiryRequest) {
+    fun createInquiry(userId: Long, request: CreateInquiryRequest, appVersion: String?) {
         val imageKey = request.imageKey?.let { confirmImage(userId, it) }
 
-        inquiryRepository.save(request.toInquiry(userId, imageKey))
+        inquiryRepository.save(request.toInquiry(userId, imageKey, convertAppVersion(userId, appVersion)))
+    }
+
+    /**
+     * 저장할 앱 버전을 반환한다. 헤더 값은 검증 없이 들어오므로, 컬럼 길이를 넘으면 warn 로그만 남기고 null로 바꾼다.
+     */
+    private fun convertAppVersion(userId: Long, appVersion: String?): String? {
+        if (appVersion == null || appVersion.length <= Inquiry.APP_VERSION_MAX_LENGTH) {
+            return appVersion
+        }
+
+        logger.warn(
+            "앱 버전이 {}자를 넘어 저장하지 않습니다. userId={} appVersion={}",
+            Inquiry.APP_VERSION_MAX_LENGTH,
+            userId,
+            appVersion,
+        )
+        return null
     }
 
     /**
