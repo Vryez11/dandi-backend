@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.entity
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.enum.InquiryCategory
 import jakarta.persistence.Column
@@ -102,7 +103,7 @@ class Inquiry(
 
     fun validateOwnership(requestUserId: Long) {
         if (userId != requestUserId) {
-            throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
+            throw BusinessException(AuthErrorCode.FORBIDDEN)
         }
     }
 

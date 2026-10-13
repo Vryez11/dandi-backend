@@ -1,7 +1,7 @@
 package com.dandi.nyummy.meal.entity
 
 import com.dandi.nyummy.exception.BusinessException
-import com.dandi.nyummy.exception.errorcode.MealErrorCode
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisResult
 import com.dandi.nyummy.meal.enum.MealStatus
 import jakarta.persistence.Column
@@ -101,7 +101,7 @@ class Meal(
 
     fun validateOwnership(requestUserId: Long) {
         if (userId != requestUserId) {
-            throw BusinessException(MealErrorCode.MEAL_NOT_FOUND)
+            throw BusinessException(AuthErrorCode.FORBIDDEN)
         }
     }
 }

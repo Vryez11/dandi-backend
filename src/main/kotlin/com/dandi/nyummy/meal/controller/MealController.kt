@@ -127,7 +127,7 @@ class MealController(
             "UNKNOWN은 enum에 정의만 되어 있고 현재 서버가 내려주지 않는다. " +
             "영양 정보는 포함하지 않으며, COMPLETED 이후 식사 단건 조회 API로 가져온다.",
     )
-    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND])
+    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @GetMapping("/{mealId}/analysis")
     fun getMealStatus(
         @CurrentUser user: AuthUser,
@@ -135,7 +135,10 @@ class MealController(
     ): MealStatusResponse = analysisService.getMealStatus(user.userId, mealId)
 
     @Operation(summary = "영양 분석 재시도", description = "실패한 식사의 영양 분석을 다시 시도하고 변경된 분석 상태를 반환한다.")
-    @ApiErrorCodes(meal = [MealErrorCode.MEAL_NOT_FOUND, MealErrorCode.ANALYSIS_NOT_RETRYABLE])
+    @ApiErrorCodes(
+        meal = [MealErrorCode.MEAL_NOT_FOUND, MealErrorCode.ANALYSIS_NOT_RETRYABLE],
+        auth = [AuthErrorCode.FORBIDDEN],
+    )
     @PostMapping("/{mealId}/analysis")
     fun retryNutritionAnalysis(
         @CurrentUser user: AuthUser,

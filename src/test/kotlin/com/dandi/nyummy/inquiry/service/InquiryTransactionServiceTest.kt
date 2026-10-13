@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.dto.UpdateInquiryRequest
@@ -77,7 +78,7 @@ class InquiryTransactionServiceTest {
     fun `다른 사용자의 문의는 수정하지 않는다`() {
         every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry(ownerId = userId + 1)
 
-        assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) {
+        assertBusinessException(AuthErrorCode.FORBIDDEN) {
             inquiryTransactionService.getUpdatableInquiry(userId, inquiryId)
         }
     }

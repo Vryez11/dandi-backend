@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.entity
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.inquiry.enum.InquiryCategory
@@ -107,7 +108,7 @@ class InquiryTest {
     // validateOwnership
 
     @Test
-    fun `다른 사용자의 문의는 존재하지 않는 것으로 거부한다`() {
-        assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiry().validateOwnership(userId + 1) }
+    fun `다른 사용자의 문의는 거부한다`() {
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { inquiry().validateOwnership(userId + 1) }
     }
 }

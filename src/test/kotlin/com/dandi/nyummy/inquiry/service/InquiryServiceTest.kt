@@ -1,6 +1,7 @@
 package com.dandi.nyummy.inquiry.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
@@ -222,11 +223,11 @@ class InquiryServiceTest {
     }
 
     @Test
-    fun `다른 사용자의 문의는 읽음 처리하지 않고 존재하지 않는 것으로 거부한다`() {
+    fun `다른 사용자의 문의는 읽음 처리하지 않고 거부한다`() {
         val inquiry = inquiry(ownerId = userId + 1, answeredAt = now.minusSeconds(600))
         every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
 
-        assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiryService.getInquiry(userId, inquiryId) }
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { inquiryService.getInquiry(userId, inquiryId) }
         assertNull(inquiry.answerReadAt)
     }
 
@@ -325,7 +326,7 @@ class InquiryServiceTest {
         val inquiry = inquiry(ownerId = userId + 1)
         every { inquiryRepository.findInquiryByIdAndDeletedAtIsNull(inquiryId) } returns inquiry
 
-        assertBusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND) { inquiryService.deleteInquiry(userId, inquiryId) }
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { inquiryService.deleteInquiry(userId, inquiryId) }
         assertNull(inquiry.deletedAt)
     }
 }
