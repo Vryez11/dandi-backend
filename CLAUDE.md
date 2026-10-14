@@ -50,6 +50,7 @@
 | 토큰 교체(세션 유지) | rotate | replace, swap, renew | `rotateToken()` |
 | 탈퇴 | withdraw | leave, quit, deactivate, resign, signout | `withdrawUser()` |
 | 익명화 | anonymize | mask, scrub, pseudonymize(가명처리는 다른 개념) | `anonymize()` |
+| 로그 남기기(로그만 담당하는 private 함수) | log | write, print, record | `logPushFailures()` |
 | 로그용 가림(일부만 노출) | redact | mask(익명화 금지어), hide, obscure — 데이터는 그대로 두고 로그에 찍는 값만 가린다 | `redactEmail()`, `redactToken()` |
 
 ※ 예외 (위 표의 동사와 사용 규칙 5항 `동사 + 목적어`를 따르지 않아도 되는 경우)
@@ -279,7 +280,10 @@
 
 - SLF4J 자리표시자(`{}`)를 쓴다. 문자열 템플릿(`"$userId"`, `"${e.message}"`) 금지 — 예외 객체가 빠지고 레벨이 꺼져 있어도 문자열을 만든다.
 - `"한글 설명: key=value, key=value"` 형태. 키 이름은 코드의 필드명(camelCase)을 따른다. 소요 시간은 `elapsed={}ms`.
-- 예외 객체는 항상 마지막 인자. 메시지에 `e.message`를 함께 쓰는 건 허용하지만 예외 객체를 대신하지 않는다.
+- 예외 객체는 항상 마지막 인자. 메시지에 `e.message`를 함께 쓰는 건 허용하지만 예외 객체를 대신하지 않는다. 예외는 두 가지뿐이다.
+  - WARN인 예상된 거절(토큰 검증 실패 등)은 스택 트레이스가 소음이라 `error={}`에 예외 문구만 남겨도 된다.
+  - 예외 메시지에 개인정보가 섞여 오는 외부 SDK(SMTP·SES는 수신자 주소)는 예외 객체 대신 `redactEmails(e.toString())`로 가린 요약을 남긴다.
+- 실패가 여러 건 한꺼번에 나는 경계(FCM 일괄 발송 등)는 건마다 찍지 않고 원인별로 묶어 건수와 표본 몇 개를 남긴다.
 
 ```kotlin
 // 나쁨
@@ -292,7 +296,7 @@ logger.error("이메일 발송 실패: to={}, subject={}, elapsed={}ms", redactE
 
 | 값 | 규칙 |
 |---|---|
-| 이메일 | 원문 금지. `redactEmail()`로 가린다. 가능하면 userId로 대신한다 |
+| 이메일 | 원문 금지. `redactEmail()`로 가린다(`com.dandi.nyummy.log`). 가능하면 userId로 대신한다 |
 | FCM 기기 토큰 | 원문 금지. `redactToken()`으로 끝 몇 자리만 남긴다 |
 | 비밀번호, 인증 코드, JWT, API 키, OAuth 토큰 | 가린 값도 남기지 않는다 |
 | userId·mealId 등 내부 ID | 로그에는 남긴다. 메트릭 태그로는 쓰지 않는다(사용자 수만큼 series가 생긴다) |

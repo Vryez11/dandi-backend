@@ -2,6 +2,7 @@ package com.dandi.nyummy.infra.push
 
 import com.dandi.nyummy.infra.push.dto.PushMessage
 import com.dandi.nyummy.infra.push.dto.PushResult
+import com.dandi.nyummy.log.redactToken
 import com.google.firebase.messaging.BatchResponse
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingException
@@ -13,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Instant
+import kotlin.time.TimeSource
 
 @Component
 @ConditionalOnProperty(prefix = "app.fcm", name = ["enabled"], havingValue = "true", matchIfMissing = true)
@@ -35,6 +37,16 @@ class FcmPushClient(
         private const val KEY_APP_LINK = "appLink"
         private const val KEY_SENT_AT = "sentAt"
 
+        /** 토큰 자체가 죽은 경우. 삭제 대상이며 재시도해도 소용없다. */
+        private val INVALID_TOKEN_ERROR_CODES = setOf(
+            MessagingErrorCode.UNREGISTERED, // 앱 삭제 또는 토큰 만료
+            MessagingErrorCode.INVALID_ARGUMENT, // 토큰 형식 오류
+            MessagingErrorCode.SENDER_ID_MISMATCH, // 다른 Firebase 프로젝트의 토큰
+        )
+
+        /** 실패 로그에 남길 표본 수 */
+        private const val FAILURE_SAMPLE_SIZE = 3
+
         private val logger = LoggerFactory.getLogger(FcmPushClient::class.java)
     }
 
@@ -55,6 +67,7 @@ class FcmPushClient(
      * 한꺼번에 모은다. 직접 send()를 루프로 돌면 왕복을 차례로 기다리므로 리스트로 넘긴다.
      */
     private fun sendChunk(entries: List<Pair<String, PushMessage>>): PushResult {
+        val startedAt = TimeSource.Monotonic.markNow()
         val messages = entries.map { (token, message) ->
             Message.builder()
                 .setToken(token)
@@ -72,7 +85,13 @@ class FcmPushClient(
             firebaseMessaging.sendEach(messages, fcmProperties.dryRun)
         } catch (e: FirebaseMessagingException) {
             // 발송을 기다리는 것 자체가 끊긴 경우(인터럽트)
-            logger.error("푸시 발송 실패: messageCount={}", messages.size, e)
+            logger.error(
+                "푸시 발송 실패(FCM): messageCount={}, types={}, elapsed={}ms",
+                messages.size,
+                entries.map { it.second.type }.distinct(),
+                startedAt.elapsedNow().inWholeMilliseconds,
+                e,
+            )
 
             return PushResult(
                 successCount = 0,
@@ -81,7 +100,7 @@ class FcmPushClient(
             )
         }
 
-        return convertPushResult(entries, response)
+        return convertPushResult(entries, response, startedAt.elapsedNow().inWholeMilliseconds)
     }
 
     /**
@@ -111,9 +130,14 @@ class FcmPushClient(
      * 토큰 자체가 죽은 경우만 삭제 대상으로 고른다. 일시 장애를 삭제하면 멀쩡한 사용자의
      * 알림이 영구히 끊긴다.
      */
-    private fun convertPushResult(entries: List<Pair<String, PushMessage>>, response: BatchResponse): PushResult {
+    private fun convertPushResult(
+        entries: List<Pair<String, PushMessage>>,
+        response: BatchResponse,
+        elapsedMillis: Long,
+    ): PushResult {
         val invalidTokens = mutableListOf<String>()
         val retryableTokens = mutableListOf<String>()
+        val failedIndexes = mutableListOf<Int>()
 
         response.responses.forEachIndexed { index, sendResponse ->
             if (sendResponse.isSuccessful) {
@@ -121,25 +145,67 @@ class FcmPushClient(
             }
 
             val token = entries[index].first
+            failedIndexes.add(index)
 
-            when (sendResponse.exception?.messagingErrorCode) {
-                MessagingErrorCode.UNREGISTERED, // 앱 삭제 또는 토큰 만료
-                MessagingErrorCode.INVALID_ARGUMENT, // 토큰 형식 오류
-                MessagingErrorCode.SENDER_ID_MISMATCH, // 다른 Firebase 프로젝트의 토큰
-                -> invalidTokens.add(token)
-
-                else -> retryableTokens.add(token) // UNAVAILABLE / INTERNAL / QUOTA_EXCEEDED
+            if (sendResponse.exception?.messagingErrorCode in INVALID_TOKEN_ERROR_CODES) {
+                invalidTokens.add(token)
+            } else {
+                retryableTokens.add(token) // UNAVAILABLE / INTERNAL / QUOTA_EXCEEDED
             }
         }
 
-        logger.info(
-            "푸시 발송: success={}, invalid={}, retryable={}, dryRun={}",
+        logger.debug(
+            "푸시 발송(FCM): messageCount={}, success={}, invalid={}, retryable={}, dryRun={}, elapsed={}ms",
+            entries.size,
             response.successCount,
             invalidTokens.size,
             retryableTokens.size,
             fcmProperties.dryRun,
+            elapsedMillis,
         )
 
+        logPushFailures(entries, response, failedIndexes)
+
         return PushResult(response.successCount, invalidTokens, retryableTokens)
+    }
+
+    /**
+     * 실패를 FCM 오류 코드별로 한 줄씩 남긴다. 장애 때 실패가 수백 건이어도 로그가 그만큼 늘지 않게
+     * 건수와 일부 표본(알림 종류·알림 ID·가린 토큰)만 남기고, 첫 예외를 스택 트레이스로 붙인다.
+     *
+     * 죽은 토큰은 사용자가 앱을 지운 것이라 예상 가능한 실패(WARN), 그 외는 FCM 장애·한도라 ERROR다.
+     */
+    private fun logPushFailures(
+        entries: List<Pair<String, PushMessage>>,
+        response: BatchResponse,
+        failedIndexes: List<Int>,
+    ) {
+        failedIndexes
+            .groupBy { response.responses[it].exception?.messagingErrorCode }
+            .forEach { (errorCode, indexes) ->
+                val samples = indexes.take(FAILURE_SAMPLE_SIZE).map { index ->
+                    val (token, message) = entries[index]
+                    "${message.type}/${message.notificationId}/${redactToken(token)}"
+                }
+                val firstException = response.responses[indexes.first()].exception
+
+                if (errorCode in INVALID_TOKEN_ERROR_CODES) {
+                    logger.warn(
+                        "푸시 발송 실패(FCM): errorCode={}, count={}, samples={}",
+                        errorCode,
+                        indexes.size,
+                        samples,
+                        firstException,
+                    )
+                } else {
+                    logger.error(
+                        "푸시 발송 실패(FCM): errorCode={}, count={}, samples={}",
+                        errorCode,
+                        indexes.size,
+                        samples,
+                        firstException,
+                    )
+                }
+            }
     }
 }

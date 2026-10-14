@@ -18,6 +18,7 @@ import tools.jackson.databind.ObjectMapper
 import java.io.InterruptedIOException
 import java.net.http.HttpTimeoutException
 import kotlin.io.encoding.Base64
+import kotlin.time.TimeSource
 
 @Component
 class GeminiNutritionAnalysisClient(
@@ -83,6 +84,9 @@ class GeminiNutritionAnalysisClient(
                 listOf("isFood", "rejectReason", "name", "iconId", "calory", "carbs", "protein", "fat", "catComment"),
         )
 
+        /** 로그에 남길 응답 본문 최대 길이 */
+        private const val LOGGED_BODY_MAX_LENGTH = 500
+
         private val logger = LoggerFactory.getLogger(GeminiNutritionAnalysisClient::class.java)
     }
 
@@ -124,6 +128,7 @@ class GeminiNutritionAnalysisClient(
             ),
         )
 
+        val startedAt = TimeSource.Monotonic.markNow()
         val response = try {
             restClient.post()
                 .uri("/v1/publishers/google/models/{model}:generateContent", aiProperties.model)
@@ -132,22 +137,66 @@ class GeminiNutritionAnalysisClient(
                 .retrieve()
                 .body(GeminiGenerateContentResponse::class.java)
         } catch (e: RestClientException) {
-            throw NutritionAnalysisException(convertFailureCause(e), "Gemini 호출에 실패했습니다.", e)
-        } ?: throw NutritionAnalysisException(AnalysisFailureCause.EMPTY_RESPONSE, "Gemini 응답이 비어 있습니다.")
+            val failureCause = convertFailureCause(e)
+            // 오류 응답 본문에 Gemini가 거절한 이유가 담긴다. 요청 본문(이미지·프롬프트)은 남기지 않는다.
+            logger.error(
+                "Gemini 호출 실패: imageKey={}, model={}, cause={}, status={}, responseBody={}, elapsed={}ms",
+                imageKey,
+                aiProperties.model,
+                failureCause,
+                (e as? RestClientResponseException)?.statusCode?.value(),
+                (e as? RestClientResponseException)?.responseBodyAsString?.take(LOGGED_BODY_MAX_LENGTH),
+                startedAt.elapsedNow().inWholeMilliseconds,
+                e,
+            )
+            throw NutritionAnalysisException(failureCause, "Gemini 호출에 실패했습니다.", e)
+        }
+        val elapsedMillis = startedAt.elapsedNow().inWholeMilliseconds
 
-        val resultJson = response.candidates.firstOrNull()
+        val resultJson = response?.candidates?.firstOrNull()
             ?.content?.parts?.firstOrNull()?.text
-            ?: throw NutritionAnalysisException(AnalysisFailureCause.EMPTY_RESPONSE, "Gemini 응답에 결과가 없습니다.")
+        if (resultJson == null) {
+            logger.error(
+                "Gemini 응답에 결과 없음: imageKey={}, model={}, candidateCount={}, elapsed={}ms",
+                imageKey,
+                aiProperties.model,
+                response?.candidates?.size,
+                elapsedMillis,
+            )
+            throw NutritionAnalysisException(AnalysisFailureCause.EMPTY_RESPONSE, "Gemini 응답에 결과가 없습니다.")
+        }
 
         val parsed = try {
             objectMapper.readValue(resultJson, GeminiNutritionResponse::class.java)
         } catch (e: JacksonException) {
+            logger.error(
+                "Gemini 결과 해석 실패: imageKey={}, model={}, result={}, elapsed={}ms",
+                imageKey,
+                aiProperties.model,
+                resultJson.take(LOGGED_BODY_MAX_LENGTH),
+                elapsedMillis,
+                e,
+            )
             throw NutritionAnalysisException(AnalysisFailureCause.PARSE_ERROR, "Gemini 결과를 해석하지 못했습니다.", e)
         }
 
+        logger.debug(
+            "Gemini 호출: imageKey={}, model={}, imageSize={}, mimeType={}, isFood={}, calory={}, elapsed={}ms",
+            imageKey,
+            aiProperties.model,
+            objectContent.bytes.size,
+            mimeType,
+            parsed.isFood,
+            parsed.calory,
+            elapsedMillis,
+        )
+
+        // 호출은 성공했고 판정 결과가 '음식 아님'인 경우. 거절 이유는 분석 실패 로그에 남도록 예외 메시지에 담는다.
         if (!parsed.isFood) {
-            logger.info("영양 분석에 실패했습니다: imageKey={}, rejectReason={}", imageKey, parsed.rejectReason)
-            throw NutritionAnalysisException(AnalysisFailureCause.NOT_FOOD, "음식이 아닙니다.")
+            throw NutritionAnalysisException(
+                AnalysisFailureCause.NOT_FOOD,
+                "음식이 아닙니다: rejectReason=${parsed.rejectReason}",
+            )
         }
 
         return NutritionAnalysisResult(

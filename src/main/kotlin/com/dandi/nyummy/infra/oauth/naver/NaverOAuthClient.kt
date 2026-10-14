@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
+import kotlin.time.TimeSource
 
 class NaverOAuthClient(private val restClient: RestClient, private val userInfoUri: String) : OAuthClient {
 
@@ -46,22 +47,46 @@ class NaverOAuthClient(private val restClient: RestClient, private val userInfoU
         )
     }
 
-    private fun getNaverUserInfo(token: String): NaverUserInfoResponse = try {
-        restClient.get()
-            .uri(userInfoUri)
-            .headers { it.setBearerAuth(token) }
-            .retrieve()
-            .body(NaverUserInfoResponse::class.java)
-            ?: throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
-    } catch (e: HttpClientErrorException.Unauthorized) {
-        logger.warn("Naver access token 검증 실패: {}", e.message)
-        throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)
-    } catch (e: HttpClientErrorException.Forbidden) {
-        logger.error("Naver 프로필 조회 권한 없음 — 개발자센터 API 권한 설정 확인 필요", e)
-        throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
-    } catch (e: RestClientException) {
-        logger.error("Naver 프로필 조회 실패", e)
-        throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+    private fun getNaverUserInfo(token: String): NaverUserInfoResponse {
+        val startedAt = TimeSource.Monotonic.markNow()
+        val response = try {
+            restClient.get()
+                .uri(userInfoUri)
+                .headers { it.setBearerAuth(token) }
+                .retrieve()
+                .body(NaverUserInfoResponse::class.java)
+        } catch (e: HttpClientErrorException.Unauthorized) {
+            // 만료·위조 토큰. 예상 가능한 거절이라 스택 트레이스 없이 남긴다.
+            logger.warn(
+                "Naver access token 검증 실패: status={}, error={}, elapsed={}ms",
+                e.statusCode.value(),
+                e.message,
+                startedAt.elapsedNow().inWholeMilliseconds,
+            )
+            throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)
+        } catch (e: HttpClientErrorException.Forbidden) {
+            logger.error(
+                "Naver 프로필 조회 권한 없음(개발자센터 API 권한 설정 확인 필요): elapsed={}ms",
+                startedAt.elapsedNow().inWholeMilliseconds,
+                e,
+            )
+            throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+        } catch (e: RestClientException) {
+            logger.error("Naver 프로필 조회 실패: elapsed={}ms", startedAt.elapsedNow().inWholeMilliseconds, e)
+            throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+        }
+
+        if (response == null) {
+            logger.error("Naver 프로필 응답이 비어 있음: elapsed={}ms", startedAt.elapsedNow().inWholeMilliseconds)
+            throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+        }
+
+        logger.debug(
+            "Naver 프로필 조회: resultcode={}, elapsed={}ms",
+            response.resultcode,
+            startedAt.elapsedNow().inWholeMilliseconds,
+        )
+        return response
     }
 }
 

@@ -14,6 +14,7 @@ import aws.sdk.kotlin.services.s3.model.Tag
 import aws.sdk.kotlin.services.s3.model.Tagging
 import aws.sdk.kotlin.services.s3.presigners.presignGetObject
 import aws.sdk.kotlin.services.s3.presigners.presignPutObject
+import aws.smithy.kotlin.runtime.SdkBaseException
 import aws.smithy.kotlin.runtime.content.toByteArray
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import kotlin.time.Duration
+import kotlin.time.TimeSource
 
 /**
  * S3 버킷 접근 어댑터.
@@ -97,15 +99,27 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
      * @throws BusinessException [S3ErrorCode.OBJECT_NOT_FOUND] 객체가 존재하지 않을 경우
      */
     suspend fun getObjectSize(key: String): Long {
+        val startedAt = TimeSource.Monotonic.markNow()
         val head = try {
             s3Client.headObject {
                 bucket = bucketName
                 this.key = key
             }
         } catch (e: NotFound) {
+            // 클라이언트가 업로드하지 않은 키로 확정을 요청한 경우. 예상 가능한 거절이다.
+            logger.warn("S3 객체 없음(크기 조회): key={}, elapsed={}ms", key, startedAt.elapsedNow().inWholeMilliseconds)
             throw BusinessException(S3ErrorCode.OBJECT_NOT_FOUND)
+        } catch (e: SdkBaseException) {
+            logger.error("S3 객체 크기 조회 실패: key={}, elapsed={}ms", key, startedAt.elapsedNow().inWholeMilliseconds, e)
+            throw e
         }
 
+        logger.debug(
+            "S3 객체 크기 조회: key={}, size={}, elapsed={}ms",
+            key,
+            head.contentLength,
+            startedAt.elapsedNow().inWholeMilliseconds,
+        )
         return head.contentLength ?: 0L
     }
 
@@ -119,27 +133,35 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
      * @param key 확정할 S3 객체 키
      */
     suspend fun confirmObject(key: String) {
-        s3Client.putObjectTagging(
-            PutObjectTaggingRequest {
-                bucket = bucketName
-                this.key = key
-                tagging = Tagging {
-                    tagSet = listOf(
-                        Tag {
-                            this.key = TAG_STATUS
-                            value = TAG_STATUS_COMMITTED
-                        },
-                    )
-                }
-            },
-        )
+        val startedAt = TimeSource.Monotonic.markNow()
+        try {
+            s3Client.putObjectTagging(
+                PutObjectTaggingRequest {
+                    bucket = bucketName
+                    this.key = key
+                    tagging = Tagging {
+                        tagSet = listOf(
+                            Tag {
+                                this.key = TAG_STATUS
+                                value = TAG_STATUS_COMMITTED
+                            },
+                        )
+                    }
+                },
+            )
+        } catch (e: SdkBaseException) {
+            logger.error("S3 객체 확정 실패: key={}, elapsed={}ms", key, startedAt.elapsedNow().inWholeMilliseconds, e)
+            throw e
+        }
+
+        logger.debug("S3 객체 확정: key={}, elapsed={}ms", key, startedAt.elapsedNow().inWholeMilliseconds)
     }
 
     fun downloadText(key: String): String = runBlocking {
+        // 실패 로그는 downloadObject가 남긴다.
         val content = try {
             downloadObject(key)
         } catch (e: NoSuchKey) {
-            logger.error("S3 객체를 찾을 수 없습니다: key={}", key, e)
             throw BusinessException(S3ErrorCode.OBJECT_READ_FAILED)
         }
 
@@ -147,18 +169,33 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
     }
 
     suspend fun downloadObject(key: String): S3ObjectContentResult {
+        val startedAt = TimeSource.Monotonic.markNow()
         val request = GetObjectRequest {
             bucket = bucketName
             this.key = key
         }
 
-        return s3Client.getObject(request) { response ->
-            S3ObjectContentResult(
-                bytes = response.body?.toByteArray()
-                    ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $key"),
-                contentType = response.contentType,
-            )
+        val result = try {
+            s3Client.getObject(request) { response ->
+                S3ObjectContentResult(
+                    bytes = response.body?.toByteArray()
+                        ?: throw IllegalStateException("S3 객체 바디가 비어 있습니다: $key"),
+                    contentType = response.contentType,
+                )
+            }
+        } catch (e: SdkBaseException) {
+            logger.error("S3 객체 다운로드 실패: key={}, elapsed={}ms", key, startedAt.elapsedNow().inWholeMilliseconds, e)
+            throw e
         }
+
+        logger.debug(
+            "S3 객체 다운로드: key={}, size={}, contentType={}, elapsed={}ms",
+            key,
+            result.bytes.size,
+            result.contentType,
+            startedAt.elapsedNow().inWholeMilliseconds,
+        )
+        return result
     }
 
     /**
@@ -171,32 +208,53 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
      * @return 삭제한 객체 수
      */
     suspend fun deleteObjectsByPrefix(keyPrefix: String): Int {
+        val startedAt = TimeSource.Monotonic.markNow()
         var continuationToken: String? = null
         var deletedCount = 0
 
-        while (true) {
-            val listed = s3Client.listObjectsV2 {
-                bucket = bucketName
-                prefix = keyPrefix
-                this.continuationToken = continuationToken
-            }
-
-            val objectKeys = listed.contents.orEmpty().mapNotNull { it.key }
-
-            if (objectKeys.isNotEmpty()) {
-                s3Client.deleteObjects {
+        try {
+            while (true) {
+                val listed = s3Client.listObjectsV2 {
                     bucket = bucketName
-                    delete {
-                        objects = objectKeys.map { objectKey -> ObjectIdentifier { key = objectKey } }
-                    }
+                    prefix = keyPrefix
+                    this.continuationToken = continuationToken
                 }
-                deletedCount += objectKeys.size
-            }
 
-            if (listed.isTruncated != true) {
-                return deletedCount
+                val objectKeys = listed.contents.orEmpty().mapNotNull { it.key }
+
+                if (objectKeys.isNotEmpty()) {
+                    s3Client.deleteObjects {
+                        bucket = bucketName
+                        delete {
+                            objects = objectKeys.map { objectKey -> ObjectIdentifier { key = objectKey } }
+                        }
+                    }
+                    deletedCount += objectKeys.size
+                }
+
+                if (listed.isTruncated != true) {
+                    break
+                }
+                continuationToken = listed.nextContinuationToken // 다음 커서
             }
-            continuationToken = listed.nextContinuationToken // 다음 커서
+        } catch (e: SdkBaseException) {
+            // 앞 페이지는 이미 지워졌을 수 있어 그때까지 지운 수를 남긴다.
+            logger.error(
+                "S3 객체 일괄 삭제 실패: keyPrefix={}, deletedCount={}, elapsed={}ms",
+                keyPrefix,
+                deletedCount,
+                startedAt.elapsedNow().inWholeMilliseconds,
+                e,
+            )
+            throw e
         }
+
+        logger.debug(
+            "S3 객체 일괄 삭제: keyPrefix={}, deletedCount={}, elapsed={}ms",
+            keyPrefix,
+            deletedCount,
+            startedAt.elapsedNow().inWholeMilliseconds,
+        )
+        return deletedCount
     }
 }

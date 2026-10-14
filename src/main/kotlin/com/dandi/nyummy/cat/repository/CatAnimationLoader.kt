@@ -46,7 +46,8 @@ class CatAnimationLoader(private val s3StorageClient: S3StorageClient, private v
         val json = s3StorageClient.downloadText(key)
 
         // 캐시가 비어 있을 때만 호출되므로, 이 로그가 매 요청 찍히면 캐시가 동작하지 않는 것이다.
-        logger.info("애니메이션 메타데이터 적재: key={}", key)
+        // 외부 저장소 읽기 성공이라 DEBUG로 둔다(dev에서 확인).
+        logger.debug("애니메이션 메타데이터 적재: key={}", key)
 
         return try {
             objectMapper.readValue<CatAnimationResponse>(json)

@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.jwt.BadJwtException
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.JwtException
+import kotlin.time.TimeSource
 
 class KakaoOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
 
@@ -33,7 +34,8 @@ class KakaoOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
         val jwt = decodeIdToken(token)
 
         if (jwt.getClaimAsString(CLAIM_NONCE) != expectedNonce) {
-            logger.warn("Kakao ID 토큰 nonce 불일치")
+            // 토큰·nonce 값은 남기지 않는다. 토큰에 nonce가 아예 없었는지만 구분한다.
+            logger.warn("Kakao ID 토큰 nonce 불일치: tokenHasNonce={}", jwt.hasClaim(CLAIM_NONCE))
             throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)
         }
 
@@ -46,13 +48,25 @@ class KakaoOAuthClient(private val jwtDecoder: JwtDecoder) : OAuthClient {
         )
     }
 
-    private fun decodeIdToken(token: String): Jwt = try {
-        jwtDecoder.decode(token)
-    } catch (e: BadJwtException) {
-        logger.warn("Kakao ID 토큰 검증 실패: {}", e.message)
-        throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)
-    } catch (e: JwtException) {
-        logger.error("Kakao 공개키 조회 실패", e)
-        throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+    // 서명 검증용 공개키(JWKS)를 Kakao에서 받아 오므로 외부 시스템 경계다. 공개키는 캐시돼 매번 호출하지는 않는다.
+    private fun decodeIdToken(token: String): Jwt {
+        val startedAt = TimeSource.Monotonic.markNow()
+        val jwt = try {
+            jwtDecoder.decode(token)
+        } catch (e: BadJwtException) {
+            // 만료·서명 불일치 등 토큰 문제. 예상 가능한 거절이라 스택 트레이스 없이 원인 문구만 남긴다.
+            logger.warn(
+                "Kakao ID 토큰 검증 실패: error={}, elapsed={}ms",
+                e.message,
+                startedAt.elapsedNow().inWholeMilliseconds,
+            )
+            throw BusinessException(AuthErrorCode.INVALID_OAUTH_TOKEN)
+        } catch (e: JwtException) {
+            logger.error("Kakao 공개키 조회 실패: elapsed={}ms", startedAt.elapsedNow().inWholeMilliseconds, e)
+            throw BusinessException(AuthErrorCode.OAUTH_PROVIDER_UNAVAILABLE)
+        }
+
+        logger.debug("Kakao ID 토큰 검증: elapsed={}ms", startedAt.elapsedNow().inWholeMilliseconds)
+        return jwt
     }
 }
