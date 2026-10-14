@@ -7,9 +7,16 @@ import com.dandi.nyummy.meal.repository.IconRepository
 import com.dandi.nyummy.meal.service.IconService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
+import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientException
+import org.springframework.web.client.RestClientResponseException
+import tools.jackson.core.JacksonException
 import tools.jackson.databind.ObjectMapper
+import java.io.InterruptedIOException
+import java.net.http.HttpTimeoutException
 import kotlin.io.encoding.Base64
 
 @Component
@@ -79,8 +86,15 @@ class GeminiNutritionAnalysisClient(
         private val logger = LoggerFactory.getLogger(GeminiNutritionAnalysisClient::class.java)
     }
 
+    /**
+     * 실패하면 원인을 담은 [NutritionAnalysisException]을 던진다. 아이콘 조회 등 그 외 구간의 예외는 그대로 전파된다.
+     */
     override fun analyzeNutrition(imageKey: String): NutritionAnalysisResult {
-        val objectContent = runBlocking { s3StorageClient.downloadObject(imageKey) }
+        val objectContent = try {
+            runBlocking { s3StorageClient.downloadObject(imageKey) }
+        } catch (e: RuntimeException) {
+            throw NutritionAnalysisException(AnalysisFailureCause.IMAGE_DOWNLOAD_ERROR, "이미지를 내려받지 못했습니다.", e)
+        }
         val encodedContent = Base64.encode(objectContent.bytes, 0, objectContent.bytes.size)
         val mimeType = objectContent.contentType
 
@@ -110,23 +124,30 @@ class GeminiNutritionAnalysisClient(
             ),
         )
 
-        val response = restClient.post()
-            .uri("/v1/publishers/google/models/{model}:generateContent", aiProperties.model)
-            .header("x-goog-api-key", aiProperties.apiKey)
-            .body(requestBody)
-            .retrieve()
-            .body(GeminiGenerateContentResponse::class.java)
-            ?: throw IllegalStateException("Gemini 응답이 비어 있습니다.")
+        val response = try {
+            restClient.post()
+                .uri("/v1/publishers/google/models/{model}:generateContent", aiProperties.model)
+                .header("x-goog-api-key", aiProperties.apiKey)
+                .body(requestBody)
+                .retrieve()
+                .body(GeminiGenerateContentResponse::class.java)
+        } catch (e: RestClientException) {
+            throw NutritionAnalysisException(convertFailureCause(e), "Gemini 호출에 실패했습니다.", e)
+        } ?: throw NutritionAnalysisException(AnalysisFailureCause.EMPTY_RESPONSE, "Gemini 응답이 비어 있습니다.")
 
         val resultJson = response.candidates.firstOrNull()
             ?.content?.parts?.firstOrNull()?.text
-            ?: throw IllegalStateException("Gemini 응답에 결과가 없습니다.")
+            ?: throw NutritionAnalysisException(AnalysisFailureCause.EMPTY_RESPONSE, "Gemini 응답에 결과가 없습니다.")
 
-        val parsed = objectMapper.readValue(resultJson, GeminiNutritionResponse::class.java)
+        val parsed = try {
+            objectMapper.readValue(resultJson, GeminiNutritionResponse::class.java)
+        } catch (e: JacksonException) {
+            throw NutritionAnalysisException(AnalysisFailureCause.PARSE_ERROR, "Gemini 결과를 해석하지 못했습니다.", e)
+        }
 
         if (!parsed.isFood) {
             logger.info("영양 분석에 실패했습니다: imageKey={}, rejectReason={}", imageKey, parsed.rejectReason)
-            throw IllegalStateException("음식이 아닙니다.")
+            throw NutritionAnalysisException(AnalysisFailureCause.NOT_FOOD, "음식이 아닙니다.")
         }
 
         return NutritionAnalysisResult(
@@ -135,6 +156,31 @@ class GeminiNutritionAnalysisClient(
             catComment = parsed.catComment,
             iconId = parsed.iconId,
         )
+    }
+
+    // RestClient 예외를 실패 원인으로 나눈다. 응답 본문 변환 실패도 RestClientException으로 감싸져 온다.
+    private fun convertFailureCause(e: RestClientException): AnalysisFailureCause {
+        val causes = generateSequence<Throwable>(e) { it.cause }.toList()
+        // Apache HttpClient의 연결·읽기 시간 초과는 모두 InterruptedIOException 하위 타입이다.
+        val isTimeout = causes.any { it is InterruptedIOException || it is HttpTimeoutException }
+        val isParseError = causes.any { it is JacksonException }
+
+        return when {
+            e is RestClientResponseException && e.statusCode.isSameCodeAs(HttpStatus.TOO_MANY_REQUESTS) ->
+                AnalysisFailureCause.RATE_LIMITED
+
+            e is RestClientResponseException && e.statusCode.is5xxServerError -> AnalysisFailureCause.SERVER_ERROR
+
+            e is RestClientResponseException -> AnalysisFailureCause.CLIENT_ERROR
+
+            e is ResourceAccessException && isTimeout -> AnalysisFailureCause.TIMEOUT
+
+            e is ResourceAccessException -> AnalysisFailureCause.NETWORK_ERROR
+
+            isParseError -> AnalysisFailureCause.PARSE_ERROR
+
+            else -> AnalysisFailureCause.UNKNOWN
+        }
     }
 }
 

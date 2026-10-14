@@ -6,7 +6,9 @@ import com.dandi.nyummy.config.AppLinkProperties
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
+import com.dandi.nyummy.infra.ai.nutrition.AnalysisFailureCause
 import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisClient
+import com.dandi.nyummy.infra.ai.nutrition.NutritionAnalysisException
 import com.dandi.nyummy.infra.push.dto.PushMessage
 import com.dandi.nyummy.infra.push.dto.PushType
 import com.dandi.nyummy.meal.dto.MealStatusResponse
@@ -16,6 +18,8 @@ import com.dandi.nyummy.meal.mapper.toMealStatusResponse
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.notification.NotificationId
 import com.dandi.nyummy.notification.service.NotificationService
+import io.micrometer.observation.Observation
+import io.micrometer.observation.ObservationRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,9 +36,15 @@ class AnalysisService(
     private val notificationService: NotificationService,
     private val appLinkProperties: AppLinkProperties,
     private val clock: Clock,
+    private val observationRegistry: ObservationRegistry,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AnalysisService::class.java)
+
+        // 분석 소요 시간·결과 메트릭(timer)과 span 이름. 태그: outcome, cause, attempt
+        private const val ANALYSIS_OBSERVATION_NAME = "nyummy.meal.analysis"
+        private const val ATTEMPT_FIRST = "first"
+        private const val ATTEMPT_RETRY = "retry"
     }
 
     /**
@@ -69,6 +79,9 @@ class AnalysisService(
      *
      * 상태가 확정된 뒤 결과를 푸시로 알린다([sendAnalysisPush]).
      *
+     * 분석 구간(이미지 다운로드·AI 호출·결과 저장)은 `nyummy.meal.analysis` 관측으로 남긴다.
+     * 소요 시간과 함께 결과(outcome), 실패 원인(cause), 첫 분석·재시도 여부(attempt)를 태그로 단다.
+     *
      * @param meal 분석할 [Meal]
      *  (상태가 [MealStatus.ANALYZABLE_STATUSES]에 속하지 않으면 아무 작업도 하지 않는다)
      */
@@ -80,15 +93,33 @@ class AnalysisService(
         // 이 시도를 식별하는 값. 재시도가 또 실패해도 앞선 실패와 다른 알림이 되게 한다.
         val analyzedAt = Instant.now(clock)
 
+        // 상태를 ANALYZING으로 바꾸기 전에 읽어야 첫 분석(WAITING)과 재시도(FAILED)가 구분된다.
+        val attempt = if (meal.status == MealStatus.FAILED) ATTEMPT_RETRY else ATTEMPT_FIRST
+
         updateMealService.updateStatus(meal, MealStatus.ANALYZING)
 
         var status = MealStatus.COMPLETED
+        var failureCause: AnalysisFailureCause? = null
+
+        // 이미지 다운로드·AI 호출·결과 저장 구간. 결과 푸시는 넣지 않는다.
+        // scope를 열어 두면 이 안의 Gemini 호출 span이 분석 span의 자식으로 붙는다.
+        val observation = Observation.start(ANALYSIS_OBSERVATION_NAME, observationRegistry)
         try {
-            val analysisResult = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
-            updateMealService.updateAnalysisResult(meal, analysisResult)
+            observation.openScope().use {
+                val analysisResult = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
+                updateMealService.updateAnalysisResult(meal, analysisResult)
+            }
         } catch (e: RuntimeException) {
-            logger.error("영양 분석 실패: userId={}, {}", meal.userId, e.message)
+            failureCause = (e as? NutritionAnalysisException)?.failureCause ?: AnalysisFailureCause.UNKNOWN
+            logger.error("영양 분석 실패: userId={}, cause={}, {}", meal.userId, failureCause, e.message)
             status = MealStatus.FAILED
+            observation.error(e)
+        } finally {
+            observation
+                .lowCardinalityKeyValue("outcome", status.name.lowercase())
+                .lowCardinalityKeyValue("cause", failureCause?.name?.lowercase() ?: "none")
+                .lowCardinalityKeyValue("attempt", attempt)
+                .stop()
         }
 
         updateMealService.updateStatus(meal, status)

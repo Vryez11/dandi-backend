@@ -57,6 +57,9 @@ management:
         # 소수 표기(1.5s)는 바인딩에 실패하므로 ms로 적는다.
         "[http.client.requests]": 250ms,500ms,1s,1500ms,2s,2500ms,3s,4s,5s,6s,7s,8s,10s,12s,15s,20s,25s,30s
         "[http.client.requests.active]": ""
+        # 영양 분석(이미지 다운로드 + AI 호출 + 결과 저장). Gemini와 같은 눈금으로 둬 둘을 나란히 비교한다.
+        "[nyummy.meal.analysis]": 250ms,500ms,1s,1500ms,2s,2500ms,3s,4s,5s,6s,7s,8s,10s,12s,15s,20s,25s,30s
+        "[nyummy.meal.analysis.active]": ""
   otlp:
     metrics:
       export:
