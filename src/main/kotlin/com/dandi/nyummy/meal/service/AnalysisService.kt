@@ -146,6 +146,8 @@ class AnalysisService(
         updateMealService.updateStatus(meal, status)
 
         if (status == MealStatus.COMPLETED) {
+            // 실패는 위 catch에서 원인과 함께 남겼다.
+            logger.info("영양 분석 완료: mealId={}, userId={}, attempt={}", meal.id, meal.userId, attempt)
             catService.updateLastMealAt(meal.userId, meal.mealAt)
         }
 

@@ -140,6 +140,8 @@ class UserService(
 
         refreshTokenService.startSession(userId, refreshToken)
 
+        logger.info("비밀번호 변경: userId={}", userId)
+
         return UpdatePasswordResponse(accessToken, refreshToken)
     }
 
@@ -162,6 +164,9 @@ class UserService(
      */
     fun withdrawUser(userId: Long) {
         userWithdrawalTransactionService.withdrawUser(userId)
+
+        // 식별정보 파기가 커밋된 시점. 뒤의 토큰 무효화·이미지 삭제 실패는 각자 따로 남긴다.
+        logger.info("회원 탈퇴: userId={}", userId)
 
         try {
             tokenInvalidationRepository.createInvalidatedAt(userId, Instant.now(clock))

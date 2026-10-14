@@ -78,6 +78,8 @@ class CatService(
             logger.warn("고양이 동시 생성으로 유니크 제약과 충돌했습니다: userId={}", userId, e)
             throw BusinessException(CatErrorCode.CAT_ALREADY_EXISTS)
         }
+
+        logger.info("고양이 생성: catId={}, userId={}", cat.id, userId)
     }
 
     /**
@@ -205,16 +207,21 @@ class CatService(
             )
             val intervalEndDate = windowStartDate.plusDays((index + 1).toLong() * intervalDays)
 
+            val weightBefore = cat.weight
             cat.updateWeightByStep(step, intervalEndDate.atStartOfDay(zone).toInstant())
 
-            logger.info(
-                "고양이 체형 변화: userId = {}, interval = {}/{}, step = {}, weight = {}",
-                userId,
-                index + 1,
-                intervalCount,
-                step,
-                cat.weight,
-            )
+            // 체형이 실제로 바뀐 구간만 남긴다. 그대로인 구간(step 0, 양 끝에 닿은 경우)은 상태 전이가 아니다.
+            if (cat.weight != weightBefore) {
+                logger.info(
+                    "고양이 체형 변화: userId={}, interval={}/{}, step={}, weight={}->{}",
+                    userId,
+                    index + 1,
+                    intervalCount,
+                    step,
+                    weightBefore,
+                    cat.weight,
+                )
+            }
         }
 
         return cat

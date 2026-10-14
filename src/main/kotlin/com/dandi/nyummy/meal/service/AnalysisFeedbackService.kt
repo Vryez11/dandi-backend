@@ -84,6 +84,9 @@ class AnalysisFeedbackService(
             logger.warn("피드백 동시 생성으로 유니크 제약과 충돌했습니다: mealId={}", mealId, e)
             throw BusinessException(MealErrorCode.ANALYSIS_FEEDBACK_ALREADY_EXISTS)
         }
+
+        // 이유(reason)는 사용자가 자유롭게 쓴 글이라 남기지 않는다.
+        logger.info("분석 피드백 생성: mealId={}, userId={}, rating={}", mealId, userId, request.rating)
     }
 
     /**

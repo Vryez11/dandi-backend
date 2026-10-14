@@ -52,7 +52,15 @@ class InquiryService(
     fun createInquiry(userId: Long, request: CreateInquiryRequest, appVersion: String?) {
         val imageKey = request.imageKey?.let { confirmImage(userId, it) }
 
-        inquiryRepository.save(request.toInquiry(userId, imageKey, convertAppVersion(userId, appVersion)))
+        val inquiry = inquiryRepository.save(request.toInquiry(userId, imageKey, convertAppVersion(userId, appVersion)))
+
+        logger.info(
+            "문의 생성: inquiryId={}, userId={}, category={}, hasImage={}",
+            inquiry.id,
+            userId,
+            request.category,
+            imageKey != null,
+        )
     }
 
     /**
@@ -64,7 +72,7 @@ class InquiryService(
         }
 
         logger.warn(
-            "앱 버전이 {}자를 넘어 저장하지 않습니다. userId={} appVersion={}",
+            "앱 버전이 길어 저장하지 않음: maxLength={}, userId={}, appVersion={}",
             Inquiry.APP_VERSION_MAX_LENGTH,
             userId,
             appVersion,
@@ -193,13 +201,15 @@ class InquiryService(
 
         inquiry.validateOwnership(userId)
         inquiry.updateDeletedAt(Instant.now(clock))
+
+        logger.info("문의 삭제: inquiryId={}, userId={}", inquiryId, userId)
     }
 
     /**
      * 소프트 삭제한 문의를 되돌린다. 삭제 직후 앱의 되돌리기에서 호출하며, 복구 기한은 두지 않는다.
      *
      * 삭제되지 않은 문의도 그대로 성공한다(멱등). 되돌리기를 여러 번 눌러도 결과가 같게 하기 위함이다.
-     * deletedAt이 이미 null이면 같은 값을 넣어도 변경 감지에 걸리지 않아 UPDATE가 나가지 않으므로 따로 분기하지 않는다.
+     * deletedAt이 이미 null이면 바꿀 것이 없어 바로 돌아간다. 상태 전이 로그도 실제로 복구된 경우에만 남는다.
      *
      * 첨부 이미지는 삭제할 때 S3에 그대로 두었으므로 복구하면 다시 조회된다.
      *
@@ -212,6 +222,13 @@ class InquiryService(
             ?: throw BusinessException(InquiryErrorCode.INQUIRY_NOT_FOUND)
 
         inquiry.validateOwnership(userId)
+
+        if (inquiry.deletedAt == null) {
+            return
+        }
+
         inquiry.updateDeletedAt(null)
+
+        logger.info("문의 복구: inquiryId={}, userId={}", inquiryId, userId)
     }
 }

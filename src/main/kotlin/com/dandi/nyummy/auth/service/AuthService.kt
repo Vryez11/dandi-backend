@@ -170,6 +170,9 @@ class AuthService(
 
         refreshTokenService.startSession(userId, refreshToken)
 
+        // 이메일은 개인정보라 남기지 않는다. provider로 가입 경로만 구분한다.
+        logger.info("회원 가입: userId={}, provider={}", userId, claims.provider)
+
         return SignUpResponse(
             accessToken = accessToken,
             refreshToken = refreshToken,
@@ -363,6 +366,8 @@ class AuthService(
         }
 
         emailService.sendTempPassword(email, tempPassword)
+
+        logger.info("비밀번호 재설정(임시 비밀번호 발급): userId={}", user.id)
     }
 
     /**

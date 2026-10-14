@@ -112,6 +112,14 @@ class MealService(
 
         mealRepository.save(meal)
 
+        logger.info(
+            "식사 생성: mealId={}, userId={}, mealAt={}, hasCapturedAt={}",
+            meal.id,
+            userId,
+            mealAt,
+            uploadedImage.capturedAt != null,
+        )
+
         analysisService.analyzeNutrition(meal)
 
         return meal.toMealStatusResponse()
@@ -289,6 +297,8 @@ class MealService(
         meal.validateOwnership(userId)
 
         meal.updateDeletedAt(Instant.now())
+
+        logger.info("식사 삭제: mealId={}, userId={}", mealId, userId)
     }
 
     @Transactional(readOnly = true)
