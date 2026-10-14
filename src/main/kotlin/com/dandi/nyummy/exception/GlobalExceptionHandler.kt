@@ -1,6 +1,7 @@
 package com.dandi.nyummy.exception
 
 import com.dandi.nyummy.exception.errorcode.CommonErrorCode
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -15,15 +16,21 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 
 @RestControllerAdvice
-class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
+class GlobalExceptionHandler(private val meterRegistry: MeterRegistry) : ResponseEntityExceptionHandler() {
 
     companion object {
         private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+
+        // 에러 코드별 발생 횟수. 같은 상태 코드(409 등)를 쓰는 에러를 구분해 센다.
+        // Security 단계의 401·403도 SecurityExceptionHandler가 이 핸들러로 넘기므로 함께 집계된다.
+        private const val BUSINESS_EXCEPTION_METRIC_NAME = "nyummy.business.exceptions"
     }
 
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(e: BusinessException): ResponseEntity<ErrorResponse> {
         log.warn("BusinessException: code={}, message={}", e.errorCode.code, e.message)
+        // code는 ErrorCode enum 값이라 종류가 정해져 있어 태그로 써도 series가 늘지 않는다.
+        meterRegistry.counter(BUSINESS_EXCEPTION_METRIC_NAME, "code", e.errorCode.code).increment()
         return ResponseEntity
             .status(e.errorCode.status)
             .body(ErrorResponse.of(e.errorCode.code, e.message ?: e.errorCode.message))

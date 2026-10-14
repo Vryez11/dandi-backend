@@ -19,6 +19,9 @@ class HttpLoggingFilter : OncePerRequestFilter() {
 
         // ALB·compose가 짧은 주기로 호출한다. 성공 응답까지 남기면 로그 대부분이 health check로 채워진다.
         private const val HEALTH_PATH = "/actuator/health"
+
+        // 토큰이 없거나 인증에 실패한 요청
+        private const val ANONYMOUS_USER_ID = "anonymous"
     }
 
     override fun doFilterInternal(
@@ -32,12 +35,15 @@ class HttpLoggingFilter : OncePerRequestFilter() {
         } finally {
             val elapsed = (System.nanoTime() - startTime) / 1_000_000
             if (!isSuccessfulHealthCheck(request, response)) {
+                // 403이 소유권 위반(로그인 사용자)인지 막힌 경로 접근(대부분 비로그인)인지 userId로 가른다.
+                // userId는 메트릭 태그로 쓰면 사용자 수만큼 series가 생기므로 로그에만 남긴다.
                 log.info(
-                    "{} {} status={} elapsed={}ms {}",
+                    "{} {} status={} elapsed={}ms userId={} {}",
                     request.method,
                     request.requestURI,
                     response.status,
                     elapsed,
+                    request.getAttribute(JwtAuthorizationFilter.AUTH_USER_ID) ?: ANONYMOUS_USER_ID,
                     request.toCommonHeader(),
                 )
             }
