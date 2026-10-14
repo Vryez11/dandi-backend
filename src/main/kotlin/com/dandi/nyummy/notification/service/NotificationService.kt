@@ -6,6 +6,7 @@ import com.dandi.nyummy.infra.push.dto.PushResult
 import com.dandi.nyummy.notification.dto.CreateDeviceTokenRequest
 import com.dandi.nyummy.notification.entity.DeviceToken
 import com.dandi.nyummy.notification.repository.DeviceTokenRepository
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -14,9 +15,16 @@ import org.springframework.transaction.annotation.Transactional
 class NotificationService(
     private val deviceTokenRepository: DeviceTokenRepository,
     private val pushClient: PushClient,
+    private val meterRegistry: MeterRegistry,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(NotificationService::class.java)
+
+        // 푸시 발송 결과 수. 태그: type(PushType), result(success/invalid/retryable)
+        private const val PUSH_SEND_METRIC_NAME = "nyummy.push.sends"
+        private const val PUSH_RESULT_SUCCESS = "success"
+        private const val PUSH_RESULT_INVALID = "invalid" // 죽은 토큰
+        private const val PUSH_RESULT_RETRYABLE = "retryable" // 일시 장애
     }
 
     /**
@@ -61,13 +69,46 @@ class NotificationService(
      *
      * 트랜잭션을 걸지 않는다. FCM 호출은 수 초 걸리는 외부 I/O라, 트랜잭션 안에서 하면
      * 그만큼 DB 커넥션을 잡고 있는다.
+     *
+     * 배치(식사 리마인더·리텐션)와 분석 결과 알림이 모두 이 메서드를 거치므로, 발송 결과 메트릭도 여기서 센다.
      */
     fun sendPushes(messagesByToken: Map<String, PushMessage>): PushResult {
         if (messagesByToken.isEmpty()) {
             return PushResult.EMPTY
         }
 
-        return pushClient.sendPushes(messagesByToken)
+        val result = pushClient.sendPushes(messagesByToken)
+
+        increasePushSendCounts(messagesByToken, result)
+
+        return result
+    }
+
+    /**
+     * 발송 결과를 알림 종류(type)·결과(result)별로 센다.
+     *
+     * 결과는 토큰 단위로 돌아오므로 보낸 메시지와 짝지어 종류를 되찾는다. 성공은 토큰 목록 없이 개수로만 오지만,
+     * 메시지는 성공·무효·일시 장애 중 하나로만 분류되므로 나머지를 성공으로 본다.
+     */
+    private fun increasePushSendCounts(messagesByToken: Map<String, PushMessage>, result: PushResult) {
+        val invalidTokens = result.invalidTokens.toSet()
+        val retryableTokens = result.retryableTokens.toSet()
+
+        messagesByToken.entries
+            .groupingBy { (token, message) ->
+                val sendResult = when (token) {
+                    in invalidTokens -> PUSH_RESULT_INVALID
+                    in retryableTokens -> PUSH_RESULT_RETRYABLE
+                    else -> PUSH_RESULT_SUCCESS
+                }
+                message.type.name.lowercase() to sendResult
+            }
+            .eachCount()
+            .forEach { (tags, count) ->
+                val (type, sendResult) = tags
+                meterRegistry.counter(PUSH_SEND_METRIC_NAME, "type", type, "result", sendResult)
+                    .increment(count.toDouble())
+            }
     }
 
     /**
