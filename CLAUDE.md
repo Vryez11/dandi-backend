@@ -275,6 +275,8 @@
 | DEBUG | 시스템 경계의 성공 호출(규칙 1), 진단용 | Gemini 호출 성공(소요 시간·상태), S3 업로드 확정 |
 
 - prod는 INFO 이상만 남는다. 경계 성공은 DEBUG라 prod에는 남지 않고, 소요 시간 분포는 메트릭(`http.client.requests`, `nyummy.*`)으로 본다.
+- 예외: 서버로 들어오는 요청 한 줄(`HttpLoggingFilter`, method·uri·status·elapsed·userId)은 INFO로 남긴다. 403 사용자 추적처럼 운영 조회의 기준이 되는 로그라 prod에도 있어야 한다.
+- `BusinessException`으로 끝나는 거절은 `GlobalExceptionHandler`가 에러 코드를, 요청 로그가 userId·uri를 남긴다(같은 traceId). 던지기 전에 같은 내용을 또 남기지 않는다. 요청에 없는 맥락(예: 촬영 시각)이 있을 때만 WARN으로 남긴다.
 
 ### 형식
 

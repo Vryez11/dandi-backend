@@ -110,10 +110,31 @@ class AnalysisService(
                 updateMealService.updateAnalysisResult(meal, analysisResult)
             }
         } catch (e: RuntimeException) {
-            failureCause = (e as? NutritionAnalysisException)?.failureCause ?: AnalysisFailureCause.UNKNOWN
-            logger.error("영양 분석 실패: userId={}, cause={}, {}", meal.userId, failureCause, e.message)
             status = MealStatus.FAILED
             observation.error(e)
+
+            if (e is NutritionAnalysisException) {
+                failureCause = e.failureCause
+                // 원인 상세(HTTP 상태·응답 본문·스택 트레이스)는 경계(Gemini·S3)에서 이미 남겼다. 여기서는 상태 전이만 남긴다.
+                logger.info(
+                    "영양 분석 실패: mealId={}, userId={}, attempt={}, cause={}, message={}",
+                    meal.id,
+                    meal.userId,
+                    attempt,
+                    failureCause,
+                    e.message,
+                )
+            } else {
+                failureCause = AnalysisFailureCause.UNKNOWN
+                logger.error(
+                    "영양 분석 실패(예상하지 못한 예외): mealId={}, userId={}, imageKey={}, attempt={}",
+                    meal.id,
+                    meal.userId,
+                    meal.imageKey,
+                    attempt,
+                    e,
+                )
+            }
         } finally {
             observation
                 .lowCardinalityKeyValue("outcome", status.name.lowercase())
@@ -139,7 +160,7 @@ class AnalysisService(
         try {
             val catName = catRepository.findByUserId(meal.userId)?.name
                 ?: run {
-                    logger.error("가입 시 생성되어야 할 고양이가 없습니다: userId={}", meal.userId)
+                    logger.error("가입 시 생성되어야 할 고양이가 없습니다: userId={}, mealId={}", meal.userId, meal.id)
                     return
                 }
 
@@ -150,7 +171,7 @@ class AnalysisService(
 
             notificationService.deleteInvalidDeviceTokens(result.invalidTokens)
         } catch (e: RuntimeException) {
-            logger.error("분석 결과 알림 발송 실패: mealId={}, status={}", meal.id, status, e)
+            logger.error("분석 결과 알림 발송 실패: mealId={}, userId={}, status={}", meal.id, meal.userId, status, e)
         }
     }
 

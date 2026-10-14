@@ -10,6 +10,9 @@ import java.time.Duration
 class PushDeduplicationRepository(private val redisTemplate: StringRedisTemplate) {
     companion object {
         private const val KEY_PREFIX = "push-sent:"
+
+        /** 실패 로그에 남길 키 표본 수 */
+        private const val KEY_SAMPLE_SIZE = 3
         private val logger = LoggerFactory.getLogger(PushDeduplicationRepository::class.java)
     }
 
@@ -25,7 +28,8 @@ class PushDeduplicationRepository(private val redisTemplate: StringRedisTemplate
     fun createSentMark(key: String, timeToLive: Duration): Boolean = try {
         redisTemplate.opsForValue().setIfAbsent("$KEY_PREFIX$key", "1", timeToLive) == true
     } catch (e: DataAccessException) {
-        logger.error("푸시 중복 발송 방지 실패, 발송은 그대로 진행: key={}", key, e)
+        // 발송은 그대로 진행하므로 일시 실패(WARN)다. 드물게 중복 발송될 수 있다.
+        logger.warn("푸시 중복 발송 방지 실패, 발송은 그대로 진행: key={}", key, e)
         true
     }
 
@@ -50,7 +54,8 @@ class PushDeduplicationRepository(private val redisTemplate: StringRedisTemplate
         try {
             redisTemplate.delete(keys.map { "$KEY_PREFIX$it" })
         } catch (e: DataAccessException) {
-            logger.error("푸시 발송 표시 삭제 실패: count={}", keys.size, e)
+            // 표시가 남으면 재시도가 그 사용자를 건너뛴다. 어떤 알림인지 알 수 있게 키 일부를 남긴다.
+            logger.warn("푸시 발송 표시 삭제 실패: count={}, keys={}", keys.size, keys.take(KEY_SAMPLE_SIZE), e)
         }
     }
 }

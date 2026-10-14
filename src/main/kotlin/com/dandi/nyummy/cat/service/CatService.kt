@@ -59,7 +59,6 @@ class CatService(
     @Transactional
     fun createCat(userId: Long, request: CreateCatRequest) {
         if (catRepository.existsByUserId(userId)) {
-            logger.warn("이미 존재하는 고양이입니다: $userId")
             throw BusinessException(CatErrorCode.CAT_ALREADY_EXISTS)
         }
 

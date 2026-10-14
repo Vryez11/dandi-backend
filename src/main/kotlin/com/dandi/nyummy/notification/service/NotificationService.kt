@@ -124,6 +124,7 @@ class NotificationService(
 
         val deletedCount = deviceTokenRepository.deleteByTokenIn(tokens)
 
-        logger.info("무효 디바이스 토큰 삭제: count={}", deletedCount)
+        // 무효 토큰 수는 nyummy.push.sends{result=invalid} 메트릭으로 본다.
+        logger.debug("무효 디바이스 토큰 삭제: count={}", deletedCount)
     }
 }

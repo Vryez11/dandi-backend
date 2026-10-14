@@ -105,7 +105,7 @@ class MealService(
         // EXIF가 없으면 거부하지 않고 서버 시각으로 채운다. 기기·앱에 따라 EXIF가 아예 없거나
         // 메신저를 거치며 제거되는데, 그 사용자의 기록 자체를 막는 건 과하다.
         val mealAt = uploadedImage.capturedAt ?: Instant.now(clock).also {
-            logger.info("EXIF 촬영 시각 없음, 서버 시각으로 대체: userId={}, imageKey={}", userId, uploadedImage.imageKey)
+            logger.debug("EXIF 촬영 시각 없음, 서버 시각으로 대체: userId={}, imageKey={}", userId, uploadedImage.imageKey)
         }
 
         val meal = request.toEntity(userId, mealAt, uploadedImage.imageKey)

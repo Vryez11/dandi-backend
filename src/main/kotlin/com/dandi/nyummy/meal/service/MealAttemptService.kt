@@ -75,7 +75,8 @@ class MealAttemptService(
         val now = Instant.now(clock)
 
         if (capturedAt.atZone(MEAL_ZONE).toLocalDate() != now.atZone(MEAL_ZONE).toLocalDate()) {
-            logger.info(
+            // 요청 로그에 없는 촬영 시각을 남겨 기기 시계 문제인지 오래된 사진인지 가린다.
+            logger.warn(
                 "촬영 날짜가 오늘이 아니라 등록 거부: userId={}, imageKey={}, capturedAt={}, now={}",
                 userId,
                 uploadedImage.imageKey,

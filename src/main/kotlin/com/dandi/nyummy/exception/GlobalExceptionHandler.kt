@@ -2,6 +2,7 @@ package com.dandi.nyummy.exception
 
 import com.dandi.nyummy.exception.errorcode.CommonErrorCode
 import io.micrometer.core.instrument.MeterRegistry
+import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -106,8 +107,9 @@ class GlobalExceptionHandler(private val meterRegistry: MeterRegistry) : Respons
      */
 
     @ExceptionHandler(Exception::class)
-    fun handleException(e: Exception): ResponseEntity<ErrorResponse> {
-        log.error("Unhandled exception", e)
+    fun handleException(e: Exception, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
+        // userId는 같은 trace의 요청 로그(HttpLoggingFilter)에 남는다.
+        log.error("처리되지 않은 예외: method={}, uri={}", request.method, request.requestURI, e)
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(ErrorResponse.of(CommonErrorCode.INTERNAL_SERVER_ERROR))
