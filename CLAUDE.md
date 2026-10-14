@@ -50,6 +50,7 @@
 | 토큰 교체(세션 유지) | rotate | replace, swap, renew | `rotateToken()` |
 | 탈퇴 | withdraw | leave, quit, deactivate, resign, signout | `withdrawUser()` |
 | 익명화 | anonymize | mask, scrub, pseudonymize(가명처리는 다른 개념) | `anonymize()` |
+| 로그용 가림(일부만 노출) | redact | mask(익명화 금지어), hide, obscure — 데이터는 그대로 두고 로그에 찍는 값만 가린다 | `redactEmail()`, `redactToken()` |
 
 ※ 예외 (위 표의 동사와 사용 규칙 5항 `동사 + 목적어`를 따르지 않아도 되는 경우)
 
@@ -247,3 +248,51 @@
 | 대상 | 규칙 | 비고 |
 |---|---|---|
 | 로거 변수명 | logger | log 금지. `companion object { private val logger = LoggerFactory.getLogger(Xxx::class.java) }` 단, 상위 클래스가 `logger` 필드를 가진 경우(`OncePerRequestFilter`, `ResponseEntityExceptionHandler` 상속)는 이름이 충돌해 컴파일되지 않으므로(KT-56386) `log`를 쓴다 |
+
+## 로그
+
+로그는 Grafana Cloud(Loki, 국외 리전)로 전송된다. 아래 규칙은 새 코드와 수정하는 코드 모두에 적용한다.
+
+- 로그를 추가·수정할 때는 이 절을 반드시 따른다. Claude도 같다: 로그를 쓰기 전에 아래 세 규칙 중 어디에 해당하는지 먼저 판단하고, 어디에도 해당하지 않으면 남기지 않는다.
+- 수정하는 파일에 규칙을 어기는 기존 로그가 있으면 같은 변경에서 함께 고친다.
+
+### 무엇을 남기나
+
+| 규칙 | 남긴다 | 남기지 않는다 |
+|---|---|---|
+| 1. 시스템 경계를 기록 | 외부 시스템과 맞닿는 호출 — AI(Gemini), 스토리지(S3), 푸시(FCM), 이메일(SMTP/SES), OAuth 제공자, 이후 결제·메시지 큐. 요청 요약(대상 키·크기·건수), 응답 요약(상태·건수), 소요 시간(`elapsed={}ms`) | 내부 함수 진입/종료, 컨트롤러→서비스→매퍼 같은 내부 흐름(코드와 스택 트레이스로 충분). 요청·응답 본문 원문(이미지, 프롬프트 전체, 토큰) — 키·크기로 요약한다 |
+| 2. 비즈니스 상태 전이를 기록 | 데이터 생명주기가 바뀌는 순간만, 비즈니스 키(userId, mealId, inquiryId 등)와 함께. 대상: 회원 가입·탈퇴·비밀번호 변경/재설정, 식사 생성·삭제, 분석 완료/실패, 분석 피드백 생성, 고양이 생성·진화·체형 변화, 문의 생성·삭제·복구 | 단순 조회, 일상적인 단일 필드 수정, "성공했다"만 알리는 로그 |
+| 3. 실패에는 원인 맥락을 | 누가(userId 등), 무엇을(대상 키·파라미터), 어떤 예외로 — 예외 객체를 마지막 인자로 넘겨 스택 트레이스를 남긴다 | `"FCM 전송 실패"`처럼 맥락 없는 문구, `e.message`만 남기고 예외 객체를 버리는 것 |
+
+### 레벨
+
+| 레벨 | 쓰는 경우 | 예 |
+|---|---|---|
+| ERROR | 우리가 조치해야 하는 실패 — 외부 장애, 설정 오류, 데이터 불일치 | Gemini 5xx·시간 초과, SMTP 인증 실패, 가입 시 생성됐어야 할 프로필 없음 |
+| WARN | 예상 가능한 거절·일시 실패 — 재시도나 사용자 입력으로 풀리는 것 | OAuth 토큰 검증 실패, 동시 생성으로 유니크 충돌, Redis 일시 실패 후 계속 진행 |
+| INFO | 비즈니스 상태 전이(규칙 2), 배치 실행 요약 | 회원 탈퇴 완료, 식사 리마인더 발송 요약 |
+| DEBUG | 시스템 경계의 성공 호출(규칙 1), 진단용 | Gemini 호출 성공(소요 시간·상태), S3 업로드 확정 |
+
+- prod는 INFO 이상만 남는다. 경계 성공은 DEBUG라 prod에는 남지 않고, 소요 시간 분포는 메트릭(`http.client.requests`, `nyummy.*`)으로 본다.
+
+### 형식
+
+- SLF4J 자리표시자(`{}`)를 쓴다. 문자열 템플릿(`"$userId"`, `"${e.message}"`) 금지 — 예외 객체가 빠지고 레벨이 꺼져 있어도 문자열을 만든다.
+- `"한글 설명: key=value, key=value"` 형태. 키 이름은 코드의 필드명(camelCase)을 따른다. 소요 시간은 `elapsed={}ms`.
+- 예외 객체는 항상 마지막 인자. 메시지에 `e.message`를 함께 쓰는 건 허용하지만 예외 객체를 대신하지 않는다.
+
+```kotlin
+// 나쁨
+logger.error("이메일 발송이 실패했습니다. ${e.message}")
+// 좋음
+logger.error("이메일 발송 실패: to={}, subject={}, elapsed={}ms", redactEmail(to), subject, elapsed, e)
+```
+
+### 개인정보
+
+| 값 | 규칙 |
+|---|---|
+| 이메일 | 원문 금지. `redactEmail()`로 가린다. 가능하면 userId로 대신한다 |
+| FCM 기기 토큰 | 원문 금지. `redactToken()`으로 끝 몇 자리만 남긴다 |
+| 비밀번호, 인증 코드, JWT, API 키, OAuth 토큰 | 가린 값도 남기지 않는다 |
+| userId·mealId 등 내부 ID | 로그에는 남긴다. 메트릭 태그로는 쓰지 않는다(사용자 수만큼 series가 생긴다) |
