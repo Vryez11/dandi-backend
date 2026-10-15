@@ -31,6 +31,12 @@ management:
   endpoint:
     health:
       show-details: never
+  metrics:
+    # 자원 지표(JVM·Hikari·Tomcat 등)는 prod만 본다. dev는 API 대시보드에 쓰는 메트릭만 내보낸다.
+    # 키는 메트릭 이름 앞부분으로 매칭되고 더 긴 키가 이긴다. 새 메트릭을 dev에서도 보려면 여기에 추가한다.
+    enable:
+      all: false
+      "[http.server.requests]": true
   opentelemetry:
     resource-attributes:
       "[deployment.environment.name]": dev
