@@ -40,6 +40,15 @@ server:
 # GRAFANA_OTLP_ENDPOINT는 게이트웨이 주소(.../otlp)까지만, 신호별 경로는 여기서 붙인다.
 # GRAFANA_OTLP_AUTH_HEADER는 헤더 값 전체: "Basic base64(instanceId:token)".
 management:
+  metrics:
+    distribution:
+      # 응답 시간 p50/p95/p99를 계산할 히스토그램 구간 경계.
+      # percentiles-histogram(기본 66구간)은 태그 조합마다 구간 수만큼 series가 생겨 Free 티어 한도(1만)를 넘는다.
+      # 경계를 직접 정해 조합당 series를 줄인다. 경계를 바꾸면 변경 전후에 걸친 백분위가 틀어지므로 자주 바꾸지 않는다.
+      slo:
+        "[http.server.requests]": 50ms,100ms,200ms,500ms,1s,2s,3s,5s,10s,30s
+        # 키는 이름 앞부분으로 매칭돼 처리 중 요청 수(.active)에도 구간이 붙는다. 더 긴 키로 빈 값을 줘 뺀다.
+        "[http.server.requests.active]": ""
   otlp:
     metrics:
       export:

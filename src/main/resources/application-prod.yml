@@ -45,5 +45,6 @@ management:
       "[deployment.environment.name]": prod
   tracing:
     sampling:
-      # NAT 데이터 처리 비용이 전송량에 비례하므로 일부만 샘플링한다.
-      probability: 0.1
+      # 느리거나 실패한 요청의 trace를 놓치지 않도록 전부 샘플링한다.
+      # Grafana Cloud Free 한도(trace 월 50GB)를 넘을 것 같으면 낮춘다.
+      probability: 1.0
