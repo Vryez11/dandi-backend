@@ -6,6 +6,7 @@ import com.dandi.nyummy.mail.dto.RewardBoxResponse
 import com.dandi.nyummy.mail.dto.RewardCoinResponse
 import com.dandi.nyummy.mail.dto.RewardItemResponse
 import com.dandi.nyummy.mail.dto.RewardResponse
+import com.dandi.nyummy.mail.dto.TotalRewardResponse
 import com.dandi.nyummy.mail.enum.MailCategory
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
@@ -124,6 +125,28 @@ class MailController {
         rewardBox = RewardBoxResponse(
             imageUrl = "https://example.com/images/mail/reward-box.png",
             animationUrl = null,
+        ),
+    )
+
+    @Operation(
+        summary = "우편 모두 받기",
+        description = "안 받은 우편을 한 번에 받고, 지급된 보상의 합계를 반환한다. " +
+            "보상 상자도 포함하며, 열기 연출 없이 들어 있던 코인과 아이템을 합계에 더한다. " +
+            "받을 우편이 없으면 coin과 items가 null이다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
+    )
+    @PostMapping("/claim-all")
+    fun claimMails(@CurrentUser user: AuthUser): TotalRewardResponse = TotalRewardResponse(
+        coin = RewardCoinResponse(
+            quantity = 150,
+            imageUrl = "https://example.com/images/mail/coin.png",
+        ),
+        items = listOf(
+            RewardItemResponse(
+                itemId = 3,
+                name = "생선 간식",
+                imageUrl = "https://example.com/images/item/fish.png",
+                quantity = 3,
+            ),
         ),
     )
 }

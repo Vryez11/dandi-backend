@@ -24,6 +24,8 @@ data class RewardResponse(
     val rewardBox: RewardBoxResponse?,
 )
 
+data class TotalRewardResponse(val coin: RewardCoinResponse?, val items: List<RewardItemResponse>?)
+
 data class RewardCoinResponse(val quantity: Int, val imageUrl: String)
 
 data class RewardItemResponse(val itemId: Long, val name: String, val imageUrl: String, val quantity: Int)
