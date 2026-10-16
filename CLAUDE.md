@@ -50,6 +50,7 @@
 | 토큰 교체(세션 유지) | rotate | replace, swap, renew | `rotateToken()` |
 | 탈퇴 | withdraw | leave, quit, deactivate, resign, signout | `withdrawUser()` |
 | 익명화 | anonymize | mask, scrub, pseudonymize(가명처리는 다른 개념) | `anonymize()` |
+| 받기(보상 수령) | claim | receive, accept, collect(수집과 별개) | `claimMail()`, `claimMails()` |
 
 ※ 예외 (위 표의 동사와 사용 규칙 5항 `동사 + 목적어`를 따르지 않아도 되는 경우)
 
@@ -216,13 +217,28 @@
 
 | 개념 | 사용 단어 | 비고 |
 |---|---|---|
-| 문의 | Inquiry | 문의함의 문의 한 건. 테이블 inquiries. 우편함·문의함 화면도 코드에서는 Inquiry로 통일 (Mailbox 금지) |
+| 문의 | Inquiry | 문의함의 문의 한 건. 테이블 inquiries. 보상을 받는 우편함은 별도 리소스 Mail |
 | 문의 유형 | InquiryCategory | BUG_REPORT / QUESTION / SUGGESTION. Type, Kind 금지 |
 | 질문 | Question | 사용자가 작성한 문의 부분(유형·제목·내용·첨부 이미지). 필드는 questionTitle / questionContent, 수정은 updateQuestion |
 | 답변 | Answer | 운영자가 작성한 답변. 필드는 answerTitle / answerContent. Reply 금지 |
 | 답변 시각 | AnsweredAt | 최초 답변 시각으로 고정. 답변 여부는 상태 컬럼 없이 isAnswered(= answeredAt != null)로 계산 |
 | 답변 읽음 | Read | 사용자가 답변을 읽음. 시각은 answerReadAt(처음 읽은 시각 고정). 조회 동사 read 금지와는 별개의 도메인 의미이며, 메서드 동사로는 쓰지 않는다 |
 | 안 읽은 답변 | UnreadAnswer | 답변이 있고 아직 읽지 않음. hasUnreadAnswer(문의 단건), hasUnreadInquiryAnswer(홈), existsUnreadAnswer(조회). New 금지 |
+
+### 우편
+
+| 개념 | 사용 단어 | 비고 |
+|---|---|---|
+| 우편 | Mail | 보상(코인·아이템·보상 상자)을 받는 우편함의 한 건. 문의(Inquiry)와 다른 리소스 |
+| 우편 종류 | MailCategory | REWARD_BOX / COIN / ITEM. 응답 필드 category. InquiryCategory와 맞춰 Type, Kind 금지 |
+| 받은 상태 | Claimed | isClaimed. 받기 동사는 claim |
+| 얻은 경로 | Content | 우편을 얻게 된 경로 문구(필드 content). 문의의 questionContent(본문)와 뜻이 다름 |
+| 보상 | Reward | 받기로 지급되는 코인·아이템 묶음. 하나 받기는 RewardResponse, 모두 받기는 TotalRewardResponse |
+| 보상 상자 | RewardBox | 코인·아이템이 든 상자. 하나 받기 응답의 rewardBox로 열기 연출. Box 단독, Chest 금지 |
+| 아이템 | Item | 게임 아이템(itemId). 우편 한 건은 Item이 아니라 Mail |
+| 수량 | Quantity | 지급되는 코인·아이템 개수. Amount 금지, Count 금지(count는 개수 조회 동사) |
+| 합계 | Total | 여러 우편의 보상을 합친 값(TotalRewardResponse). Sum 금지. 영양의 Current(하루 섭취 합계)와 다른 의미 |
+| 애니메이션 URL | AnimationUrl | 보상 상자 열기 애니메이션 리소스 URL(필드 animationUrl). 지금은 스프라이트 시트, 이후 애니메이션 파일 형식으로 바뀔 수 있음. CatAnimation과 같은 Animation 표기. ActionUrl 금지 |
 
 ### 이미지
 
