@@ -17,3 +17,15 @@ data class MailSummaryResponse(
     val expiresAt: Instant?,
     val createdAt: Instant,
 )
+
+data class RewardResponse(
+    val coin: RewardCoinResponse?,
+    val items: List<RewardItemResponse>?,
+    val rewardBox: RewardBoxResponse?,
+)
+
+data class RewardCoinResponse(val quantity: Int, val imageUrl: String)
+
+data class RewardItemResponse(val itemId: Long, val name: String, val imageUrl: String, val quantity: Int)
+
+data class RewardBoxResponse(val imageUrl: String, val animationUrl: String?)

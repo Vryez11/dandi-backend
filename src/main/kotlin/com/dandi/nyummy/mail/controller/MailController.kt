@@ -2,6 +2,10 @@ package com.dandi.nyummy.mail.controller
 
 import com.dandi.nyummy.mail.dto.MailSummaryResponse
 import com.dandi.nyummy.mail.dto.MailsResponse
+import com.dandi.nyummy.mail.dto.RewardBoxResponse
+import com.dandi.nyummy.mail.dto.RewardCoinResponse
+import com.dandi.nyummy.mail.dto.RewardItemResponse
+import com.dandi.nyummy.mail.dto.RewardResponse
 import com.dandi.nyummy.mail.enum.MailCategory
 import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
@@ -11,6 +15,8 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -82,5 +88,42 @@ class MailController {
         ),
         nextCursor = null,
         hasNext = false,
+    )
+
+    @Operation(
+        summary = "우편 하나 받기",
+        description = "우편 하나를 받고 지급된 보상을 반환한다. 보상 상자·코인·아이템 모두 이 API로 받는다. " +
+            "응답 구조는 우편 종류와 관계없이 같으며, 해당하는 값이 없으면 coin 또는 items가 null이다. " +
+            "보상 상자는 들어 있던 코인과 아이템이 그대로 담기고, rewardBox에 상자 이미지와 열기 애니메이션 URL(animationUrl)이 담긴다. " +
+            "현재 고정 응답에서 animationUrl은 null이다. " +
+            "코인·아이템 우편이면 rewardBox는 null이다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
+    )
+    @PostMapping("/{mailId}/claim")
+    fun claimMail(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
+    ): RewardResponse = RewardResponse(
+        coin = RewardCoinResponse(
+            quantity = 50,
+            imageUrl = "https://example.com/images/mail/coin.png",
+        ),
+        items = listOf(
+            RewardItemResponse(
+                itemId = 3,
+                name = "생선 간식",
+                imageUrl = "https://example.com/images/item/fish.png",
+                quantity = 2,
+            ),
+            RewardItemResponse(
+                itemId = 7,
+                name = "털실 공",
+                imageUrl = "https://example.com/images/item/yarn-ball.png",
+                quantity = 1,
+            ),
+        ),
+        rewardBox = RewardBoxResponse(
+            imageUrl = "https://example.com/images/mail/reward-box.png",
+            animationUrl = null,
+        ),
     )
 }
