@@ -12,9 +12,12 @@ import com.dandi.nyummy.security.AuthUser
 import com.dandi.nyummy.security.CurrentUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -149,4 +152,17 @@ class MailController {
             ),
         ),
     )
+
+    @Operation(
+        summary = "받은 우편 삭제",
+        description = "받은 우편을 삭제한다. 아직 받지 않은 우편은 삭제할 수 없다. " +
+            "실제로 지우지 않고 삭제 표시만 하므로 우편 복구 API로 되돌릴 수 있다. " +
+            "현재는 요청과 관계없이 항상 204를 반환한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @DeleteMapping("/{mailId}")
+    fun deleteMail(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
+    ): ResponseEntity<Void> = ResponseEntity.noContent().build()
 }
