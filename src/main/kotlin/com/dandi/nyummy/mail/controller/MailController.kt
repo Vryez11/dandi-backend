@@ -165,4 +165,16 @@ class MailController {
         @CurrentUser user: AuthUser,
         @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
     ): ResponseEntity<Void> = ResponseEntity.noContent().build()
+
+    @Operation(
+        summary = "우편 복구",
+        description = "삭제한 우편을 되돌린다. 복구 기한은 없다. 삭제되지 않은 우편에 요청해도 그대로 두고 성공한다. " +
+            "현재는 요청과 관계없이 항상 204를 반환한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "복구 성공")
+    @PostMapping("/{mailId}/restore")
+    fun restoreMail(
+        @CurrentUser user: AuthUser,
+        @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
+    ): ResponseEntity<Void> = ResponseEntity.noContent().build()
 }
