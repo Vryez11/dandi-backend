@@ -86,6 +86,13 @@ management:
           headers:
             Authorization: ${GRAFANA_OTLP_AUTH_HEADER:}
 
+# JDBC 관측(datasource-micrometer): 커넥션·쿼리·결과 읽기 span과 jdbc.* 메트릭을 만든다.
+jdbc:
+  datasource-proxy:
+    # bind 값(이메일 등 개인정보)은 span에 넣지 않는다. SQL 문장은 ? 자리표시자 형태로만 들어간다.
+    # 기본값도 false지만, 개인정보 때문에 끈 것이라 명시해 둔다.
+    include-parameter-values: false
+
 app:
   internal:
     batch-key: ${NYUMMY_BATCH_SECRET}
