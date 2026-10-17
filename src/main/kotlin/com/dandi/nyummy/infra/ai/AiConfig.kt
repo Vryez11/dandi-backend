@@ -11,13 +11,15 @@ import org.springframework.web.client.RestClient
 @EnableConfigurationProperties(AiProperties::class)
 class AiConfig {
 
+    // Boot가 주입하는 Builder를 써야 관측(http.client.requests 메트릭·span)이 붙는다.
+    // RestClient.builder()로 직접 만들면 trace에서 Gemini 호출 구간이 빈칸으로 남는다.
     @Bean
-    fun aiRestClient(aiProperties: AiProperties): RestClient {
+    fun aiRestClient(aiProperties: AiProperties, restClientBuilder: RestClient.Builder): RestClient {
         val settings = HttpClientSettings.defaults()
             .withConnectTimeout(aiProperties.connectTimeout)
             .withReadTimeout(aiProperties.readTimeout)
 
-        return RestClient.builder()
+        return restClientBuilder
             .baseUrl(aiProperties.baseUrl)
             .requestFactory(ClientHttpRequestFactoryBuilder.detect().build(settings))
             .build()
