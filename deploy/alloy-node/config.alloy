@@ -97,6 +97,15 @@ prometheus.scrape "cadvisor" {
 prometheus.relabel "cadvisor" {
   forward_to = [prometheus.remote_write.grafana.receiver]
 
+  // cAdvisor는 지표 92종(호스트당 약 1,600 series)을 내지만 Docker 대시보드는 15종만 쓴다.
+  // Grafana Cloud active series를 줄이려고 대시보드가 쓰는 것만 남긴다.
+  // 대시보드에 패널을 추가해 새 지표가 필요하면 여기에 이름을 더한다.
+  rule {
+    source_labels = ["__name__"]
+    regex         = "container_cpu_usage_seconds_total|container_cpu_cfs_periods_total|container_cpu_cfs_throttled_periods_total|container_memory_usage_bytes|container_memory_working_set_bytes|container_spec_memory_limit_bytes|container_fs_usage_bytes|container_fs_reads_bytes_total|container_fs_writes_bytes_total|container_network_receive_bytes_total|container_network_transmit_bytes_total|container_last_seen|container_oom_events_total|machine_cpu_cores|machine_memory_bytes"
+    action        = "keep"
+  }
+
   rule {
     source_labels = ["name"]
     target_label  = "container"
