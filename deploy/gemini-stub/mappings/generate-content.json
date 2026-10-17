@@ -1,0 +1,32 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/v1/publishers/google/models/[^/]+:generateContent"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "candidates": [
+        {
+          "content": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "{\"isFood\":true,\"rejectReason\":\"\",\"name\":\"비빔밥\",\"iconId\":5,\"calory\":562,\"carbs\":80,\"protein\":20,\"fat\":18,\"catComment\":\"채소랑 밥을 골고루 먹었다냥! 다음 끼니는 단백질이 든 생선구이를 추천한다냥.\"}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "delayDistribution": {
+      "type": "lognormal",
+      "median": 7500,
+      "sigma": 0.2,
+      "maxValue": 25000
+    }
+  }
+}
