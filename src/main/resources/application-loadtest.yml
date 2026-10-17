@@ -1,0 +1,23 @@
+# 부하 테스트 환경. prod 위에 얹는다: SPRING_PROFILES_ACTIVE=prod,loadtest
+spring:
+  flyway:
+    # 빈 DB에서 시작하므로 스키마를 만든다. (prod 프로파일은 끔)
+    enabled: true
+
+management:
+  health:
+    mail:
+      # SMTP는 부하 대상이 아니라 임시값이다. 켜 두면 ALB가 unhealthy로 본다.
+      enabled: false
+  opentelemetry:
+    resource-attributes:
+      "[deployment.environment.name]": loadtest
+  tracing:
+    sampling:
+      # 부하 중 span 생성·전송 비용이 측정을 오염시키지 않게 10%만 남긴다.
+      probability: 0.1
+  otlp:
+    metrics:
+      export:
+        # 기본 1분이면 짧은 테스트가 뭉개진다.
+        step: 15s
