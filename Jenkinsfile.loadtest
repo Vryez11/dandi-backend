@@ -1,0 +1,209 @@
+// 부하 테스트 환경 배포. 수동 실행(Build with Parameters)만 한다.
+// 빌드하지 않고 main Jenkins가 ECR에 올린 이미지를 digest로 고정해 배포한다.
+// 배포한 태그·digest가 빌드 설명과 deploy-record.json에 남아, before/after 측정의 이미지 기록이 된다.
+//
+// task 정의는 부하 환경 최신 revision(Terraform이 env·시크릿을 정한 것)을 기준으로 이미지만 바꿔 새로 등록한다.
+// Terraform은 서비스의 task_definition 변경을 무시하므로, apply가 여기서 배포한 이미지를 되돌리지 않는다.
+pipeline {
+    agent any
+
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 40, unit: 'MINUTES')
+    }
+
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'ECR nyummy-backend 태그 (예: 63c574fd704b-59)')
+        string(name: 'NOTE', defaultValue: '', description: '이 배포의 의미 (예: before-sync-analysis, after-async-analysis)')
+    }
+
+    environment {
+        AWS_REGION = 'ap-northeast-2'
+        ECR_REPOSITORY = 'nyummy-backend'
+        CLUSTER = 'nyummy-loadtest-cluster'
+        SERVICE = 'nyummy-loadtest-backend-service'
+        TASK_FAMILY = 'nyummy-loadtest-backend'
+        CONTAINER_NAME = 'nyummy-backend'
+        HEALTH_URL = 'https://loadtest-api.nyummy.co.kr/actuator/health'
+    }
+
+    stages {
+
+        stage('Resolve Image') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+                    : "${IMAGE_TAG:?IMAGE_TAG is required}"
+
+                    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                    DIGEST=$(
+                        aws ecr describe-images \
+                            --region "$AWS_REGION" \
+                            --repository-name "$ECR_REPOSITORY" \
+                            --image-ids imageTag="$IMAGE_TAG" \
+                            --query 'imageDetails[0].imageDigest' \
+                            --output text
+                    )
+
+                    echo "$DIGEST" > digest.txt
+                    echo "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}@${DIGEST}" > image.txt
+                    echo "Image: ${IMAGE_TAG} -> ${DIGEST}"
+                '''
+            }
+        }
+
+        stage('Register Task Definition') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+
+                    aws ecs describe-task-definition \
+                        --region "$AWS_REGION" \
+                        --task-definition "$TASK_FAMILY" \
+                        --query taskDefinition \
+                        --output json > current-task-definition.json
+
+                    # 등록할 때 받지 않는 읽기 전용 필드를 빼고 이미지만 바꾼다.
+                    python3 - "$(cat image.txt)" <<'PY'
+import json, sys
+image = sys.argv[1]
+task = json.load(open("current-task-definition.json"))
+for key in ("taskDefinitionArn", "revision", "status", "requiresAttributes", "compatibilities",
+            "registeredAt", "registeredBy", "deregisteredAt"):
+    task.pop(key, None)
+containers = [c for c in task["containerDefinitions"] if c["name"] == "nyummy-backend"]
+if len(containers) != 1:
+    sys.exit("nyummy-backend 컨테이너를 찾지 못했습니다")
+containers[0]["image"] = image
+json.dump(task, open("new-task-definition.json", "w"))
+PY
+
+                    aws ecs register-task-definition \
+                        --region "$AWS_REGION" \
+                        --cli-input-json file://new-task-definition.json \
+                        --query taskDefinition.taskDefinitionArn \
+                        --output text > task-definition-arn.txt
+
+                    echo "Registered: $(cat task-definition-arn.txt)"
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+
+                    aws ecs update-service \
+                        --region "$AWS_REGION" \
+                        --cluster "$CLUSTER" \
+                        --service "$SERVICE" \
+                        --task-definition "$(cat task-definition-arn.txt)" \
+                        --query 'service.deployments[0].id' \
+                        --output text
+
+                    # 대상 그룹 등록 해제 대기(300초) 때문에 길게 기다린다. 서킷 브레이커가 롤백하면 실패로 끝낸다.
+                    for i in $(seq 1 120); do
+                        STATE=$(
+                            aws ecs describe-services \
+                                --region "$AWS_REGION" \
+                                --cluster "$CLUSTER" \
+                                --services "$SERVICE" \
+                                --query 'services[0].deployments[?status==`PRIMARY`].rolloutState | [0]' \
+                                --output text
+                        )
+
+                        case "$STATE" in
+                            COMPLETED)
+                                echo "Deployment completed"
+                                exit 0
+                                ;;
+                            FAILED)
+                                echo "Deployment failed (circuit breaker)"
+                                exit 1
+                                ;;
+                        esac
+
+                        sleep 15
+                    done
+
+                    echo "Deployment timeout"
+                    exit 1
+                '''
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                sh '''#!/bin/bash
+                    set -euo pipefail
+
+                    CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$HEALTH_URL" || true)
+                    echo "Health: $CODE"
+                    [ "$CODE" = "200" ]
+
+                    # 실행 중인 task가 모두 배포한 digest로 떠 있는지 확인한다.
+                    TASKS=$(
+                        aws ecs list-tasks \
+                            --region "$AWS_REGION" \
+                            --cluster "$CLUSTER" \
+                            --service-name "$SERVICE" \
+                            --desired-status RUNNING \
+                            --query 'taskArns' \
+                            --output text
+                    )
+
+                    aws ecs describe-tasks \
+                        --region "$AWS_REGION" \
+                        --cluster "$CLUSTER" \
+                        --tasks $TASKS \
+                        --query "tasks[].containers[?name=='${CONTAINER_NAME}'].imageDigest[]" \
+                        --output text | tr '\\t' '\\n' | sort -u > running-digests.txt
+
+                    echo "Running digests:"
+                    cat running-digests.txt
+                    [ "$(cat running-digests.txt)" = "$(cat digest.txt)" ]
+                '''
+            }
+        }
+
+        stage('Record') {
+            steps {
+                // Groovy 날짜·JSON 함수는 샌드박스 스크립트 승인이 필요할 수 있어 셸에서 만든다.
+                sh '''#!/bin/bash
+                    set -euo pipefail
+
+                    DEPLOYED_AT=$(TZ=Asia/Seoul date '+%Y-%m-%dT%H:%M:%S%z')
+                    python3 - "$NOTE" "$IMAGE_TAG" "$(cat digest.txt)" "$(cat task-definition-arn.txt)" "$DEPLOYED_AT" "$BUILD_NUMBER" <<'PY'
+import json, sys
+note, tag, digest, task_definition, deployed_at, build = sys.argv[1:]
+json.dump({
+    "note": note,
+    "imageTag": tag,
+    "commit": tag.split("-")[0],
+    "digest": digest,
+    "taskDefinition": task_definition,
+    "deployedAt": deployed_at,
+    "build": build,
+}, open("deploy-record.json", "w"), indent=2)
+PY
+                    cat deploy-record.json
+                '''
+
+                script {
+                    def digest = readFile('digest.txt').trim()
+                    currentBuild.description = "${params.NOTE} · ${params.IMAGE_TAG} · ${digest.substring(0, 19)}"
+                }
+
+                archiveArtifacts artifacts: 'deploy-record.json', fingerprint: true
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo '부하 환경 배포 실패: Console Output과 ECS 서비스 이벤트를 확인하세요.'
+        }
+    }
+}
