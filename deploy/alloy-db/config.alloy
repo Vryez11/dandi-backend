@@ -1,15 +1,22 @@
 // ──────────────────────────────────────────────────────────────
+// 환경(prod / loadtest)마다 같은 이미지를 쓰고 값만 환경변수로 받는다.
+//   DEPLOYMENT_ENVIRONMENT: env 라벨과 instance·namespace 이름에 들어간다(필수).
+//     빠지면 오류 없이 env="", nyummy--mysql로 들어가므로 배포 후 라벨을 확인한다.
+//   SCRAPE_INTERVAL: 없으면 60s. 부하 환경은 짧은 테스트가 뭉개지지 않게 줄인다.
+// ──────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────
 // MySQL: Alloy가 RDS로 직접 나가서 붙는다.
 // require_secure_transport는 꺼져 있어 TLS가 필수는 아니지만,
 // skip-verify로 전송 구간은 암호화한다.
 // ──────────────────────────────────────────────────────────────
-prometheus.exporter.mysql "prod" {
+prometheus.exporter.mysql "rds" {
   data_source_name = sys.env("MYSQL_EXPORTER_USER") + ":" +
                      sys.env("MYSQL_EXPORTER_PASSWORD") + "@(" +
                      sys.env("MYSQL_ADDRESS") + ")/?tls=skip-verify"
 
   // 기본 수집기(global_status, global_variables 등)에 더해서 켠다.
-  // performance_schema=0 이므로 perf_schema.* 계열은 넣지 않는다.
+  // perf_schema.* 계열은 아직 켜지 않았다(performance_schema는 2026-10-16부터 1).
   enable_collectors = [
     "info_schema.innodb_metrics",
     "info_schema.processlist",
@@ -25,16 +32,15 @@ prometheus.scrape "mysql" {
   targets    = discovery.relabel.mysql.output
   forward_to = [prometheus.remote_write.grafana.receiver]
 
-  // t4g.micro(1GB)라 간격을 넉넉히 둔다.
   job_name        = "integrations/mysql"
-  scrape_interval = "60s"
+  scrape_interval = coalesce(sys.env("SCRAPE_INTERVAL"), "60s")
 }
 
 prometheus.scrape "alloy" {
   targets         = prometheus.exporter.self.alloy.targets
   forward_to      = [prometheus.remote_write.grafana.receiver]
   job_name        = "integrations/alloy"
-  scrape_interval = "60s"
+  scrape_interval = coalesce(sys.env("SCRAPE_INTERVAL"), "60s")
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -70,11 +76,11 @@ discovery.relabel "valkey_001" {
 
   rule {
     target_label = "instance"
-    replacement  = "nyummy-prod-valkey-001"
+    replacement  = "nyummy-" + sys.env("DEPLOYMENT_ENVIRONMENT") + "-valkey-001"
   }
   rule {
     target_label = "namespace"
-    replacement  = "nyummy-prod-valkey"
+    replacement  = "nyummy-" + sys.env("DEPLOYMENT_ENVIRONMENT") + "-valkey"
   }
 }
 
@@ -83,11 +89,11 @@ discovery.relabel "valkey_002" {
 
   rule {
     target_label = "instance"
-    replacement  = "nyummy-prod-valkey-002"
+    replacement  = "nyummy-" + sys.env("DEPLOYMENT_ENVIRONMENT") + "-valkey-002"
   }
   rule {
     target_label = "namespace"
-    replacement  = "nyummy-prod-valkey"
+    replacement  = "nyummy-" + sys.env("DEPLOYMENT_ENVIRONMENT") + "-valkey"
   }
 }
 
@@ -99,12 +105,12 @@ prometheus.scrape "valkey" {
   forward_to = [prometheus.remote_write.grafana.receiver]
 
   job_name        = "integrations/redis"
-  scrape_interval = "60s"
+  scrape_interval = coalesce(sys.env("SCRAPE_INTERVAL"), "60s")
 }
 
 prometheus.remote_write "grafana" {
   external_labels = {
-    env = "prod",
+    env = sys.env("DEPLOYMENT_ENVIRONMENT"),
   }
 
   endpoint {
@@ -122,10 +128,10 @@ prometheus.remote_write "grafana" {
 // 이 값이 대시보드 드롭다운에 그대로 뜬다.
 // Alloy 기본값은 문서화돼 있지 않아(컴포넌트 ID로 폴백) 의존하지 않는다.
 discovery.relabel "mysql" {
-  targets = prometheus.exporter.mysql.prod.targets
+  targets = prometheus.exporter.mysql.rds.targets
 
   rule {
     target_label = "instance"
-    replacement  = "nyummy-prod-mysql"
+    replacement  = "nyummy-" + sys.env("DEPLOYMENT_ENVIRONMENT") + "-mysql"
   }
 }
