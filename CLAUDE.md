@@ -32,7 +32,7 @@
 | 검증 | validate | check, verify | `validateEmail()` |
 | 증가 | increase | add, plus | `increaseCoin()` |
 | 감소 | decrease | minus, subtract | `decreaseCoin()` |
-| 변환 | convert | parse, transform, map, to | `convertMealStatus()` |
+| 변환 | convert | parse, transform, map, to | `convertMealStatus()`, `convertSpanName()` |
 | 재시도 | retry | resume, redo | `retryNutritionAnalysis()` |
 | 분석 | analyze | analysis(명사를 동사 자리에 금지), analyse | `analyzeNutrition()` |
 | 확정(임시→최종 승격) | confirm | finalize, promote, complete | `confirmUpload()` |
@@ -51,6 +51,7 @@
 | 탈퇴 | withdraw | leave, quit, deactivate, resign, signout | `withdrawUser()` |
 | 익명화 | anonymize | mask, scrub, pseudonymize(가명처리는 다른 개념) | `anonymize()` |
 | 받기(보상 수령) | claim | receive, accept, collect(수집과 별개) | `claimMail()`, `claimMails()` |
+| 관측 종료 | stop | end, finish, close | `stopObservation()` — Micrometer Observation의 start/stop을 따른다. 관측 시작은 Observation API의 `start()`를 그대로 쓴다 |
 
 ※ 예외 (위 표의 동사와 사용 규칙 5항 `동사 + 목적어`를 따르지 않아도 되는 경우)
 
@@ -85,7 +86,7 @@
 | JWT 클레임 묶음 | ~Claims | ~Payload, ~Info — 예: `AccessTokenClaims`, `VerifiedClaims` |
 | 외부 저장소의 정적 리소스를 읽어 앱에서 쓰는 형태로 구성 | ~Loader | ~Fetcher — 예: `CatAnimationLoader`(S3의 애니메이션 JSON) |
 | 파일·바이너리 포맷을 해석해 값을 꺼냄 | ~Reader | ~Parser, ~Extractor — 예: `ExifCaptureTimeReader` |
-| 프레임워크 확장 인터페이스 구현 | 인터페이스 이름을 접미사로 | 예: `EnumOpenApiCustomizer`(springdoc Customizer) |
+| 프레임워크 확장 인터페이스 구현 | 인터페이스 이름을 접미사로 | 예: `EnumOpenApiCustomizer`(springdoc Customizer), `ObservationTransactionExecutionListener`(Spring TransactionExecutionListener) |
 | 컨트롤러 파라미터 주입 | ~ArgumentResolver | ~Resolver 단독, ~Injector — 예: `CommonHeaderArgumentResolver` |
 
 ## Boolean 네이밍
@@ -260,6 +261,17 @@
 | 장착 | Equipped | 마이룸에 놓은 상태. isEquipped, equippedRoomItems, updateEquippedRoomItems. 홈 응답에도 같은 equippedRoomItems(zIndex 오름차순)로 포함. Placement, Placed 금지 |
 | 배율 | Scale | 원본 대비 크기(Float, 1.0 = 원본). Size 금지 — 페이지네이션 size와 충돌 |
 | 쌓임 순서 | ZIndex | 장착 아이템이 겹칠 때 위아래 순서. 클수록 위. Order, Layer 금지 |
+
+### 관측
+
+| 개념 | 사용 단어 | 비고 |
+|---|---|---|
+| 관측 | Observation | Micrometer Observation 한 건. 메트릭과 span을 함께 만든다(ObservationConfig, stopObservation). Tracing, Instrumentation 금지 |
+| 관측 이름 접두 | nyummy. | 우리가 만드는 Observation·메트릭 이름은 `nyummy.`로 시작하고 점으로 구분한다(nyummy.transaction). 라이브러리가 만드는 이름(http.server.requests, jdbc.*)은 그대로 둔다 |
+| 트랜잭션 span | Transaction | 트랜잭션 하나 = span 하나(관측 이름 nyummy.transaction, span 이름 "tx 클래스.메서드"). 태그 transaction.name / transaction.read-only / transaction.outcome. 메트릭은 끄고 span으로만 본다. Tx 단독 금지(span 이름 접두 tx는 예외) |
+| 결과 | Outcome | 관측 태그의 처리 결과 값. 트랜잭션은 commit / rollback / begin-failed / commit-failed / rollback-failed. 비즈니스 거절로 인한 rollback은 에러가 아니다. Result 금지(~Result 접미사와 충돌), Status 금지(MealStatus와 충돌) |
+| 기동 | Startup | 앱이 요청을 받을 준비가 되기 전(readiness가 ACCEPTING_TRAFFIC 전) 구간. startupJdbcObservationPredicate. Boot, Init 금지 |
+| JDBC | Jdbc | 식별자 표기는 Jdbc(Jwt와 같은 규칙). JDBC 전체 대문자 금지 |
 
 ## 케이스 규칙
 

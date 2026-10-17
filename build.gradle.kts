@@ -113,6 +113,10 @@ dependencies {
     }
     implementation("io.opentelemetry:opentelemetry-exporter-sender-jdk")
 
+    // JDBC 관측: DataSource를 프록시로 감싸 커넥션·쿼리·결과 읽기를 Observation(span·메트릭)으로 남긴다.
+    // Boot BOM 밖이라 버전을 직접 맞춘다. 2.x가 Boot 4.x용이고, 2.3.0은 Boot 4.1.1 기준으로 빌드됐다.
+    implementation("net.ttddyy.observation:datasource-micrometer-spring-boot:2.3.0")
+
     // 로그 OTLP 전송. Boot BOM 밖이라 버전을 직접 맞춘다.
     // 2.28.0-alpha가 Boot 4.1.0의 OTel SDK 1.62.0을 요구한다(2.29+는 1.63+).
     implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.28.0-alpha")
