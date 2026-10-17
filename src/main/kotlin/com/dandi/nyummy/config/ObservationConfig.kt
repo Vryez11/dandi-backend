@@ -1,6 +1,9 @@
 package com.dandi.nyummy.config
 
 import io.micrometer.observation.ObservationPredicate
+import net.ttddyy.observation.tracing.DataSourceBaseContext
+import org.springframework.boot.availability.ApplicationAvailability
+import org.springframework.boot.availability.ReadinessState
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.server.observation.ServerRequestObservationContext
@@ -18,4 +21,14 @@ class ObservationConfig {
             ?: (RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes)?.request
         request?.requestURI?.startsWith("/actuator") != true
     }
+
+    // 앱 기동 중(Flyway 마이그레이션 확인, JPA 초기화) JDBC 관측은 요청과 무관한 trace로 떨어져 나온다.
+    // Flyway의 performance_schema 탐색 쿼리는 실패로 남아 배포마다 실패 trace에 섞이므로 기동이 끝나기 전에는 만들지 않는다.
+    // "부모가 없으면 거른다"가 아니라 기동 시점으로만 한정해, 요청 밖에서 도는 작업(배치·Worker)의 DB 관측은 그대로 남긴다.
+    @Bean
+    fun startupJdbcObservationPredicate(applicationAvailability: ApplicationAvailability): ObservationPredicate =
+        ObservationPredicate { _, context ->
+            context !is DataSourceBaseContext ||
+                applicationAvailability.readinessState == ReadinessState.ACCEPTING_TRAFFIC
+        }
 }
