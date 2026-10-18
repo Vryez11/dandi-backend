@@ -3,6 +3,7 @@ package com.dandi.nyummy.user.service
 import com.dandi.nyummy.auth.enum.AuthProvider
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.UserRepository
 import io.mockk.every
@@ -30,15 +31,18 @@ class PasswordServiceTest {
         every { passwordEncoder.encode(any()) } answers { "encoded:" + firstArg<String>() }
     }
 
+    private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(expected, exception.errorCode)
+    }
+
     @Test
     fun `이메일에 해당하는 사용자가 없으면 EMAIL_NOT_FOUND다`() {
         every { userRepository.findByProviderAndEmail(AuthProvider.EMAIL, email) } returns null
 
-        val exception = assertFailsWith<BusinessException> {
+        assertBusinessException(AuthErrorCode.EMAIL_NOT_FOUND) {
             passwordService.createTempPasswordByEmail(email)
         }
-
-        assertEquals(AuthErrorCode.EMAIL_NOT_FOUND, exception.errorCode)
     }
 
     @Test

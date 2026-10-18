@@ -8,6 +8,7 @@ import com.dandi.nyummy.cat.repository.CatAnimationLoader
 import com.dandi.nyummy.cat.repository.CatRepository
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.CatErrorCode
+import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
@@ -15,16 +16,15 @@ import com.dandi.nyummy.user.repository.ProfileRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 /**
  * 프로필을 null로 고정해 목표 섭취량을 기본 권장량(2000 * 3일 = 6000)으로 단순화한다.
@@ -72,8 +72,7 @@ class CatServiceTest {
     // ---------------------------------------------------------------- 평가하지 않는 경우
 
     @Test
-    @DisplayName("평가 주기가 지나지 않았으면 식사를 조회하지 않고 체형과 평가 시각을 그대로 둔다")
-    fun notDue() {
+    fun `평가 주기가 지나지 않았으면 식사를 조회하지 않고 체형과 평가 시각을 그대로 둔다`() {
         // given: 2일 전에 평가 (주기는 3일)
         val cat = givenCat(evaluatedDaysAgo = 2)
 
@@ -81,14 +80,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(0)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(2))
+        assertEquals(0, cat.weight)
+        assertEquals(midnight(2), cat.weightUpdatedAt)
         verify(exactly = 0) { mealRepository.findMealsByUserIdAndPeriod(any(), any(), any()) }
     }
 
     @Test
-    @DisplayName("오늘 이미 평가했으면 아무것도 하지 않는다")
-    fun evaluatedToday() {
+    fun `오늘 이미 평가했으면 아무것도 하지 않는다`() {
         // given
         val cat = givenCat(evaluatedDaysAgo = 0)
 
@@ -96,14 +94,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(0)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
+        assertEquals(0, cat.weight)
+        assertEquals(midnight(0), cat.weightUpdatedAt)
         verify(exactly = 0) { mealRepository.findMealsByUserIdAndPeriod(any(), any(), any()) }
     }
 
     @Test
-    @DisplayName("평가 시각이 미래면 평가하지 않는다")
-    fun evaluatedInFuture() {
+    fun `평가 시각이 미래면 평가하지 않는다`() {
         // given: 시계 역전이나 timezone 변경으로 생길 수 있다.
         //        지난 구간이 음수가 되므로 구간 배열 크기가 음수가 되어 터지지 않아야 한다.
         val cat = givenCat(evaluatedDaysAgo = -3)
@@ -112,16 +109,15 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(0)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(-3))
+        assertEquals(0, cat.weight)
+        assertEquals(midnight(-3), cat.weightUpdatedAt)
         verify(exactly = 0) { mealRepository.findMealsByUserIdAndPeriod(any(), any(), any()) }
     }
 
     // ---------------------------------------------------------------- 한 구간
 
     @Test
-    @DisplayName("한 구간을 과식했으면 체형이 한 단계 올라가고 평가 시각이 구간 종료일로 전진한다")
-    fun singleIntervalSurplus() {
+    fun `한 구간을 과식했으면 체형이 한 단계 올라가고 평가 시각이 구간 종료일로 전진한다`() {
         // given: 4일 전에 평가 → 지난 구간 1개, 평가 창은 [4일 전, 1일 전)
         val cat = givenCat(evaluatedDaysAgo = 4)
         givenMeals(meal(daysAgo = 3, calory = 8000)) // 증가 임계 7200 초과
@@ -130,14 +126,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(1)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(1))
+        assertEquals(1, cat.weight)
+        assertEquals(midnight(1), cat.weightUpdatedAt)
         verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(4), midnight(1)) }
     }
 
     @Test
-    @DisplayName("기록이 없는 구간은 섭취량 0으로 취급되어 체형이 한 단계 내려간다")
-    fun singleIntervalDeficit() {
+    fun `기록이 없는 구간은 섭취량 0으로 취급되어 체형이 한 단계 내려간다`() {
         // given: 3일 전에 평가 → 평가 창은 [3일 전, 오늘)
         val cat = givenCat(evaluatedDaysAgo = 3)
 
@@ -145,13 +140,12 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-1)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
+        assertEquals(-1, cat.weight)
+        assertEquals(midnight(0), cat.weightUpdatedAt)
     }
 
     @Test
-    @DisplayName("분석이 완료되지 않은 식사는 섭취량 집계에서 제외된다")
-    fun excludesIncompleteMeals() {
+    fun `분석이 완료되지 않은 식사는 섭취량 집계에서 제외된다`() {
         // given: COMPLETED 6000만 집계하면 유지 구간(4800~7200)이지만,
         //        FAILED 3000까지 더해지면 9000이 되어 증가 임계를 넘는다.
         val cat = givenCat(evaluatedDaysAgo = 3)
@@ -164,12 +158,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(0)
+        assertEquals(0, cat.weight)
     }
 
     @Test
-    @DisplayName("칼로리가 비어 있는 완료 식사는 0으로 집계된다")
-    fun treatsNullCaloryAsZero() {
+    fun `칼로리가 비어 있는 완료 식사는 0으로 집계된다`() {
         // given: 상태는 COMPLETED지만 calory가 null인 경우 (분석 결과 누락)
         val cat = givenCat(evaluatedDaysAgo = 3)
         givenMeals(meal(daysAgo = 2, calory = null))
@@ -178,12 +171,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-1)
+        assertEquals(-1, cat.weight)
     }
 
     @Test
-    @DisplayName("이미 최대 체형이면 과식해도 더 증가하지 않는다")
-    fun clampedAtMaxWeight() {
+    fun `이미 최대 체형이면 과식해도 더 증가하지 않는다`() {
         // given: 뚱냥이(2) 상태에서 목표의 120%를 초과해 섭취
         val cat = givenCat(evaluatedDaysAgo = 3, weight = 2)
         givenMeals(meal(daysAgo = 2, calory = 20000))
@@ -192,12 +184,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(2)
+        assertEquals(2, cat.weight)
     }
 
     @Test
-    @DisplayName("이미 최소 체형이면 굶어도 더 감소하지 않는다")
-    fun clampedAtMinWeight() {
+    fun `이미 최소 체형이면 굶어도 더 감소하지 않는다`() {
         // given: 홀쭉냥(-2) 상태에서 기록 없음
         val cat = givenCat(evaluatedDaysAgo = 3, weight = -2)
 
@@ -205,14 +196,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-2)
+        assertEquals(-2, cat.weight)
     }
 
     // ---------------------------------------------------------------- 적정 섭취 수렴
 
     @Test
-    @DisplayName("뚱냥이가 적정 섭취하면 보통냥 쪽으로 한 칸만 내려간다")
-    fun convergesOneStepDownward() {
+    fun `뚱냥이가 적정 섭취하면 보통냥 쪽으로 한 칸만 내려간다`() {
         // given: 뚱냥이(2)가 한 구간 동안 목표(6000)만큼 먹었다. 유지가 아니라 한 칸 내려가야 한다.
         val cat = givenCat(evaluatedDaysAgo = 3, weight = 2)
         givenMeals(meal(daysAgo = 2, calory = 6000))
@@ -221,12 +211,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(1)
+        assertEquals(1, cat.weight)
     }
 
     @Test
-    @DisplayName("홀쭉냥이 적정 섭취하면 보통냥 쪽으로 한 칸 올라간다")
-    fun convergesOneStepUpward() {
+    fun `홀쭉냥이 적정 섭취하면 보통냥 쪽으로 한 칸 올라간다`() {
         // given: 홀쭉냥(-2)이 목표만큼 먹었다. 소식이 아니므로 올라간다.
         val cat = givenCat(evaluatedDaysAgo = 3, weight = -2)
         givenMeals(meal(daysAgo = 2, calory = 6000))
@@ -235,12 +224,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-1)
+        assertEquals(-1, cat.weight)
     }
 
     @Test
-    @DisplayName("보통냥이 적정 섭취하면 체형이 유지된다")
-    fun staysAtNormalWeight() {
+    fun `보통냥이 적정 섭취하면 체형이 유지된다`() {
         // given: 수렴의 종착점이므로 더 움직이지 않는다.
         val cat = givenCat(evaluatedDaysAgo = 3, weight = 0)
         givenMeals(meal(daysAgo = 2, calory = 6000))
@@ -249,12 +237,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(0)
+        assertEquals(0, cat.weight)
     }
 
     @Test
-    @DisplayName("뚱냥이가 세 구간 내내 적정 섭취하면 한 칸씩 내려와 보통냥에서 멈춘다")
-    fun convergesOneStepPerIntervalAndStopsAtNormal() {
+    fun `뚱냥이가 세 구간 내내 적정 섭취하면 한 칸씩 내려와 보통냥에서 멈춘다`() {
         // given: 뚱냥이(2)가 9일(3구간) 동안 매 구간 목표(6000)만큼 먹었다.
         //        steps = [-1, -1, 0] → 1, 0, 0 이므로 최종 0.
         //        현재 체형을 루프 밖에서 한 번만 읽으면 [-1, -1, -1]이 되어 -1까지 지나간다.
@@ -269,14 +256,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(0)
+        assertEquals(0, cat.weight)
     }
 
     // ---------------------------------------------------------------- 구간 누적
 
     @Test
-    @DisplayName("6일 굶으면 두 구간이 적용되어 두 단계 내려간다")
-    fun accumulatesTwoIntervals() {
+    fun `6일 굶으면 두 구간이 적용되어 두 단계 내려간다`() {
         // given: 6일 전에 평가 → 지난 구간 2개, 평가 창은 [6일 전, 오늘)
         val cat = givenCat(evaluatedDaysAgo = 6)
 
@@ -284,14 +270,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-2)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
+        assertEquals(-2, cat.weight)
+        assertEquals(midnight(0), cat.weightUpdatedAt)
         verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(6), midnight(0)) }
     }
 
     @Test
-    @DisplayName("9일 굶으면 세 구간이 적용되지만 최소 체형에서 멈춘다")
-    fun accumulationStopsAtMinWeight() {
+    fun `9일 굶으면 세 구간이 적용되지만 최소 체형에서 멈춘다`() {
         // given: 보통냥(0)에서 시작하면 두 구간 만에 바닥에 닿는다.
         val cat = givenCat(evaluatedDaysAgo = 9)
 
@@ -299,12 +284,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-2)
+        assertEquals(-2, cat.weight)
     }
 
     @Test
-    @DisplayName("뚱냥이가 12일 굶으면 네 구간이 모두 적용되어 홀쭉냥까지 내려간다")
-    fun accumulatesFullWeightRange() {
+    fun `뚱냥이가 12일 굶으면 네 구간이 모두 적용되어 홀쭉냥까지 내려간다`() {
         // given: 체형 폭(4단계)을 전부 쓰는 유일한 경우
         val cat = givenCat(evaluatedDaysAgo = 12, weight = 2)
 
@@ -312,13 +296,12 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-2)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
+        assertEquals(-2, cat.weight)
+        assertEquals(midnight(0), cat.weightUpdatedAt)
     }
 
     @Test
-    @DisplayName("섭취량은 구간별로 나눠 평가한다")
-    fun bucketsCaloryPerInterval() {
+    fun `섭취량은 구간별로 나눠 평가한다`() {
         // given: 6일 전 평가(2구간). 두 구간에 4000씩 나눠 먹었다.
         //        구간별로 보면 둘 다 감소 임계(4800) 미만이라 -2가 된다.
         //        버킷팅이 깨져 한 구간에 8000이 몰리면 [+1, -1]로 0이 되므로 확실히 갈린다.
@@ -332,12 +315,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-2)
+        assertEquals(-2, cat.weight)
     }
 
     @Test
-    @DisplayName("체형 한계는 구간마다 적용되어, 초과분이 다음 구간의 굶주림을 상쇄하지 않는다")
-    fun clampsEachIntervalSeparately() {
+    fun `체형 한계는 구간마다 적용되어, 초과분이 다음 구간의 굶주림을 상쇄하지 않는다`() {
         // given: 뚱냥이(2)가 두 구간 과식하고 마지막 구간을 굶었다. steps = [+1, +1, -1]
         //        구간마다 clamp → 2, 2, 1 이므로 최종 1.
         //        합산 후 한 번만 clamp하면 +1이 되어 2로 남는다. 그 차이를 잡는다.
@@ -351,12 +333,11 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(1)
+        assertEquals(1, cat.weight)
     }
 
     @Test
-    @DisplayName("구간 경계 자정에 먹은 식사는 뒤쪽 구간으로 집계된다")
-    fun mealOnIntervalBoundaryBelongsToLaterInterval() {
+    fun `구간 경계 자정에 먹은 식사는 뒤쪽 구간으로 집계된다`() {
         // given: 6일 전 평가(2구간), 경계는 3일 전 자정. 그 순간에 과식 기록이 하나 있다.
         //        뒤쪽 구간이면 steps = [-1, +1] → 2, 1, 2 이므로 최종 2.
         //        앞쪽 구간으로 새면 [+1, -1] → 2(clamp), 1 이므로 1이 되어 갈린다.
@@ -367,14 +348,13 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(2)
+        assertEquals(2, cat.weight)
     }
 
     // ---------------------------------------------------------------- 평가 창 상한
 
     @Test
-    @DisplayName("오래 비운 사용자는 최근 네 구간만 평가하고 그 앞 구간은 버린다")
-    fun limitsEvaluationWindow() {
+    fun `오래 비운 사용자는 최근 네 구간만 평가하고 그 앞 구간은 버린다`() {
         // given: 30일 전 평가 → 지난 구간 10개지만 네 구간(12일)만 본다.
         //        창 밖인 20일 전의 과식 기록은 쿼리 범위에서 걸러져 영향을 주지 않는다.
         val cat = givenCat(evaluatedDaysAgo = 30)
@@ -384,15 +364,14 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-2)
+        assertEquals(-2, cat.weight)
         // 창을 줄여도 평가 경계는 지난 구간 전체의 끝(= 오늘)으로 전진한다.
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(0))
+        assertEquals(midnight(0), cat.weightUpdatedAt)
         verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(12), midnight(0)) }
     }
 
     @Test
-    @DisplayName("구간을 채우지 못한 남은 일수는 다음 평가로 넘어간다")
-    fun carriesOverRemainingDays() {
+    fun `구간을 채우지 못한 남은 일수는 다음 평가로 넘어간다`() {
         // given: 5일 전 평가 → 지난 구간 1개, 남은 2일은 평가하지 않는다.
         //        평가 시각이 오늘이 아니라 2일 전으로 전진해야 경계가 밀리지 않는다.
         val cat = givenCat(evaluatedDaysAgo = 5)
@@ -401,28 +380,24 @@ class CatServiceTest {
         catService.getCat(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-1)
-        assertThat(cat.weightUpdatedAt).isEqualTo(midnight(2))
+        assertEquals(-1, cat.weight)
+        assertEquals(midnight(2), cat.weightUpdatedAt)
         verify { mealRepository.findMealsByUserIdAndPeriod(userId, midnight(5), midnight(2)) }
     }
 
     // ---------------------------------------------------------------- 진입점
 
     @Test
-    @DisplayName("고양이가 없으면 CAT_NOT_FOUND를 던진다")
-    fun catNotFound() {
+    fun `고양이가 없으면 CAT_NOT_FOUND를 던진다`() {
         // given
         every { catRepository.findByUserId(userId) } returns null
 
         // when & then
-        val exception = assertThrows<BusinessException> { catService.getCat(userId) }
-
-        assertThat(exception.errorCode).isEqualTo(CatErrorCode.CAT_NOT_FOUND)
+        assertBusinessException(CatErrorCode.CAT_NOT_FOUND) { catService.getCat(userId) }
     }
 
     @Test
-    @DisplayName("고양이 조회는 갱신된 체형을 응답에 담는다")
-    fun getCatReturnsUpdatedWeight() {
+    fun `고양이 조회는 갱신된 체형을 응답에 담는다`() {
         // given: 3일 굶어 보통냥(0) → 날씬냥(-1)
         givenCat(evaluatedDaysAgo = 3)
 
@@ -430,13 +405,12 @@ class CatServiceTest {
         val response = catService.getCat(userId)
 
         // then
-        assertThat(response.weight).isEqualTo(CatWeight.SLIM)
-        assertThat(response.weightName).isEqualTo(CatWeight.SLIM.description)
+        assertEquals(CatWeight.SLIM, response.weight)
+        assertEquals(CatWeight.SLIM.description, response.weightName)
     }
 
     @Test
-    @DisplayName("애니메이션 조회도 체형을 갱신하고, 갱신된 체형의 메타데이터를 읽는다")
-    fun getCatAnimationsUpdatesWeight() {
+    fun `애니메이션 조회도 체형을 갱신하고, 갱신된 체형의 메타데이터를 읽는다`() {
         // given: 이 경로가 readOnly 트랜잭션이면 갱신이 flush 없이 사라진다.
         val cat = givenCat(evaluatedDaysAgo = 3)
         val animations = CatAnimationResponse(
@@ -450,12 +424,17 @@ class CatServiceTest {
         val response = catService.getCatAnimations(userId)
 
         // then
-        assertThat(cat.weight).isEqualTo(-1)
-        assertThat(response).isEqualTo(animations)
+        assertEquals(-1, cat.weight)
+        assertEquals(animations, response)
         verify { catAnimationLoader.loadCatAnimation(CatWeight.SLIM) }
     }
 
     // ---------------------------------------------------------------- 픽스처
+
+    private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(expected, exception.errorCode)
+    }
 
     /** [daysAgo]일 전 자정. 평가 구간의 경계는 모두 자정이다. */
     private fun midnight(daysAgo: Long): Instant = today.minusDays(daysAgo).atStartOfDay(zone).toInstant()

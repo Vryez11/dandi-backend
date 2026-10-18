@@ -1,6 +1,7 @@
 package com.dandi.nyummy.meal.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.meal.config.MealProperties
@@ -36,9 +37,9 @@ class MealAttemptServiceTest {
         every { mealRepository.countMealsByUserIdAndPeriod(userId, todayStart, tomorrowStart) } returns count
     }
 
-    private fun assertStaleImage(block: () -> Unit) {
+    private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
-        assertEquals(MealErrorCode.STALE_IMAGE, exception.errorCode)
+        assertEquals(expected, exception.errorCode)
     }
 
     // countDailyAttempts
@@ -63,8 +64,7 @@ class MealAttemptServiceTest {
     fun `오늘 시도 횟수가 상한에 닿으면 거부한다`() {
         givenTodayAttempts(5)
 
-        val exception = assertFailsWith<BusinessException> { mealAttemptService.validateDailyCount(userId) }
-        assertEquals(MealErrorCode.DAILY_COUNT_EXCEEDED, exception.errorCode)
+        assertBusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED) { mealAttemptService.validateDailyCount(userId) }
     }
 
     // validateCapturedAt
@@ -82,13 +82,15 @@ class MealAttemptServiceTest {
         // 10/9 23:59 KST — 지금(00:30)과 31분 차이지만 날짜가 다르다
         val capturedAt = Instant.parse("2026-10-09T14:59:00Z")
 
-        assertStaleImage { mealAttemptService.validateCapturedAt(userId, UploadedImageResult("key", capturedAt)) }
+        assertBusinessException(MealErrorCode.STALE_IMAGE) {
+            mealAttemptService.validateCapturedAt(userId, UploadedImageResult("key", capturedAt))
+        }
     }
 
     @Test
     fun `촬영 시각이 내일이면 거부한다`() {
         // 10/11 00:00 KST (기기 시계가 앞선 경우)
-        assertStaleImage {
+        assertBusinessException(MealErrorCode.STALE_IMAGE) {
             mealAttemptService.validateCapturedAt(userId, UploadedImageResult("key", tomorrowStart))
         }
     }
