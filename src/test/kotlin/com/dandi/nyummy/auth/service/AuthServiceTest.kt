@@ -9,6 +9,8 @@ import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.cat.repository.CatRepository
+import com.dandi.nyummy.coin.entity.Coin
+import com.dandi.nyummy.coin.repository.CoinRepository
 import com.dandi.nyummy.config.AppLinkProperties
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
@@ -67,6 +69,7 @@ class AuthServiceTest {
     private val tokenInvalidationRepository = mockk<TokenInvalidationRepository>(relaxUnitFun = true)
     private val deviceTokenRepository = mockk<DeviceTokenRepository>()
     private val catRepository = mockk<CatRepository>()
+    private val coinRepository = mockk<CoinRepository>()
 
     private val authService = AuthService(
         userRepository = userRepository,
@@ -82,6 +85,7 @@ class AuthServiceTest {
         tokenInvalidationRepository = tokenInvalidationRepository,
         deviceTokenRepository = deviceTokenRepository,
         catRepository = catRepository,
+        coinRepository = coinRepository,
     )
 
     private fun createSignUpRequest() = SignUpRequest(
@@ -178,10 +182,11 @@ class AuthServiceTest {
             authService.signUp(createSignUpRequest())
         }
         verify(exactly = 0) { profileRepository.save(any()) }
+        verify(exactly = 0) { coinRepository.save(any()) }
     }
 
     @Test
-    fun `가입에 성공하면 사용자·프로필·리프레시 토큰을 저장하고 토큰 쌍을 반환한다`() {
+    fun `가입에 성공하면 사용자·프로필·코인·리프레시 토큰을 저장하고 토큰 쌍을 반환한다`() {
         stubVerifiedToken(AuthPurpose.SIGNUP)
         every { userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email) } returns false
         every { passwordService.encodePassword("password1") } returns "encoded:password1"
@@ -189,6 +194,8 @@ class AuthServiceTest {
         every { userRepository.save(capture(savedUser)) } answers { firstArg() }
         val savedProfile = slot<Profile>()
         every { profileRepository.save(capture(savedProfile)) } answers { firstArg() }
+        val savedCoin = slot<Coin>()
+        every { coinRepository.save(capture(savedCoin)) } answers { firstArg() }
         every { jwtService.createTokenPair(any()) } returns ("access-token" to "refresh-token")
 
         val response = authService.signUp(createSignUpRequest())
@@ -206,6 +213,9 @@ class AuthServiceTest {
         assertEquals(Gender.FEMALE, savedProfile.captured.gender)
         assertEquals(165, savedProfile.captured.height)
         assertEquals(55, savedProfile.captured.weight)
+
+        assertEquals(savedUser.captured.id, savedCoin.captured.userId)
+        assertEquals(0, savedCoin.captured.balance)
 
         verify(exactly = 1) { refreshTokenService.startSession(savedUser.captured.id, "refresh-token") }
     }
