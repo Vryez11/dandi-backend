@@ -178,6 +178,8 @@ class MealE2eTest {
         } finally {
             // 중간에 실패하면 이미 삭제된 상태일 수 있다(그때는 404). 정리는 결과를 검증하지 않는다.
             Given { spec(RequestSpecs.createAuthorizedSpec()) } When { delete("/api/v1/meals/$mealId") }
+            // 기록 보상으로 생긴 상자 우편은 아직 지우지 못한다. 받기·삭제 API가 고정 응답이라 정리할 길이 없고,
+            // 만료(7일)되면 목록에서 빠진다. 받기를 구현하면 여기서 받고 지운다.
         }
     }
 
@@ -226,18 +228,24 @@ class MealE2eTest {
     }
 
     // 분석은 생성 요청 안에서 동기로 끝나므로 응답의 상태가 최종 결과다.
-    private fun createMeal(imageKey: String): MealStatusResponse = Given {
+    // 기록 보상으로 보낸 상자의 등급도 함께 온다. 상자에 든 코인 수는 응답에 없다.
+    private fun createMeal(imageKey: String): CreateMealResponse = Given {
         spec(RequestSpecs.createAuthorizedSpec())
         body(mapOf("imageKey" to imageKey))
     } When {
         post("/api/v1/meals")
     } Then {
         statusCode(200)
-        body("keySet()", hasItems("id", "status"))
+        body("keySet()", hasItems("id", "status", "rewardBoxCategory"))
         body("status", oneOf("COMPLETED", "FAILED"))
+        body("rewardBoxCategory", oneOf("BRONZE", "SILVER", "GOLD"))
     } Extract {
         val response = jsonPath()
-        MealStatusResponse(id = response.getLong("id"), status = response.getString("status"))
+        CreateMealResponse(
+            id = response.getLong("id"),
+            status = response.getString("status"),
+            rewardBoxCategory = response.getString("rewardBoxCategory"),
+        )
     }
 
     private fun getTodayMealSummary(): TodayMealSummary {
@@ -269,8 +277,8 @@ class MealE2eTest {
 
     private data class TodayMealSummary(val recordedCount: Int, val attemptCount: Int)
 
-    // 생성·재시도 API의 응답(id, status). 서버 DTO 이름과 맞춘다. 상태 enum(MealStatus)과 다른 것이다.
-    private data class MealStatusResponse(val id: Long, val status: String)
+    // 생성 API의 응답(id, status, rewardBoxCategory). 서버 DTO 이름과 맞춘다.
+    private data class CreateMealResponse(val id: Long, val status: String, val rewardBoxCategory: String)
 
     companion object {
         // 첫 분석을 포함해 최대 3번 시도한다. 그래도 실패하면 일시적 흔들림이 아니라 실제 문제로 본다.
