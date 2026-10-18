@@ -6,7 +6,9 @@ import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
+import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.config.MealProperties
+import com.dandi.nyummy.meal.config.RewardBoxProperties
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
@@ -20,6 +22,7 @@ import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.Test
@@ -34,6 +37,11 @@ class MealServiceTest {
     private val userId = 1L
     private val imageKey = "meals/$userId/2026/10/10/uuid.jpg"
     private val request = CreateMealRequest(imageKey = imageKey)
+    private val rewardBoxes = mapOf(
+        RewardBoxCategory.BRONZE to RewardBoxProperties(rate = 40, minCoinQuantity = 100, maxCoinQuantity = 199),
+        RewardBoxCategory.SILVER to RewardBoxProperties(rate = 40, minCoinQuantity = 200, maxCoinQuantity = 349),
+        RewardBoxCategory.GOLD to RewardBoxProperties(rate = 20, minCoinQuantity = 350, maxCoinQuantity = 500),
+    )
 
     private val analysisService = mockk<AnalysisService>()
     private val mealRepository = mockk<MealRepository>()
@@ -54,6 +62,8 @@ class MealServiceTest {
             analysisFeedbackRate = 100,
             intakeTolerance = 0.2,
             minPositiveMacroCount = 2,
+            rewardBoxes = rewardBoxes,
+            rewardMailTimeToLive = Duration.ofDays(7),
         ),
         analysisFeedbackService = analysisFeedbackService,
     )
