@@ -54,9 +54,6 @@ class Profile(
     @Column(name = "dinner_hour")
     var dinnerHour: Int? = null
 
-    @Column(name = "coin", nullable = false)
-    val coin: Int = 0
-
     @Column(name = "is_service_push_enabled", nullable = false)
     var isServicePushEnabled: Boolean = true
 
@@ -100,7 +97,7 @@ class Profile(
      *
      * 생년 · 성별 · 키 · 체중은 각각으로는 개인을 특정하지 못해도 조합하면 재식별 단서가 되므로 통계
      * 보존 대상에서 뺀다. 닉네임도 특정 가능한 정보라 함께 지운다.
-     * 끼니 시각 · 알림 수신 설정 · 코인은 식별력이 없어 남긴다.
+     * 끼니 시각 · 알림 수신 설정은 식별력이 없어 남긴다.
      */
     fun anonymize() {
         nickname = null
