@@ -16,6 +16,8 @@ import com.dandi.nyummy.auth.enum.AuthPurpose
 import com.dandi.nyummy.auth.repository.RefreshTokenRepository
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.cat.repository.CatRepository
+import com.dandi.nyummy.coin.entity.Coin
+import com.dandi.nyummy.coin.repository.CoinRepository
 import com.dandi.nyummy.config.AppLinkProperties
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
@@ -52,6 +54,7 @@ class AuthService(
     private val tokenInvalidationRepository: TokenInvalidationRepository,
     private val deviceTokenRepository: DeviceTokenRepository,
     private val catRepository: CatRepository,
+    private val coinRepository: CoinRepository,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AuthService::class.java)
@@ -165,6 +168,8 @@ class AuthService(
                 userId = userId,
             ),
         )
+
+        coinRepository.save(Coin(userId = userId))
 
         val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 
