@@ -10,6 +10,7 @@ import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.config.RewardBoxProperties
 import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.RewardBoxResult
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
@@ -25,6 +26,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -49,6 +51,8 @@ class MealServiceTest {
     private val mealAttemptService = mockk<MealAttemptService>()
     private val profileRepository = mockk<ProfileRepository>()
     private val analysisFeedbackService = mockk<AnalysisFeedbackService>()
+    private val mealTransactionService = mockk<MealTransactionService>()
+    private val random = mockk<Random>()
 
     private val mealService = MealService(
         analysisService = analysisService,
@@ -66,6 +70,8 @@ class MealServiceTest {
             rewardMailTimeToLive = Duration.ofDays(7),
         ),
         analysisFeedbackService = analysisFeedbackService,
+        mealTransactionService = mealTransactionService,
+        random = random,
     )
 
     private val savedMeal = slot<Meal>()
@@ -74,7 +80,10 @@ class MealServiceTest {
         every { mealRepository.existsByImageKey(imageKey) } returns false
         every { mealAttemptService.validateDailyCount(userId) } just Runs
         every { mealAttemptService.validateCapturedAt(userId, any()) } just Runs
-        every { mealRepository.save(capture(savedMeal)) } answers { firstArg() }
+        // 굴린 값 85는 골드(80~99), 골드 범위(350~500)에서 412코인을 뽑는다.
+        every { random.nextInt(100) } returns 85
+        every { random.nextInt(350, 501) } returns 412
+        every { mealTransactionService.createMeal(capture(savedMeal), any(), any()) } answers { firstArg() }
         every { analysisService.analyzeNutrition(any()) } just Runs
     }
 
@@ -107,9 +116,25 @@ class MealServiceTest {
         verifyOrder {
             mealAttemptService.validateDailyCount(userId)
             imageService.confirmUpload(userId, ImagePurpose.MEAL, imageKey, any())
-            mealRepository.save(any())
+            mealTransactionService.createMeal(any(), any(), any())
             analysisService.analyzeNutrition(savedMeal.captured)
         }
+    }
+
+    @Test
+    fun `식사를 기록하면 뽑은 상자와 만료 시각으로 식사와 우편을 함께 저장하고 응답에 등급을 담는다`() {
+        givenConfirmUpload(now)
+
+        val result = mealService.createMeal(userId, request)
+
+        verify(exactly = 1) {
+            mealTransactionService.createMeal(
+                savedMeal.captured,
+                RewardBoxResult(RewardBoxCategory.GOLD, 412),
+                now.plus(Duration.ofDays(7)),
+            )
+        }
+        assertEquals(RewardBoxCategory.GOLD, result.rewardBoxCategory)
     }
 
     @Test
@@ -137,6 +162,7 @@ class MealServiceTest {
         assertBusinessException(MealErrorCode.DUPLICATE_IMAGE_KEY) { mealService.createMeal(userId, request) }
         verify(exactly = 0) { mealAttemptService.validateDailyCount(any()) }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
+        verify(exactly = 0) { mealTransactionService.createMeal(any(), any(), any()) }
     }
 
     @Test
@@ -147,7 +173,7 @@ class MealServiceTest {
 
         assertBusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED) { mealService.createMeal(userId, request) }
         verify(exactly = 0) { imageService.confirmUpload(any(), any(), any(), any()) }
-        verify(exactly = 0) { mealRepository.save(any()) }
+        verify(exactly = 0) { mealTransactionService.createMeal(any(), any(), any()) }
     }
 
     @Test
@@ -157,7 +183,7 @@ class MealServiceTest {
             BusinessException(MealErrorCode.STALE_IMAGE)
 
         assertBusinessException(MealErrorCode.STALE_IMAGE) { mealService.createMeal(userId, request) }
-        verify(exactly = 0) { mealRepository.save(any()) }
+        verify(exactly = 0) { mealTransactionService.createMeal(any(), any(), any()) }
         verify(exactly = 0) { analysisService.analyzeNutrition(any()) }
     }
 }

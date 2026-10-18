@@ -1,0 +1,109 @@
+package com.dandi.nyummy.meal.service
+
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.ErrorCode
+import com.dandi.nyummy.exception.errorcode.MealErrorCode
+import com.dandi.nyummy.exception.errorcode.UserErrorCode
+import com.dandi.nyummy.mail.entity.Mail
+import com.dandi.nyummy.mail.enum.RewardBoxCategory
+import com.dandi.nyummy.mail.service.MailService
+import com.dandi.nyummy.meal.dto.RewardBoxResult
+import com.dandi.nyummy.meal.entity.Meal
+import com.dandi.nyummy.meal.enum.MealStatus
+import com.dandi.nyummy.meal.repository.MealRepository
+import com.dandi.nyummy.user.entity.Profile
+import com.dandi.nyummy.user.repository.ProfileRepository
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
+import io.mockk.verifyOrder
+import org.springframework.dao.DataAccessResourceFailureException
+import java.time.Duration
+import java.time.Instant
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+class MealTransactionServiceTest {
+
+    private val userId = 1L
+    private val now = Instant.parse("2026-10-19T03:00:00Z")
+    private val rewardMailExpiresAt = now.plus(Duration.ofDays(7))
+    private val rewardBox = RewardBoxResult(RewardBoxCategory.GOLD, 412)
+    private val meal =
+        Meal(status = MealStatus.WAITING, imageKey = "meals/$userId/uuid.jpg", mealAt = now, userId = userId)
+
+    private val profileRepository = mockk<ProfileRepository>()
+    private val mealAttemptService = mockk<MealAttemptService>()
+    private val mealRepository = mockk<MealRepository>()
+    private val mailService = mockk<MailService>()
+
+    private val mealTransactionService = MealTransactionService(
+        profileRepository = profileRepository,
+        mealAttemptService = mealAttemptService,
+        mealRepository = mealRepository,
+        mailService = mailService,
+    )
+
+    init {
+        every { profileRepository.findProfileWithLockByUserId(userId) } returns Profile(userId = userId)
+        every { mealAttemptService.validateDailyCount(userId) } just Runs
+        every { mealRepository.save(meal) } returns meal
+        every { mailService.createRewardBoxMail(any(), any(), any(), any(), any()) } returns mockk<Mail>()
+    }
+
+    private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(expected, exception.errorCode)
+    }
+
+    // createMeal
+
+    @Test
+    fun `프로필을 잠근 뒤 횟수를 세고 식사와 상자 우편을 저장한다`() {
+        mealTransactionService.createMeal(meal, rewardBox, rewardMailExpiresAt)
+
+        verifyOrder {
+            profileRepository.findProfileWithLockByUserId(userId)
+            mealAttemptService.validateDailyCount(userId)
+            mealRepository.save(meal)
+            mailService.createRewardBoxMail(userId, RewardBoxCategory.GOLD, 412, "식사 기록 보상", rewardMailExpiresAt)
+        }
+    }
+
+    @Test
+    fun `다시 센 횟수가 상한이면 식사와 우편을 저장하지 않는다`() {
+        every { mealAttemptService.validateDailyCount(userId) } throws
+            BusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED)
+
+        assertBusinessException(MealErrorCode.DAILY_COUNT_EXCEEDED) {
+            mealTransactionService.createMeal(meal, rewardBox, rewardMailExpiresAt)
+        }
+        verify(exactly = 0) { mealRepository.save(any()) }
+        verify(exactly = 0) { mailService.createRewardBoxMail(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `프로필이 없으면 PROFILE_NOT_FOUND이고 횟수를 세거나 저장하지 않는다`() {
+        every { profileRepository.findProfileWithLockByUserId(userId) } returns null
+
+        assertBusinessException(UserErrorCode.PROFILE_NOT_FOUND) {
+            mealTransactionService.createMeal(meal, rewardBox, rewardMailExpiresAt)
+        }
+        verify(exactly = 0) { mealAttemptService.validateDailyCount(any()) }
+        verify(exactly = 0) { mealRepository.save(any()) }
+    }
+
+    @Test
+    fun `우편 저장이 실패하면 예외를 그대로 던진다`() {
+        // 예외가 밖으로 나가야 @Transactional이 먼저 저장한 식사까지 롤백한다.
+        every { mailService.createRewardBoxMail(any(), any(), any(), any(), any()) } throws
+            DataAccessResourceFailureException("mail insert failed")
+
+        assertFailsWith<DataAccessResourceFailureException> {
+            mealTransactionService.createMeal(meal, rewardBox, rewardMailExpiresAt)
+        }
+    }
+}

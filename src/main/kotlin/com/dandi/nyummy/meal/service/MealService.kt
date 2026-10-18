@@ -8,12 +8,13 @@ import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.meal.calculator.calculateDailyNutritionEvaluation
 import com.dandi.nyummy.meal.calculator.calculateMonthlyCalendarRange
 import com.dandi.nyummy.meal.calculator.calculateRecommendedDailyIntake
+import com.dandi.nyummy.meal.calculator.pickRewardBox
 import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.CreateMealResponse
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.DailyNutritionResponse
 import com.dandi.nyummy.meal.dto.MealResponse
-import com.dandi.nyummy.meal.dto.MealStatusResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.Nutrition
@@ -21,10 +22,10 @@ import com.dandi.nyummy.meal.dto.StreakResponse
 import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
+import com.dandi.nyummy.meal.mapper.toCreateMealResponse
 import com.dandi.nyummy.meal.mapper.toDailyMealResponse
 import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toMealResponse
-import com.dandi.nyummy.meal.mapper.toMealStatusResponse
 import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
 import com.dandi.nyummy.user.repository.ProfileRepository
@@ -36,6 +37,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import kotlin.random.Random
 
 @Service
 class MealService(
@@ -47,6 +49,8 @@ class MealService(
     private val profileRepository: ProfileRepository,
     private val mealProperties: MealProperties,
     private val analysisFeedbackService: AnalysisFeedbackService,
+    private val mealTransactionService: MealTransactionService,
+    private val random: Random,
 ) {
 
     companion object {
@@ -72,9 +76,12 @@ class MealService(
      *
      * EXIF에서 온 값은 촬영 기기의 시계에 의존하므로 서버 시각과 최대 하루만큼 어긋날 수 있다.
      *
+     * 기록 보상으로 보상 상자를 하나 뽑아 우편함에 보낸다. 식사와 우편은 [MealTransactionService]가 한 트랜잭션으로
+     * 저장하므로, 우편 저장이 실패하면 식사 기록도 실패한다. 응답에는 뽑은 상자의 등급만 담는다(코인 수는 상자를 열 때 보여준다).
+     *
      * @param userId 식사를 등록하는 사용자 ID
      * @param request 식사 생성 정보를 담은 [CreateMealRequest] (이미지 키)
-     * @return 생성된 [Meal]의 분석 상태를 담은 [MealStatusResponse]
+     * @return 생성된 [Meal]의 분석 상태와 보상 상자 등급을 담은 [CreateMealResponse]
      * @throws BusinessException [MealErrorCode.DUPLICATE_IMAGE_KEY] 이미 식사 기록에 사용된 imageKey인 경우
      * @throws BusinessException [S3ErrorCode.INVALID_KEY] request.imageKey가 요청자 소유 경로(`meals/{userId}/`)가 아닌 경우
      * @throws BusinessException [S3ErrorCode.OBJECT_NOT_FOUND] request.imageKey에 해당하는 객체가 S3에 없는 경우
@@ -82,7 +89,7 @@ class MealService(
      * @throws BusinessException [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE] 실제 콘텐츠에서 감지된 MIME 타입이 허용되지 않거나, imageKey의 확장자와 다른 경우
      * @throws BusinessException [MealErrorCode.STALE_IMAGE] 오늘 촬영한 사진이 아닌 경우
      */
-    fun createMeal(userId: Long, request: CreateMealRequest): MealStatusResponse {
+    fun createMeal(userId: Long, request: CreateMealRequest): CreateMealResponse {
         if (mealRepository.existsByImageKey(request.imageKey)) {
             throw BusinessException(MealErrorCode.DUPLICATE_IMAGE_KEY)
         }
@@ -92,6 +99,9 @@ class MealService(
         //
         // 이미지 확정(confirmUpload) 앞에서 검사한다. 뒤에서 하면 거부해도 객체가 이미
         // status=committed라 라이프사이클 정리 대상에서 빠져 고아 객체로 남는다.
+        //
+        // 여기는 대부분의 초과 요청을 이미지 확정 전에 거르는 빠른 거절이다. 같은 사용자의 요청이 동시에
+        // 이 검사를 함께 통과하는 경우까지 막는 정확한 제한은 [MealTransactionService.createMeal]이 맡는다.
         mealAttemptService.validateDailyCount(userId)
 
         // 오늘 촬영 검증은 콜백으로 넘겨 확정(status=committed) 전에 실행되게 한다.
@@ -109,12 +119,14 @@ class MealService(
         }
 
         val meal = request.toEntity(userId, mealAt, uploadedImage.imageKey)
+        val rewardBox = pickRewardBox(mealProperties.rewardBoxes, random)
+        val rewardMailExpiresAt = Instant.now(clock).plus(mealProperties.rewardMailTimeToLive)
 
-        mealRepository.save(meal)
+        mealTransactionService.createMeal(meal, rewardBox, rewardMailExpiresAt)
 
         analysisService.analyzeNutrition(meal)
 
-        return meal.toMealStatusResponse()
+        return meal.toCreateMealResponse(rewardBox.category)
     }
 
     /**
