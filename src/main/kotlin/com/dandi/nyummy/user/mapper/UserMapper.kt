@@ -5,7 +5,7 @@ import com.dandi.nyummy.user.dto.UserResponse
 import com.dandi.nyummy.user.entity.Profile
 import com.dandi.nyummy.user.entity.User
 
-fun User.toUserResponse(profile: Profile) = UserResponse(
+fun User.toUserResponse(profile: Profile, coin: Int) = UserResponse(
     id = this.id,
     email = this.email,
     nickname = profile.nickname,
@@ -13,7 +13,7 @@ fun User.toUserResponse(profile: Profile) = UserResponse(
     gender = profile.gender,
     height = profile.height,
     weight = profile.weight,
-    coin = profile.coin,
+    coin = coin,
     breakfastHour = profile.breakfastHour,
     lunchHour = profile.lunchHour,
     dinnerHour = profile.dinnerHour,

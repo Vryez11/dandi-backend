@@ -2,6 +2,7 @@ package com.dandi.nyummy.user.service
 
 import com.dandi.nyummy.auth.repository.TokenInvalidationRepository
 import com.dandi.nyummy.auth.service.RefreshTokenService
+import com.dandi.nyummy.coin.service.CoinService
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.image.service.ImageService
@@ -36,6 +37,7 @@ class UserService(
     private val clock: Clock,
     private val userWithdrawalTransactionService: UserWithdrawalTransactionService,
     private val imageService: ImageService,
+    private val coinService: CoinService,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(UserService::class.java)
@@ -49,7 +51,9 @@ class UserService(
         val profile = profileRepository.findProfileByUserId(user.id)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
 
-        return user.toUserResponse(profile)
+        val coin = coinService.getBalance(user.id)
+
+        return user.toUserResponse(profile, coin)
     }
 
     /**

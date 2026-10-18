@@ -5,4 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface CoinRepository : JpaRepository<Coin, Long>
+interface CoinRepository : JpaRepository<Coin, Long> {
+
+    fun findByUserId(userId: Long): Coin?
+}
