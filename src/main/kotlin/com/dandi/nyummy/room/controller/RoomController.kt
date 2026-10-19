@@ -21,13 +21,14 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
-@Tag(name = "Room", description = "마이룸 조회 · 보유 아이템 조회 · 장착 저장 · 보유 아이템 삭제 API")
+@Tag(name = "Room", description = "마이룸 조회 · 보유 아이템 조회 · 장착 저장 · 보유 아이템 삭제 · 복구 API")
 @RestController
 @RequestMapping("/api/v1/rooms")
 class RoomController(private val roomService: RoomService) {
@@ -102,6 +103,7 @@ class RoomController(private val roomService: RoomService) {
     @Operation(
         summary = "보유 아이템 삭제",
         description = "보유 아이템 하나를 삭제한다. 장착 중인 아이템이면 장착을 해제하고 지우므로 마이룸에서도 빠진다. " +
+            "실제로 지우지 않고 삭제 표시만 하므로 보유 아이템 복구 API로 되돌릴 수 있다. " +
             "이미 삭제한 보유 아이템에 다시 요청해도 성공한다.",
     )
     @ApiResponse(responseCode = "204", description = "삭제 성공")
@@ -114,6 +116,24 @@ class RoomController(private val roomService: RoomService) {
         ) @PathVariable("ownedRoomItemId") ownedRoomItemId: Long,
     ): ResponseEntity<Void> {
         roomService.deleteOwnedRoomItem(user.userId, ownedRoomItemId)
+        return ResponseEntity.noContent().build()
+    }
+
+    @Operation(
+        summary = "보유 아이템 복구",
+        description = "삭제한 보유 아이템을 되돌린다. 복구 기한은 없다. 삭제할 때 장착을 해제했으므로 장착하지 않은 채로 돌아오며, " +
+            "마이룸에 다시 놓으려면 꾸민 방 저장 API로 저장한다. 삭제되지 않은 보유 아이템에 요청해도 그대로 두고 성공한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "복구 성공")
+    @ApiErrorCodes(room = [RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
+    @PostMapping("/owned-items/{ownedRoomItemId}/restore")
+    fun restoreOwnedRoomItem(
+        @CurrentUser user: AuthUser,
+        @Parameter(
+            description = "복구할 보유 아이템 ID (삭제한 보유 아이템의 ownedRoomItemId)",
+        ) @PathVariable("ownedRoomItemId") ownedRoomItemId: Long,
+    ): ResponseEntity<Void> {
+        roomService.restoreOwnedRoomItem(user.userId, ownedRoomItemId)
         return ResponseEntity.noContent().build()
     }
 }

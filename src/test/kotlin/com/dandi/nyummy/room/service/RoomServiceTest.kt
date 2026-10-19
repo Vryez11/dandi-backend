@@ -356,4 +356,47 @@ class RoomServiceTest {
         assertTrue(item.isEquipped)
         assertNull(item.deletedAt)
     }
+
+    // restoreOwnedRoomItem
+
+    @Test
+    fun `삭제한 보유 아이템을 복구하면 장착하지 않은 채로 돌아온다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = false).apply { deletedAt = now.minusSeconds(600) }
+        every { ownedRoomItemRepository.findByIdOrNull(5L) } returns item
+
+        roomService.restoreOwnedRoomItem(userId, 5L)
+
+        assertNull(item.deletedAt)
+        assertFalse(item.isEquipped)
+    }
+
+    @Test
+    fun `삭제되지 않은 보유 아이템을 복구해도 성공하고 장착 상태는 그대로다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = true)
+        every { ownedRoomItemRepository.findByIdOrNull(5L) } returns item
+
+        roomService.restoreOwnedRoomItem(userId, 5L)
+
+        assertNull(item.deletedAt)
+        assertTrue(item.isEquipped)
+    }
+
+    @Test
+    fun `없는 보유 아이템은 복구할 수 없다`() {
+        every { ownedRoomItemRepository.findByIdOrNull(99L) } returns null
+
+        assertBusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND) {
+            roomService.restoreOwnedRoomItem(userId, 99L)
+        }
+    }
+
+    @Test
+    fun `다른 사용자의 삭제한 보유 아이템은 복구할 수 없다`() {
+        val deletedAt = now.minusSeconds(600)
+        val item = ownedRoomItem(id = 8L, isEquipped = false, ownerId = 2L).apply { this.deletedAt = deletedAt }
+        every { ownedRoomItemRepository.findByIdOrNull(8L) } returns item
+
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { roomService.restoreOwnedRoomItem(userId, 8L) }
+        assertEquals(deletedAt, item.deletedAt)
+    }
 }

@@ -23,3 +23,7 @@ Content-Type: application/json
 @ownedRoomItemId = 110
 DELETE {{url}}/api/v1/rooms/owned-items/{{ownedRoomItemId}}
 Authorization: Bearer {{accessToken}}
+
+### 아이템 복구 API
+POST {{url}}/api/v1/rooms/owned-items/{{ownedRoomItemId}}/restore
+Authorization: Bearer {{accessToken}}

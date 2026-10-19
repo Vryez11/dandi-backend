@@ -183,4 +183,24 @@ class RoomService(
         ownedRoomItem.unequip()
         ownedRoomItem.updateDeletedAt(Instant.now(clock))
     }
+
+    /**
+     * 소프트 삭제한 보유 아이템을 되돌린다. 삭제 직후 앱의 되돌리기에서 호출하며, 복구 기한은 두지 않는다.
+     *
+     * 삭제할 때 장착을 해제했으므로 장착하지 않은 채로 보유 목록에 돌아온다.
+     *
+     * 삭제되지 않은 보유 아이템도 그대로 성공한다(멱등). 되돌리기를 여러 번 눌러도 결과가 같게 하기 위함이다.
+     * deletedAt이 이미 null이면 같은 값을 넣어도 변경 감지에 걸리지 않아 UPDATE가 나가지 않으므로 따로 분기하지 않는다.
+     *
+     * @throws BusinessException [RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND] 보유 아이템이 없는 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 보유 아이템인 경우
+     */
+    @Transactional
+    fun restoreOwnedRoomItem(userId: Long, ownedRoomItemId: Long) {
+        val ownedRoomItem = ownedRoomItemRepository.findByIdOrNull(ownedRoomItemId)
+            ?: throw BusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND)
+
+        ownedRoomItem.validateOwnership(userId)
+        ownedRoomItem.updateDeletedAt(null)
+    }
 }
