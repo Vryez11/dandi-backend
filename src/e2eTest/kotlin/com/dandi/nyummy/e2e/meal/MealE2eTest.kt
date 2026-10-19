@@ -9,6 +9,8 @@ import io.restassured.module.kotlin.extensions.Then
 import io.restassured.module.kotlin.extensions.When
 import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.hasItems
+import org.hamcrest.Matchers.notNullValue
+import org.hamcrest.Matchers.nullValue
 import org.hamcrest.Matchers.oneOf
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
@@ -77,7 +79,7 @@ class MealE2eTest {
                 contentType(startsWith("image/jpeg"))
             }
 
-            // 3. 오늘의 일일 목록·월간 캘린더·홈에 반영
+            // 3. 오늘의 일일 목록·월간 캘린더·홈·우편함에 반영
             Given {
                 spec(RequestSpecs.createAuthorizedSpec())
                 queryParams(mapOf("year" to today.year, "month" to today.monthValue, "day" to today.dayOfMonth))
@@ -109,6 +111,22 @@ class MealE2eTest {
                     "days.find { it.date == '$today' }.dailyNutritionEvaluation",
                     oneOf("POSITIVE", "NEGATIVE", "UNRECORDED"),
                 )
+            }
+
+            // 기록 보상 상자는 식사와 같은 트랜잭션에서 만들어지므로 가장 최근 우편이다.
+            // 생성 응답에 우편 id가 없어 등급 번호로 같은 상자인지 확인한다.
+            Given {
+                spec(RequestSpecs.createAuthorizedSpec())
+                queryParam("size", 1)
+            } When {
+                get("/api/v1/mails")
+            } Then {
+                statusCode(200)
+                body("mails[0].category", equalTo("REWARD_BOX"))
+                body("mails[0].rewardBoxId", equalTo(REWARD_BOX_IDS.getValue(created.rewardBoxCategory)))
+                body("mails[0].itemId", nullValue())
+                body("mails[0].isClaimed", equalTo(false))
+                body("mails[0].expiresAt", notNullValue())
             }
 
             val summaryAfterCreate = getTodayMealSummary()
@@ -283,6 +301,9 @@ class MealE2eTest {
     companion object {
         // 첫 분석을 포함해 최대 3번 시도한다. 그래도 실패하면 일시적 흔들림이 아니라 실제 문제로 본다.
         private const val MAX_ANALYSIS_RETRY_COUNT = 2
+
+        // 앱이 상자 이미지 경로를 조립하는 번호. 서버의 RewardBoxCategory.id와 같은 약속이다.
+        private val REWARD_BOX_IDS = mapOf("BRONZE" to 1, "SILVER" to 2, "GOLD" to 3)
 
         // 서버는 식사 날짜를 한국 시간 기준으로 나눈다(MealAttemptService.MEAL_ZONE).
         private val MEAL_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
