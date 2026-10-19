@@ -1,5 +1,8 @@
 package com.dandi.nyummy.room.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.exception.errorcode.RoomErrorCode
 import com.dandi.nyummy.room.dto.OwnedRoomItemsResponse
 import com.dandi.nyummy.room.dto.RoomResponse
 import com.dandi.nyummy.room.dto.UpdateEquippedRoomItemsRequest
@@ -76,9 +79,17 @@ class RoomController(private val roomService: RoomService) {
         description = "장착한 아이템 전체를 요청 목록으로 교체한다. " +
             "목록에 있는 보유 아이템은 장착하고 x · y · zIndex · scale을 갱신한다. " +
             "목록에 없는 보유 아이템은 장착을 해제하며, 마지막 좌표는 유지한다. " +
-            "모두 해제하려면 빈 목록을 보낸다. scale은 원본 대비 배율로 0보다 커야 한다(1.0 = 원본).",
+            "모두 해제하려면 빈 목록을 보낸다. x · y는 0 이상 100 이하이고, " +
+            "scale은 원본 대비 배율로 0보다 커야 한다(1.0 = 원본). " +
+            "같은 ownedRoomItemId를 두 번 보내면 400(api.room.duplicateOwnedRoomItem)이다. " +
+            "없거나 삭제된 보유 아이템이 있으면 404, 다른 사용자의 보유 아이템만 섞여 있으면 403이며, 둘 다 있으면 404다. " +
+            "거부되면 아무것도 바뀌지 않는다.",
     )
     @ApiResponse(responseCode = "204", description = "저장 성공")
+    @ApiErrorCodes(
+        room = [RoomErrorCode.DUPLICATE_OWNED_ROOM_ITEM, RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND],
+        auth = [AuthErrorCode.FORBIDDEN],
+    )
     @PutMapping("/equipped-items")
     fun updateEquippedRoomItems(
         @CurrentUser user: AuthUser,

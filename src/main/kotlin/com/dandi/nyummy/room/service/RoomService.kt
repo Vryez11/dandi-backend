@@ -1,7 +1,9 @@
 package com.dandi.nyummy.room.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.CommonErrorCode
+import com.dandi.nyummy.exception.errorcode.RoomErrorCode
 import com.dandi.nyummy.room.config.RoomProperties
 import com.dandi.nyummy.room.dto.EquippedRoomItemResponse
 import com.dandi.nyummy.room.dto.OwnedRoomItemsResponse
@@ -107,8 +109,53 @@ class RoomService(
     fun getEquippedRoomItems(userId: Long): List<EquippedRoomItemResponse> =
         ownedRoomItemRepository.findEquippedRoomItemsByUserId(userId).map { it.toEquippedRoomItemResponse() }
 
+    /**
+     * 장착한 아이템 전체를 요청 목록으로 교체한다. 목록에 있는 보유 아이템은 장착하고 위치·크기를 바꾸고,
+     * 목록에 없는 보유 아이템은 장착을 해제한다. 해제한 아이템의 마지막 위치·크기는 남긴다.
+     *
+     * 사용자의 삭제되지 않은 보유 아이템을 모두 읽고 바뀐 행만 변경 감지로 UPDATE한다.
+     * 이미 해제된 아이템에 [OwnedRoomItem.unequip]을 불러도 값이 같아 UPDATE가 나가지 않으므로 따로 분기하지 않는다.
+     *
+     * 잠그지 않는다. 그래서 알고 남겨 둔 문제가 두 가지 있다.
+     * - 같은 사용자가 동시에 저장하면 서로 다른 행만 바꿀 때 기다리지 않아, 결과가 두 요청의 장착을 합친 상태가 될 수 있다.
+     * - 저장이 읽은 뒤 삭제가 먼저 커밋되면, 모든 컬럼을 쓰는 UPDATE가 deleted_at을 null로 되돌려 지운 아이템이 살아난다.
+     *
+     * @throws BusinessException [RoomErrorCode.DUPLICATE_OWNED_ROOM_ITEM] 같은 ownedRoomItemId가 두 번 이상 있는 경우
+     * @throws BusinessException [RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND] 없거나 삭제된 보유 아이템이 있는 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 내 보유 아이템이 아닌 것이 모두 다른 사용자의 것인 경우
+     */
+    @Transactional
     fun updateEquippedRoomItems(userId: Long, request: UpdateEquippedRoomItemsRequest) {
-        // 해피케이스: 저장하지 않고 성공만 응답
+        val requestItems = request.equippedRoomItems.associateBy { it.ownedRoomItemId }
+        if (requestItems.size != request.equippedRoomItems.size) {
+            throw BusinessException(RoomErrorCode.DUPLICATE_OWNED_ROOM_ITEM)
+        }
+
+        val ownedRoomItems = ownedRoomItemRepository.findOwnedRoomItemsByUserIdAndDeletedAtIsNull(userId)
+        validateMissingOwnedRoomItems(userId, requestItems.keys - ownedRoomItems.map { it.id }.toSet())
+
+        ownedRoomItems.forEach { ownedRoomItem ->
+            val requestItem = requestItems[ownedRoomItem.id]
+            if (requestItem != null) {
+                ownedRoomItem.equip(requestItem.x, requestItem.y, requestItem.zIndex, requestItem.scale)
+            } else {
+                ownedRoomItem.unequip()
+            }
+        }
+    }
+
+    // 요청 id 중 내 삭제되지 않은 보유 아이템에 없는 것을 거부한다. 없는 것이나 삭제한 내 것이 하나라도 있으면 404,
+    // 모두 다른 사용자의 것일 때만 403이다. 다른 사용자의 것인지 가리려고 id로 한 번 더 조회한다.
+    private fun validateMissingOwnedRoomItems(userId: Long, missingIds: Set<Long>) {
+        if (missingIds.isEmpty()) {
+            return
+        }
+
+        val missingItems = ownedRoomItemRepository.findAllById(missingIds)
+        if (missingItems.size < missingIds.size || missingItems.any { it.userId == userId }) {
+            throw BusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND)
+        }
+        throw BusinessException(AuthErrorCode.FORBIDDEN)
     }
 
     fun deleteOwnedRoomItem(userId: Long, ownedRoomItemId: Long) {

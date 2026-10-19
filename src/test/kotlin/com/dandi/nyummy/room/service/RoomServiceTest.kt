@@ -1,12 +1,16 @@
 package com.dandi.nyummy.room.service
 
 import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.CommonErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
+import com.dandi.nyummy.exception.errorcode.RoomErrorCode
 import com.dandi.nyummy.room.config.DefaultRoomItemProperties
 import com.dandi.nyummy.room.config.RoomProperties
+import com.dandi.nyummy.room.dto.EquippedRoomItemRequest
 import com.dandi.nyummy.room.dto.EquippedRoomItemResult
 import com.dandi.nyummy.room.dto.OwnedRoomItemResult
+import com.dandi.nyummy.room.dto.UpdateEquippedRoomItemsRequest
 import com.dandi.nyummy.room.entity.OwnedRoomItem
 import com.dandi.nyummy.room.enum.RoomItemCategory
 import com.dandi.nyummy.room.repository.OwnedRoomItemRepository
@@ -41,11 +45,12 @@ class RoomServiceTest {
         roomProperties = roomProperties,
     )
 
-    private fun ownedRoomItem(id: Long, isEquipped: Boolean) = OwnedRoomItem(userId = userId, itemId = 2L).apply {
-        this.isEquipped = isEquipped
-        // id는 DB가 채우는 val이라 테스트에서만 직접 넣는다.
-        ReflectionTestUtils.setField(this, "id", id)
-    }
+    private fun ownedRoomItem(id: Long, isEquipped: Boolean, ownerId: Long = userId) =
+        OwnedRoomItem(userId = ownerId, itemId = 2L).apply {
+            this.isEquipped = isEquipped
+            // id는 DB가 채우는 val이라 테스트에서만 직접 넣는다.
+            ReflectionTestUtils.setField(this, "id", id)
+        }
 
     private fun ownedRoomItemResult(ownedRoomItemId: Long, isEquipped: Boolean = false) =
         OwnedRoomItemResult(ownedRoomItemId = ownedRoomItemId, name = "호박 쿠션", itemId = 2L, isEquipped = isEquipped)
@@ -54,6 +59,13 @@ class RoomServiceTest {
         every {
             ownedRoomItemRepository.findOwnedRoomItemsByUserIdBeforeCursor(any(), any(), any(), any(), any())
         } returns SliceImpl(results.toList(), PageRequest.of(0, 10), hasNext)
+    }
+
+    private fun equippedRoomItemRequest(ownedRoomItemId: Long, x: Float = 10f) =
+        EquippedRoomItemRequest(ownedRoomItemId = ownedRoomItemId, x = x, y = 20f, zIndex = 3, scale = 0.5f)
+
+    private fun givenOwnedRoomItemsToUpdate(vararg items: OwnedRoomItem) {
+        every { ownedRoomItemRepository.findOwnedRoomItemsByUserIdAndDeletedAtIsNull(userId) } returns items.toList()
     }
 
     private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
@@ -192,5 +204,106 @@ class RoomServiceTest {
         assertEquals(listOf(5L, 6L), equippedRoomItems.map { it.ownedRoomItemId })
         assertEquals(2L, equippedRoomItems[1].itemId)
         assertEquals(1.2f, equippedRoomItems[1].scale)
+    }
+
+    // updateEquippedRoomItems
+
+    @Test
+    fun `요청한 보유 아이템은 장착하고 위치와 크기를 바꾼다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = false)
+        givenOwnedRoomItemsToUpdate(item)
+
+        roomService.updateEquippedRoomItems(
+            userId,
+            UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(5L, x = 40f))),
+        )
+
+        assertTrue(item.isEquipped)
+        assertEquals(40f, item.x)
+        assertEquals(20f, item.y)
+        assertEquals(3, item.zIndex)
+        assertEquals(0.5f, item.scale)
+    }
+
+    @Test
+    fun `요청에 없는 보유 아이템은 장착을 해제하고 마지막 위치는 남긴다`() {
+        val kept = ownedRoomItem(id = 5L, isEquipped = true)
+        val removed = ownedRoomItem(id = 6L, isEquipped = true).apply { x = 76f }
+        givenOwnedRoomItemsToUpdate(kept, removed)
+
+        roomService.updateEquippedRoomItems(userId, UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(5L))))
+
+        assertTrue(kept.isEquipped)
+        assertFalse(removed.isEquipped)
+        assertEquals(76f, removed.x)
+    }
+
+    @Test
+    fun `빈 목록이면 모든 보유 아이템의 장착을 해제한다`() {
+        val items = listOf(ownedRoomItem(id = 5L, isEquipped = true), ownedRoomItem(id = 6L, isEquipped = true))
+        givenOwnedRoomItemsToUpdate(*items.toTypedArray())
+
+        roomService.updateEquippedRoomItems(userId, UpdateEquippedRoomItemsRequest(emptyList()))
+
+        assertTrue(items.none { it.isEquipped })
+    }
+
+    @Test
+    fun `같은 보유 아이템이 두 번 있으면 보유 아이템을 조회하지 않고 거부한다`() {
+        val request = UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(5L), equippedRoomItemRequest(5L)))
+
+        assertBusinessException(RoomErrorCode.DUPLICATE_OWNED_ROOM_ITEM) {
+            roomService.updateEquippedRoomItems(userId, request)
+        }
+        verify(exactly = 0) { ownedRoomItemRepository.findOwnedRoomItemsByUserIdAndDeletedAtIsNull(any()) }
+    }
+
+    @Test
+    fun `없는 보유 아이템이 있으면 거부하고 장착 상태를 바꾸지 않는다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = true)
+        givenOwnedRoomItemsToUpdate(item)
+        every { ownedRoomItemRepository.findAllById(setOf(99L)) } returns emptyList()
+        val request = UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(99L)))
+
+        assertBusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND) {
+            roomService.updateEquippedRoomItems(userId, request)
+        }
+        assertTrue(item.isEquipped)
+    }
+
+    @Test
+    fun `삭제한 내 보유 아이템이 있으면 없는 아이템으로 보고 거부한다`() {
+        givenOwnedRoomItemsToUpdate()
+        every { ownedRoomItemRepository.findAllById(setOf(7L)) } returns
+            listOf(ownedRoomItem(id = 7L, isEquipped = false))
+        val request = UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(7L)))
+
+        assertBusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND) {
+            roomService.updateEquippedRoomItems(userId, request)
+        }
+    }
+
+    @Test
+    fun `다른 사용자의 보유 아이템이 있으면 거부하고 장착 상태를 바꾸지 않는다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = false)
+        givenOwnedRoomItemsToUpdate(item)
+        every { ownedRoomItemRepository.findAllById(setOf(8L)) } returns
+            listOf(ownedRoomItem(id = 8L, isEquipped = false, ownerId = 2L))
+        val request = UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(5L), equippedRoomItemRequest(8L)))
+
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { roomService.updateEquippedRoomItems(userId, request) }
+        assertFalse(item.isEquipped)
+    }
+
+    @Test
+    fun `다른 사용자의 것과 없는 것이 함께 있으면 없는 아이템으로 거부한다`() {
+        givenOwnedRoomItemsToUpdate()
+        every { ownedRoomItemRepository.findAllById(setOf(8L, 99L)) } returns
+            listOf(ownedRoomItem(id = 8L, isEquipped = false, ownerId = 2L))
+        val request = UpdateEquippedRoomItemsRequest(listOf(equippedRoomItemRequest(8L), equippedRoomItemRequest(99L)))
+
+        assertBusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND) {
+            roomService.updateEquippedRoomItems(userId, request)
+        }
     }
 }

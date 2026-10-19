@@ -14,8 +14,8 @@ Content-Type: application/json
 {
   "equippedRoomItems": [
     { "ownedRoomItemId": 108, "x": 0.0, "y": 0.0, "zIndex": 0, "scale": 1.0 },
-    { "ownedRoomItemId": 112, "x": 52.0, "y": 130.0, "zIndex": 2, "scale": 0.8 },
-    { "ownedRoomItemId": 80, "x": 300.0, "y": 410.0, "zIndex": 1, "scale": 1.0 }
+    { "ownedRoomItemId": 112, "x": 27.0, "y": 22.0, "zIndex": 2, "scale": 0.8 },
+    { "ownedRoomItemId": 80, "x": 76.0, "y": 24.0, "zIndex": 1, "scale": 1.0 }
   ]
 }
 
