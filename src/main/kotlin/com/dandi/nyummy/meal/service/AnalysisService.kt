@@ -24,7 +24,7 @@ import java.time.Instant
 
 @Service
 class AnalysisService(
-    private val updateMealService: UpdateMealService,
+    private val mealTransactionService: MealTransactionService,
     private val mealRepository: MealRepository,
     private val nutritionAnalysisClient: NutritionAnalysisClient,
     private val catRepository: CatRepository,
@@ -60,7 +60,7 @@ class AnalysisService(
      * 식사 이미지를 분석해 이름·아이콘·영양을 저장하고,
      * 분석 상태 전이(WAITING/FAILED → ANALYZING → COMPLETED/FAILED)를 전담한다.
      *
-     * 상태 변경은 [UpdateMealService]를 통해 각각 독립 트랜잭션으로 즉시 커밋되므로,
+     * 상태 변경은 [MealTransactionService]를 통해 각각 독립 트랜잭션으로 즉시 커밋되므로,
      * 분석이 진행되는 동안에도 [getMealStatus] 폴링이 ANALYZING 상태를 조회할 수 있다.
      * 분석 실패는 예외로 전파하지 않고 FAILED 상태로 기록한다.
      * 소유권 검증은 호출자가 보장한다.
@@ -80,18 +80,18 @@ class AnalysisService(
         // 이 시도를 식별하는 값. 재시도가 또 실패해도 앞선 실패와 다른 알림이 되게 한다.
         val analyzedAt = Instant.now(clock)
 
-        updateMealService.updateStatus(meal, MealStatus.ANALYZING)
+        mealTransactionService.updateStatus(meal, MealStatus.ANALYZING)
 
         var status = MealStatus.COMPLETED
         try {
             val analysisResult = nutritionAnalysisClient.analyzeNutrition(meal.imageKey)
-            updateMealService.updateAnalysisResult(meal, analysisResult)
+            mealTransactionService.updateAnalysisResult(meal, analysisResult)
         } catch (e: RuntimeException) {
             logger.error("영양 분석 실패: userId={}, {}", meal.userId, e.message)
             status = MealStatus.FAILED
         }
 
-        updateMealService.updateStatus(meal, status)
+        mealTransactionService.updateStatus(meal, status)
 
         if (status == MealStatus.COMPLETED) {
             catService.updateLastMealAt(meal.userId, meal.mealAt)

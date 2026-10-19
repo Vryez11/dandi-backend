@@ -1,6 +1,8 @@
 package com.dandi.nyummy.meal.mapper
 
+import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.CreateMealResponse
 import com.dandi.nyummy.meal.dto.DailyMealResponse
 import com.dandi.nyummy.meal.dto.MealResponse
 import com.dandi.nyummy.meal.dto.MealStatusResponse
@@ -27,6 +29,12 @@ fun Meal.toNutrition() = Nutrition(
 fun Meal.toMealStatusResponse() = MealStatusResponse(
     id = this.id,
     status = this.status,
+)
+
+fun Meal.toCreateMealResponse(rewardBoxCategory: RewardBoxCategory) = CreateMealResponse(
+    id = this.id,
+    status = this.status,
+    rewardBoxCategory = rewardBoxCategory,
 )
 
 fun Meal.toDailyMealResponse() = DailyMealResponse(

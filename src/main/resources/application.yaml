@@ -119,6 +119,22 @@ app:
     analysis-feedback-rate: 100
     intake-tolerance: 0.2
     min-positive-macro-count: 2
+    # 식사 1회 보상 상자. 등급을 rate(%)로 뽑고, 그 등급의 코인 범위(양 끝 포함)에서 코인 수를 고르게 뽑는다.
+    # 세 등급이 모두 있어야 하고 rate 합은 100이어야 한다. 아니면 앱이 뜨지 않는다(MealProperties).
+    reward-boxes:
+      bronze:
+        rate: 40
+        min-coin-quantity: 100
+        max-coin-quantity: 199
+      silver:
+        rate: 40
+        min-coin-quantity: 200
+        max-coin-quantity: 349
+      gold:
+        rate: 20
+        min-coin-quantity: 350
+        max-coin-quantity: 500
+    reward-mail-time-to-live: 7d
   cat:
     weight-update-interval-days: 3
     weight-update-tolerance: 0.2

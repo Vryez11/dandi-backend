@@ -6,6 +6,7 @@ import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.meal.dto.CreateAnalysisFeedbackRequest
 import com.dandi.nyummy.meal.dto.CreateMealRequest
+import com.dandi.nyummy.meal.dto.CreateMealResponse
 import com.dandi.nyummy.meal.dto.DailyMealsResponse
 import com.dandi.nyummy.meal.dto.MealResponse
 import com.dandi.nyummy.meal.dto.MealStatusResponse
@@ -106,6 +107,8 @@ class MealController(
     @Operation(
         summary = "식사 생성",
         description = "업로드된 이미지 키로 식사를 생성하고 영양 분석을 수행한 뒤, 식사 ID와 분석 상태를 반환한다. " +
+            "기록이 끝나면 보상 상자 우편이 하나 생기고, 응답의 rewardBoxCategory에 그 상자의 등급을 담는다. " +
+            "상자에 든 코인 수는 응답에 없고 우편을 받을 때 알 수 있다. 분석이 실패해도 상자는 지급된다. " +
             "영양 정보가 필요하면 식사 단건 조회 API를 사용한다.",
     )
     @ApiErrorCodes(
@@ -118,7 +121,7 @@ class MealController(
         ],
     )
     @PostMapping
-    fun createMeal(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateMealRequest): MealStatusResponse =
+    fun createMeal(@CurrentUser user: AuthUser, @Valid @RequestBody request: CreateMealRequest): CreateMealResponse =
         mealService.createMeal(user.userId, request)
 
     @Operation(

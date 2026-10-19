@@ -4,11 +4,14 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
 import com.dandi.nyummy.image.dto.UploadedImageResult
+import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.config.MealProperties
+import com.dandi.nyummy.meal.config.RewardBoxProperties
 import com.dandi.nyummy.meal.repository.MealRepository
 import io.mockk.every
 import io.mockk.mockk
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -29,8 +32,18 @@ class MealAttemptServiceTest {
     private val tomorrowStart = Instant.parse("2026-10-10T15:00:00Z") // 10/11 00:00 KST
 
     private val mealRepository = mockk<MealRepository>()
-    private val mealProperties =
-        MealProperties(maxDailyCount = 5, analysisFeedbackRate = 100, intakeTolerance = 0.2, minPositiveMacroCount = 2)
+    private val mealProperties = MealProperties(
+        maxDailyCount = 5,
+        analysisFeedbackRate = 100,
+        intakeTolerance = 0.2,
+        minPositiveMacroCount = 2,
+        rewardBoxes = mapOf(
+            RewardBoxCategory.BRONZE to RewardBoxProperties(rate = 40, minCoinQuantity = 100, maxCoinQuantity = 199),
+            RewardBoxCategory.SILVER to RewardBoxProperties(rate = 40, minCoinQuantity = 200, maxCoinQuantity = 349),
+            RewardBoxCategory.GOLD to RewardBoxProperties(rate = 20, minCoinQuantity = 350, maxCoinQuantity = 500),
+        ),
+        rewardMailTimeToLive = Duration.ofDays(7),
+    )
     private val mealAttemptService = MealAttemptService(mealRepository, mealProperties, clock)
 
     private fun givenTodayAttempts(count: Long) {

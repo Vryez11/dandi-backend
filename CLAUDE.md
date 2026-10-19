@@ -102,7 +102,8 @@
 - 같은 기능을 쓰는 흐름 구분 `~Purpose`(`AuthPurpose`), 외부 스케줄러가 부르는 배치 API `Internal`(`/api/v1/internal/**`)
 - 커서 `Cursor` — 무한 스크롤 기준점(직전 묶음의 마지막 id), 응답은 `nextCursor` + `hasNext`. 페이지 번호 방식은 `Offset`
 - 허용 오차 `Tolerance` — 목표 대비 비율(0.2 = ±20%). Margin·Threshold 금지
-- 노출 비율 `Rate` — 0~100 정수 퍼센트. Ratio·Percentage·Chance·Probability·Sampling 금지
+- 노출 비율·뽑힐 확률 `Rate` — 0~100 정수 퍼센트. Ratio·Percentage·Chance·Probability·Sampling 금지
+- 비관적 잠금 조회 `~WithLock~`(`findProfileWithLockByUserId`, ForUpdate·Locked 금지)
 - E2E: 테스트 클래스 `~E2eTest`(source set `e2eTest`), 공유 준비 상태 `Fixture`(Setup·Helper 금지), 남의 리소스를 확인하는 두 번째 계정 `Other`(Second·Another·Stranger 금지), REST Assured 요청 명세 `Spec`(Template·Builder 금지), prod 전환 전 최소 시나리오 `Smoke`(Sanity 금지)
 
 ### 사용자·인증
@@ -157,6 +158,7 @@
 - 우편 `Mail` — 보상을 받는 우편함의 한 건. 문의와 다른 리소스이고, 한 건을 Item이라 부르지 않는다
 - 받기 `claim`, 받은 상태 `isClaimed`, 얻은 경로 문구 `content`(문의 본문 `questionContent`와 다른 뜻)
 - 보상 `Reward`(하나 받기 `RewardResponse`, 모두 받기 `TotalRewardResponse`), 보상 상자 `RewardBox`(Box 단독·Chest 금지), 여러 우편 보상의 합 `Total`(Sum 금지), 열기 애니메이션 `animationUrl`(ActionUrl 금지)
+- 보상 상자 등급 `RewardBoxCategory`(Grade·Tier 금지) — 우편 종류 `MailCategory`와 다른 enum
 - 게임 아이템 `Item`(`itemId`), 지급 개수 `Quantity`(Amount·Count 금지)
 
 ### 이미지

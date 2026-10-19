@@ -1,5 +1,6 @@
 package com.dandi.nyummy.meal.dto
 
+import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.enum.DailyNutritionEvaluation
 import com.dandi.nyummy.meal.enum.MealStatus
 import io.swagger.v3.oas.annotations.media.Schema
@@ -28,6 +29,8 @@ data class MealResponse(
 )
 
 data class MealStatusResponse(val id: Long, val status: MealStatus)
+
+data class CreateMealResponse(val id: Long, val status: MealStatus, val rewardBoxCategory: RewardBoxCategory)
 
 data class DailyMealsResponse(
 

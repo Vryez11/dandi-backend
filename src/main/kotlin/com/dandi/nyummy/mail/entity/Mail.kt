@@ -1,6 +1,7 @@
 package com.dandi.nyummy.mail.entity
 
 import com.dandi.nyummy.mail.enum.MailCategory
+import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityListeners
@@ -20,6 +21,7 @@ import java.time.Instant
  * COIN은 [coinQuantity]만, ITEM은 [MailItem]만, REWARD_BOX는 둘 다 가질 수 있다.
  *
  * ITEM 우편의 목록 이미지는 우편을 만들 때 정한 [representativeItemId]로 만든다.
+ * REWARD_BOX 우편은 지급할 때 뽑은 [rewardBoxCategory]를 가진다. 다른 종류는 null이다.
  * [expiresAt]이 null이면 만료되지 않는 우편이다.
  */
 @Entity
@@ -44,6 +46,10 @@ class Mail(
 
     @Column(name = "representative_item_id")
     val representativeItemId: Long? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reward_box_category", length = 20)
+    val rewardBoxCategory: RewardBoxCategory? = null,
 
     @Column(name = "expires_at")
     val expiresAt: Instant? = null,
