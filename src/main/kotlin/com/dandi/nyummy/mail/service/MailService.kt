@@ -20,6 +20,7 @@ import com.dandi.nyummy.mail.repository.MailItemRepository
 import com.dandi.nyummy.mail.repository.MailRepository
 import com.dandi.nyummy.room.service.RoomService
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -148,6 +149,27 @@ class MailService(
         }
 
         return mails.toTotalRewardResponse(items = mailItems.toRewardItemResponses())
+    }
+
+    /**
+     * 받은 우편을 소프트 삭제한다. 삭제 직후 앱의 되돌리기로 복구할 수 있도록 행은 남긴다.
+     *
+     * 이미 삭제된 우편도 그대로 성공한다(멱등). 삭제를 두 번 눌러도 결과가 같게 하기 위함이다.
+     * 이때 삭제 시각은 다시 삭제한 시각으로 바뀐다.
+     *
+     * 받기와 겹쳐도 잠그지 않는다. 삭제는 받은 우편만, 받기는 안 받은 우편만 바꾸므로 한쪽은 거절된다.
+     *
+     * @throws BusinessException [MailErrorCode.MAIL_NOT_FOUND] 우편이 없는 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 우편인 경우
+     * @throws BusinessException [MailErrorCode.MAIL_NOT_CLAIMED] 아직 받지 않은 우편인 경우
+     */
+    @Transactional
+    fun deleteMail(userId: Long, mailId: Long) {
+        val mail = mailRepository.findByIdOrNull(mailId)
+            ?: throw BusinessException(MailErrorCode.MAIL_NOT_FOUND)
+
+        mail.validateOwnership(userId)
+        mail.updateDeletedAt(Instant.now(clock))
     }
 
     // 우편에 든 아이템을 개수만큼 펼쳐 보유 아이템으로 만든다. 아이템이 없으면 아무것도 하지 않는다.
