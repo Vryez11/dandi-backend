@@ -6,14 +6,14 @@ import com.dandi.nyummy.room.dto.OwnedRoomItemResponse
 import com.dandi.nyummy.room.dto.OwnedRoomItemResult
 
 fun OwnedRoomItemResult.toOwnedRoomItemResponse(): OwnedRoomItemResponse = OwnedRoomItemResponse(
-    roomItemId = this.roomItemId,
+    ownedRoomItemId = this.ownedRoomItemId,
     name = this.name,
     itemId = this.itemId,
     isEquipped = this.isEquipped,
 )
 
 fun EquippedRoomItemResult.toEquippedRoomItemResponse(): EquippedRoomItemResponse = EquippedRoomItemResponse(
-    roomItemId = this.roomItemId,
+    ownedRoomItemId = this.ownedRoomItemId,
     category = this.category,
     itemId = this.itemId,
     x = this.x,

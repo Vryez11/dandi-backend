@@ -47,7 +47,7 @@ class RoomService(private val ownedRoomItemRepository: OwnedRoomItemRepository) 
      * 커서 아이템이 없거나 다른 사용자의 것이면 처음부터 조회하지 않고 거부한다. 처음부터 주면 앱이 첫 묶음을
      * 뒤에 이어 붙여 중복이 생기고, 다른 사용자의 id가 있는지도 드러나지 않게 같은 응답으로 묶는다.
      *
-     * @param cursor 직전 묶음의 마지막 roomItemId. null이면 처음부터 조회한다.
+     * @param cursor 직전 묶음의 마지막 ownedRoomItemId. null이면 처음부터 조회한다.
      * @throws BusinessException [CommonErrorCode.INVALID_INPUT_VALUE] 커서 아이템이 없거나 다른 사용자의 것인 경우
      */
     @Transactional(readOnly = true)
@@ -67,7 +67,7 @@ class RoomService(private val ownedRoomItemRepository: OwnedRoomItemRepository) 
 
         return OwnedRoomItemsResponse(
             ownedRoomItems = ownedRoomItems.content.map { it.toOwnedRoomItemResponse() },
-            nextCursor = if (ownedRoomItems.hasNext()) ownedRoomItems.content.last().roomItemId else null,
+            nextCursor = if (ownedRoomItems.hasNext()) ownedRoomItems.content.last().ownedRoomItemId else null,
             hasNext = ownedRoomItems.hasNext(),
         )
     }
@@ -83,7 +83,7 @@ class RoomService(private val ownedRoomItemRepository: OwnedRoomItemRepository) 
         // 해피케이스: 저장하지 않고 성공만 응답
     }
 
-    fun deleteRoomItem(userId: Long, roomItemId: Long) {
+    fun deleteOwnedRoomItem(userId: Long, ownedRoomItemId: Long) {
         // 해피케이스: 저장하지 않고 성공만 응답
     }
 }

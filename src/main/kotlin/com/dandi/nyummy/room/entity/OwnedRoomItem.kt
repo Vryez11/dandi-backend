@@ -15,7 +15,7 @@ import java.time.Instant
 /**
  * 보유 아이템. 같은 아이템을 여러 개 사면 한 개마다 따로 존재하며 좌표·장착 여부를 따로 가진다.
  *
- * [id]가 API의 roomItemId다. 상품은 [itemId]로 가리킨다.
+ * [id]가 API의 ownedRoomItemId다. 상품은 [itemId]로 가리킨다.
  */
 @Entity
 @EntityListeners(AuditingEntityListener::class)

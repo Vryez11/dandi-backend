@@ -35,8 +35,8 @@ class RoomServiceTest {
         ReflectionTestUtils.setField(this, "id", id)
     }
 
-    private fun ownedRoomItemResult(roomItemId: Long, isEquipped: Boolean = false) =
-        OwnedRoomItemResult(roomItemId = roomItemId, name = "호박 쿠션", itemId = 2L, isEquipped = isEquipped)
+    private fun ownedRoomItemResult(ownedRoomItemId: Long, isEquipped: Boolean = false) =
+        OwnedRoomItemResult(ownedRoomItemId = ownedRoomItemId, name = "호박 쿠션", itemId = 2L, isEquipped = isEquipped)
 
     private fun givenOwnedRoomItems(vararg results: OwnedRoomItemResult, hasNext: Boolean = false) {
         every {
@@ -105,7 +105,7 @@ class RoomServiceTest {
 
         val result = roomService.getOwnedRoomItems(userId, RoomItemCategory.BED, cursor = null, size = 2)
 
-        assertEquals(listOf(9L, 7L), result.ownedRoomItems.map { it.roomItemId })
+        assertEquals(listOf(9L, 7L), result.ownedRoomItems.map { it.ownedRoomItemId })
         assertEquals(7L, result.nextCursor)
         assertTrue(result.hasNext)
     }
@@ -145,7 +145,7 @@ class RoomServiceTest {
 
         val equippedRoomItems = roomService.getEquippedRoomItems(userId)
 
-        assertEquals(listOf(5L, 6L), equippedRoomItems.map { it.roomItemId })
+        assertEquals(listOf(5L, 6L), equippedRoomItems.map { it.ownedRoomItemId })
         assertEquals(2L, equippedRoomItems[1].itemId)
         assertEquals(1.2f, equippedRoomItems[1].scale)
     }
