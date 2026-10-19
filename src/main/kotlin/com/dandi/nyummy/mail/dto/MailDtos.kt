@@ -39,8 +39,8 @@ data class TotalRewardResponse(val coin: RewardCoinResponse?, val items: List<Re
 data class RewardCoinResponse(val quantity: Int, val imageId: Long)
 
 /**
- * @property imageId 아이템 이미지 번호. 지금은 [itemId]와 같지만, 보상 객체마다 같은 규칙으로 조립하도록 따로 둔다.
+ * @property imageId 아이템 이미지 번호(`items/{imageId}.png`). 보상 화면은 이름·이미지·개수만 쓰므로 상품 id는 따로 주지 않는다.
  */
-data class RewardItemResponse(val itemId: Long, val name: String, val imageId: Long, val quantity: Int)
+data class RewardItemResponse(val imageId: Long, val name: String, val quantity: Int)
 
 data class RewardBoxResponse(val imageId: Long, val animationUrl: String?)
