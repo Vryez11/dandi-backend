@@ -101,9 +101,11 @@ class RoomController(private val roomService: RoomService) {
 
     @Operation(
         summary = "보유 아이템 삭제",
-        description = "보유 아이템 하나를 삭제한다. 장착 중인 아이템이면 마이룸에서도 빠진다.",
+        description = "보유 아이템 하나를 삭제한다. 장착 중인 아이템이면 장착을 해제하고 지우므로 마이룸에서도 빠진다. " +
+            "이미 삭제한 보유 아이템에 다시 요청해도 성공한다.",
     )
     @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @ApiErrorCodes(room = [RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @DeleteMapping("/owned-items/{ownedRoomItemId}")
     fun deleteOwnedRoomItem(
         @CurrentUser user: AuthUser,

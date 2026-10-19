@@ -20,7 +20,11 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.SliceImpl
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.test.util.ReflectionTestUtils
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -31,6 +35,8 @@ import kotlin.test.assertTrue
 class RoomServiceTest {
 
     private val userId = 1L
+    private val now = Instant.parse("2026-10-19T03:00:00Z")
+    private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
     private val ownedRoomItemRepository = mockk<OwnedRoomItemRepository>()
     private val roomProperties = RoomProperties(
@@ -43,6 +49,7 @@ class RoomServiceTest {
     private val roomService = RoomService(
         ownedRoomItemRepository = ownedRoomItemRepository,
         roomProperties = roomProperties,
+        clock = clock,
     )
 
     private fun ownedRoomItem(id: Long, isEquipped: Boolean, ownerId: Long = userId) =
@@ -305,5 +312,48 @@ class RoomServiceTest {
         assertBusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND) {
             roomService.updateEquippedRoomItems(userId, request)
         }
+    }
+
+    // deleteOwnedRoomItem
+
+    @Test
+    fun `장착 중인 보유 아이템을 삭제하면 장착을 해제하고 삭제 시각을 기록한다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = true).apply { x = 76f }
+        every { ownedRoomItemRepository.findByIdOrNull(5L) } returns item
+
+        roomService.deleteOwnedRoomItem(userId, 5L)
+
+        assertFalse(item.isEquipped)
+        assertEquals(now, item.deletedAt)
+        assertEquals(76f, item.x)
+    }
+
+    @Test
+    fun `이미 삭제한 보유 아이템을 다시 삭제해도 성공하고 삭제 시각이 바뀐다`() {
+        val item = ownedRoomItem(id = 5L, isEquipped = false).apply { deletedAt = now.minusSeconds(600) }
+        every { ownedRoomItemRepository.findByIdOrNull(5L) } returns item
+
+        roomService.deleteOwnedRoomItem(userId, 5L)
+
+        assertEquals(now, item.deletedAt)
+    }
+
+    @Test
+    fun `없는 보유 아이템은 삭제할 수 없다`() {
+        every { ownedRoomItemRepository.findByIdOrNull(99L) } returns null
+
+        assertBusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND) {
+            roomService.deleteOwnedRoomItem(userId, 99L)
+        }
+    }
+
+    @Test
+    fun `다른 사용자의 보유 아이템은 삭제할 수 없고 장착 상태도 그대로다`() {
+        val item = ownedRoomItem(id = 8L, isEquipped = true, ownerId = 2L)
+        every { ownedRoomItemRepository.findByIdOrNull(8L) } returns item
+
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { roomService.deleteOwnedRoomItem(userId, 8L) }
+        assertTrue(item.isEquipped)
+        assertNull(item.deletedAt)
     }
 }

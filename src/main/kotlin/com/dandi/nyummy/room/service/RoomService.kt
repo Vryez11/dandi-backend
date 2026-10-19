@@ -17,13 +17,17 @@ import com.dandi.nyummy.room.mapper.toOwnedRoomItem
 import com.dandi.nyummy.room.mapper.toOwnedRoomItemResponse
 import com.dandi.nyummy.room.repository.OwnedRoomItemRepository
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.Instant
 
 @Service
 class RoomService(
     private val ownedRoomItemRepository: OwnedRoomItemRepository,
     private val roomProperties: RoomProperties,
+    private val clock: Clock,
 ) {
 
     /**
@@ -158,7 +162,25 @@ class RoomService(
         throw BusinessException(AuthErrorCode.FORBIDDEN)
     }
 
+    /**
+     * 보유 아이템을 소프트 삭제한다. 삭제 직후 앱의 되돌리기로 복구할 수 있도록 행은 남긴다.
+     *
+     * 장착 중이면 장착을 해제한 뒤 지운다. 그래서 마이룸에서도 빠지고, 복구하면 장착하지 않은 채로 돌아온다.
+     * 마지막 위치·크기는 남긴다.
+     *
+     * 이미 삭제된 보유 아이템도 그대로 성공한다(멱등). 삭제를 두 번 눌러도 결과가 같게 하기 위함이다.
+     * 이때 삭제 시각은 다시 삭제한 시각으로 바뀐다.
+     *
+     * @throws BusinessException [RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND] 보유 아이템이 없는 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 보유 아이템인 경우
+     */
+    @Transactional
     fun deleteOwnedRoomItem(userId: Long, ownedRoomItemId: Long) {
-        // 해피케이스: 저장하지 않고 성공만 응답
+        val ownedRoomItem = ownedRoomItemRepository.findByIdOrNull(ownedRoomItemId)
+            ?: throw BusinessException(RoomErrorCode.OWNED_ROOM_ITEM_NOT_FOUND)
+
+        ownedRoomItem.validateOwnership(userId)
+        ownedRoomItem.unequip()
+        ownedRoomItem.updateDeletedAt(Instant.now(clock))
     }
 }

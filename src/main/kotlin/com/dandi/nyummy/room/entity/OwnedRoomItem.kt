@@ -1,5 +1,7 @@
 package com.dandi.nyummy.room.entity
 
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityListeners
@@ -74,5 +76,18 @@ class OwnedRoomItem(
      */
     fun unequip() {
         this.isEquipped = false
+    }
+
+    fun validateOwnership(requestUserId: Long) {
+        if (userId != requestUserId) {
+            throw BusinessException(AuthErrorCode.FORBIDDEN)
+        }
+    }
+
+    /**
+     * 삭제 시각을 바꾼다. 시각을 넣으면 삭제, null을 넣으면 복구다.
+     */
+    fun updateDeletedAt(deletedAt: Instant?) {
+        this.deletedAt = deletedAt
     }
 }
