@@ -40,7 +40,7 @@ class HomeE2eTest {
                 ),
             )
             body("hasUnreadInquiryAnswer", oneOf(true, false))
-            // 마이룸은 아직 고정 응답이라 원소 구조는 검증하지 않는다. 실제 구현되면 Room 테스트와 함께 추가한다.
+            // 장착한 아이템이 없는 계정도 있어 원소 구조는 보지 않는다. 마이룸 쪽은 RoomE2eTest가 맡는다.
             body("equippedRoomItems", instanceOf<Any>(List::class.java))
         } Extract {
             jsonPath()
