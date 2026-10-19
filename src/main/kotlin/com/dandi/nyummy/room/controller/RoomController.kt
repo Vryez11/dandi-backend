@@ -55,6 +55,7 @@ class RoomController(private val roomService: RoomService) {
             "장착한 아이템이 먼저 오고, 장착 여부가 같으면 최근 구매순이다. " +
             "첫 요청은 cursor 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor를 cursor로 보낸다. " +
             "hasNext가 false면 마지막 묶음이며 nextCursor는 null이다. " +
+            "cursor가 없는 아이템이거나 다른 사용자의 것이면 400(api.common.invalidInputValue)이다. " +
             "스크롤 중 장착 상태가 바뀌면 묶음 사이에 아이템이 겹치거나 빠질 수 있으니, 꾸민 방을 저장한 뒤에는 첫 묶음부터 다시 조회한다. " +
             "이미지는 앱이 itemId로 https://cdn.nyummy.co.kr/items/{itemId}.png를 조립한다.",
     )

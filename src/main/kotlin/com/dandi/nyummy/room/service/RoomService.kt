@@ -1,20 +1,30 @@
 package com.dandi.nyummy.room.service
 
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.CommonErrorCode
 import com.dandi.nyummy.room.dto.EquippedRoomItemResponse
-import com.dandi.nyummy.room.dto.OwnedRoomItemResponse
 import com.dandi.nyummy.room.dto.OwnedRoomItemsResponse
 import com.dandi.nyummy.room.dto.RoomItemCategoryResponse
 import com.dandi.nyummy.room.dto.RoomResponse
 import com.dandi.nyummy.room.dto.UpdateEquippedRoomItemsRequest
 import com.dandi.nyummy.room.enum.RoomItemCategory
-import com.dandi.nyummy.room.enum.RoomItemCategory.BACKGROUND
-import com.dandi.nyummy.room.enum.RoomItemCategory.BED
-import com.dandi.nyummy.room.enum.RoomItemCategory.CARPET
-import com.dandi.nyummy.room.enum.RoomItemCategory.ETC
+import com.dandi.nyummy.room.mapper.toEquippedRoomItemResponse
+import com.dandi.nyummy.room.mapper.toOwnedRoomItemResponse
+import com.dandi.nyummy.room.repository.OwnedRoomItemRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
-class RoomService {
+class RoomService(private val ownedRoomItemRepository: OwnedRoomItemRepository) {
+
+    /**
+     * 카테고리별 보유 아이템의 첫 묶음과 장착한 아이템을 조회한다.
+     *
+     * 카테고리는 보유 아이템이 없어도 enum 순서대로 모두 내려간다. 카테고리마다 [getOwnedRoomItems]와 같은 쿼리를
+     * 따로 날린다. 앱이 카테고리를 오가며 다음 묶음을 받을 때도 같은 쿼리를 쓰므로, 전체를 한 번에 읽어 나누지 않는다.
+     */
+    @Transactional(readOnly = true)
     fun getRoom(userId: Long, size: Int): RoomResponse = RoomResponse(
         categories = RoomItemCategory.entries.map { category ->
             val ownedRoomItems = getOwnedRoomItems(userId, category, null, size)
@@ -29,45 +39,45 @@ class RoomService {
         equippedRoomItems = getEquippedRoomItems(userId),
     )
 
+    /**
+     * 한 카테고리의 보유 아이템을 장착한 것 먼저, 같은 장착 여부 안에서는 최신순으로 [size]개씩 조회한다.
+     *
+     * 정렬이 장착 여부와 id 두 값이라 [cursor]만으로는 위치를 알 수 없어, 커서 아이템을 먼저 읽어 장착 여부를 얻는다.
+     * 스크롤 중에 지운 아이템도 정렬 위치는 남아 있으므로 삭제된 커서 아이템도 그대로 쓴다.
+     * 커서 아이템이 없거나 다른 사용자의 것이면 처음부터 조회하지 않고 거부한다. 처음부터 주면 앱이 첫 묶음을
+     * 뒤에 이어 붙여 중복이 생기고, 다른 사용자의 id가 있는지도 드러나지 않게 같은 응답으로 묶는다.
+     *
+     * @param cursor 직전 묶음의 마지막 roomItemId. null이면 처음부터 조회한다.
+     * @throws BusinessException [CommonErrorCode.INVALID_INPUT_VALUE] 커서 아이템이 없거나 다른 사용자의 것인 경우
+     */
+    @Transactional(readOnly = true)
     fun getOwnedRoomItems(userId: Long, category: RoomItemCategory, cursor: Long?, size: Int): OwnedRoomItemsResponse {
-        // 장착한 아이템 먼저, 같은 장착 여부 안에서는 최신순.
-        // 커서 아이템보다 뒤 순서인 것만 조회
-        val cursorItem = cursor?.let { cursorId -> sampleOwnedRoomItems.find { it.roomItemId == cursorId } }
-        val ownedRoomItems = sampleOwnedRoomItems
-            .filter { it.category == category }
-            .filter { cursorItem == null || ownedRoomItemOrder.compare(it, cursorItem) > 0 }
-            .sortedWith(ownedRoomItemOrder)
-            .take(size + 1)
-        val hasNext = ownedRoomItems.size > size
-        val page = ownedRoomItems.take(size)
+        val cursorItem = cursor?.let {
+            ownedRoomItemRepository.findOwnedRoomItemByIdAndUserId(it, userId)
+                ?: throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE)
+        }
+
+        val ownedRoomItems = ownedRoomItemRepository.findOwnedRoomItemsByUserIdBeforeCursor(
+            userId = userId,
+            category = category,
+            cursorIsEquipped = cursorItem?.isEquipped ?: true,
+            cursorId = cursorItem?.id ?: Long.MAX_VALUE,
+            pageable = PageRequest.of(0, size),
+        )
+
         return OwnedRoomItemsResponse(
-            ownedRoomItems = page.map {
-                OwnedRoomItemResponse(
-                    roomItemId = it.roomItemId,
-                    name = it.name,
-                    itemId = it.itemId,
-                    isEquipped = it.isEquipped,
-                )
-            },
-            nextCursor = if (hasNext) page.last().roomItemId else null,
-            hasNext = hasNext,
+            ownedRoomItems = ownedRoomItems.content.map { it.toOwnedRoomItemResponse() },
+            nextCursor = if (ownedRoomItems.hasNext()) ownedRoomItems.content.last().roomItemId else null,
+            hasNext = ownedRoomItems.hasNext(),
         )
     }
 
-    fun getEquippedRoomItems(userId: Long): List<EquippedRoomItemResponse> = sampleOwnedRoomItems
-        .filter { it.isEquipped }
-        .sortedBy { it.zIndex }
-        .map {
-            EquippedRoomItemResponse(
-                roomItemId = it.roomItemId,
-                category = it.category,
-                itemId = it.itemId,
-                x = it.x,
-                y = it.y,
-                zIndex = it.zIndex,
-                scale = it.scale,
-            )
-        }
+    /**
+     * 장착한 아이템을 그리는 순서(zIndex 오름차순)로 조회한다. 마이룸 조회와 홈이 함께 쓴다.
+     */
+    @Transactional(readOnly = true)
+    fun getEquippedRoomItems(userId: Long): List<EquippedRoomItemResponse> =
+        ownedRoomItemRepository.findEquippedRoomItemsByUserId(userId).map { it.toEquippedRoomItemResponse() }
 
     fun updateEquippedRoomItems(userId: Long, request: UpdateEquippedRoomItemsRequest) {
         // 해피케이스: 저장하지 않고 성공만 응답
@@ -75,67 +85,5 @@ class RoomService {
 
     fun deleteRoomItem(userId: Long, roomItemId: Long) {
         // 해피케이스: 저장하지 않고 성공만 응답
-    }
-
-    private data class SampleOwnedRoomItem(
-        val roomItemId: Long,
-        val category: RoomItemCategory,
-        val name: String,
-        val itemId: Long,
-        val isEquipped: Boolean,
-        val x: Float = 0f,
-        val y: Float = 0f,
-        val zIndex: Int = 0,
-        val scale: Float = 1f,
-    )
-
-    companion object {
-        private val ownedRoomItemOrder = compareByDescending<SampleOwnedRoomItem> { it.isEquipped }
-            .thenByDescending { it.roomItemId }
-
-        private val sampleOwnedRoomItems = listOf(
-            // 배경: 3개 → size=2로 조회하면 다음 페이지 확인
-            SampleOwnedRoomItem(95, BACKGROUND, "기본 배경", 1L, isEquipped = false),
-            SampleOwnedRoomItem(80, BACKGROUND, "밤하늘 배경", 2L, isEquipped = false),
-            SampleOwnedRoomItem(108, BACKGROUND, "노을 배경", 3L, isEquipped = true),
-
-            // 침대: 장착 1개
-            SampleOwnedRoomItem(
-                101,
-                BED,
-                "구름 쿠션",
-                4L,
-                isEquipped = true,
-                x = 150f,
-                y = 420f,
-                zIndex = 4,
-            ),
-
-            // 캣휠: 보유 없음
-
-            // 카펫: 장착 1개 + 미장착 1개
-            SampleOwnedRoomItem(
-                104,
-                CARPET,
-                "동그라미 카펫",
-                5L,
-                isEquipped = true,
-                x = 120f,
-                y = 480f,
-                zIndex = 1,
-            ),
-            SampleOwnedRoomItem(103, CARPET, "줄무늬 카펫", 6L, isEquipped = false),
-
-            // 기타: 같은 아이템 3개 구매 → roomItemId는 각각 다름, 2개 장착(좌표 다름) + 1개 미장착
-            SampleOwnedRoomItem(
-                112, ETC, "털실 공", 7L,
-                isEquipped = true, x = 40.5f, y = 520f, zIndex = 2, scale = 0.8f,
-            ),
-            SampleOwnedRoomItem(
-                111, ETC, "털실 공", 7L,
-                isEquipped = true, x = 260f, y = 515.5f, zIndex = 3, scale = 1.2f,
-            ),
-            SampleOwnedRoomItem(110, ETC, "털실 공", 7L, isEquipped = false),
-        )
     }
 }
