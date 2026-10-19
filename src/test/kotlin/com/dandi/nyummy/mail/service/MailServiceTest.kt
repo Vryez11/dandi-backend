@@ -19,6 +19,7 @@ import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.SliceImpl
 import org.springframework.test.util.ReflectionTestUtils
@@ -89,8 +90,12 @@ class MailServiceTest {
         every { mailItemRepository.findMailItemsByMailIds(listOf(mailId)) } returns mailItems.toList()
     }
 
-    private fun mailItem(itemId: Long, name: String, quantity: Int) =
+    private fun mailItem(itemId: Long, name: String, quantity: Int, mailId: Long = this.mailId) =
         MailItemResult(mailId = mailId, itemId = itemId, name = name, quantity = quantity)
+
+    private fun givenUnclaimedMails(vararg mails: Mail) {
+        every { mailRepository.findMailsWithLockByUserIdAndClaimedAtIsNull(userId, now) } returns mails.toList()
+    }
 
     private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
@@ -319,5 +324,106 @@ class MailServiceTest {
         assertBusinessException(MailErrorCode.ALREADY_CLAIMED) { mailService.claimMail(userId, mailId) }
         verify(exactly = 0) { coinService.increaseBalance(any(), any(), any(), any()) }
         verify(exactly = 0) { roomService.createOwnedRoomItems(any(), any()) }
+    }
+
+    // claimMails
+
+    @Test
+    fun `받을 우편이 없으면 아무것도 지급하지 않고 코인과 아이템 모두 null이다`() {
+        givenUnclaimedMails()
+
+        val reward = mailService.claimMails(userId)
+
+        assertNull(reward.coin)
+        assertNull(reward.items)
+        verify(exactly = 0) { mailItemRepository.findMailItemsByMailIds(any()) }
+        verify(exactly = 0) { roomService.createOwnedRoomItems(any(), any()) }
+        verify(exactly = 0) { coinService.increaseBalance(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `현재 시각 기준으로 잠가 조회한 우편을 모두 받은 상태로 바꾼다`() {
+        val mails = listOf(mail(id = 1, coinQuantity = 10), mail(id = 2, coinQuantity = 20))
+        givenUnclaimedMails(*mails.toTypedArray())
+
+        mailService.claimMails(userId)
+
+        verify { mailRepository.findMailsWithLockByUserIdAndClaimedAtIsNull(userId, now) }
+        assertTrue(mails.all { it.claimedAt == now })
+    }
+
+    @Test
+    fun `코인은 우편마다 지급해 내역을 남기고 응답에는 합계를 준다`() {
+        givenUnclaimedMails(
+            mail(
+                id = 1,
+                category = MailCategory.REWARD_BOX,
+                coinQuantity = 30,
+                rewardBoxCategory = RewardBoxCategory.BRONZE,
+            ),
+            mail(id = 2, category = MailCategory.ITEM, representativeItemId = 2L),
+            mail(id = 3, category = MailCategory.COIN, coinQuantity = 100),
+        )
+
+        val reward = mailService.claimMails(userId)
+
+        verify { coinService.increaseBalance(userId, 30, CoinHistoryCategory.MAIL_CLAIM, 1L) }
+        verify { coinService.increaseBalance(userId, 100, CoinHistoryCategory.MAIL_CLAIM, 3L) }
+        verify(exactly = 2) { coinService.increaseBalance(any(), any(), any(), any()) }
+        assertEquals(130, reward.coin?.quantity)
+        assertEquals(1L, reward.coin?.imageId)
+    }
+
+    @Test
+    fun `코인이 든 우편이 없으면 coin은 null이다`() {
+        givenUnclaimedMails(mail(id = 1, category = MailCategory.ITEM, representativeItemId = 2L))
+        every { mailItemRepository.findMailItemsByMailIds(listOf(1L)) } returns
+            listOf(mailItem(itemId = 2L, name = "호박 쿠션", quantity = 1, mailId = 1L))
+
+        val reward = mailService.claimMails(userId)
+
+        assertNull(reward.coin)
+        verify(exactly = 0) { coinService.increaseBalance(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `여러 우편의 같은 아이템은 하나로 합치고 먼저 온 우편부터 넣은 순서대로 준다`() {
+        givenUnclaimedMails(
+            mail(id = 1, category = MailCategory.REWARD_BOX, rewardBoxCategory = RewardBoxCategory.GOLD),
+            mail(id = 2, category = MailCategory.ITEM, representativeItemId = 2L),
+        )
+        every { mailItemRepository.findMailItemsByMailIds(listOf(1L, 2L)) } returns listOf(
+            mailItem(itemId = 3L, name = "스크래처 타워", quantity = 1, mailId = 1L),
+            mailItem(itemId = 2L, name = "호박 쿠션", quantity = 1, mailId = 1L),
+            mailItem(itemId = 2L, name = "호박 쿠션", quantity = 2, mailId = 2L),
+        )
+
+        val reward = mailService.claimMails(userId)
+
+        verify { roomService.createOwnedRoomItems(userId, listOf(3L, 2L, 2L, 2L)) }
+        assertEquals(listOf(3L to 1, 2L to 3), reward.items?.map { it.imageId to it.quantity })
+        assertEquals(listOf("스크래처 타워", "호박 쿠션"), reward.items?.map { it.name })
+    }
+
+    @Test
+    fun `우편을 잠가 받은 상태로 바꾼 뒤 아이템과 코인을 지급한다`() {
+        val mail =
+            mail(
+                id = 1,
+                category = MailCategory.REWARD_BOX,
+                coinQuantity = 30,
+                rewardBoxCategory = RewardBoxCategory.BRONZE,
+            )
+        givenUnclaimedMails(mail)
+        every { mailItemRepository.findMailItemsByMailIds(listOf(1L)) } returns
+            listOf(mailItem(itemId = 3L, name = "스크래처 타워", quantity = 1, mailId = 1L))
+
+        mailService.claimMails(userId)
+
+        verifyOrder {
+            mailRepository.findMailsWithLockByUserIdAndClaimedAtIsNull(userId, now)
+            roomService.createOwnedRoomItems(userId, listOf(3L))
+            coinService.increaseBalance(userId, 30, CoinHistoryCategory.MAIL_CLAIM, 1L)
+        }
     }
 }

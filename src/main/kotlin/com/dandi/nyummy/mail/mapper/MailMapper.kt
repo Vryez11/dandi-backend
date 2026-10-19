@@ -6,6 +6,7 @@ import com.dandi.nyummy.mail.dto.RewardBoxResponse
 import com.dandi.nyummy.mail.dto.RewardCoinResponse
 import com.dandi.nyummy.mail.dto.RewardItemResponse
 import com.dandi.nyummy.mail.dto.RewardResponse
+import com.dandi.nyummy.mail.dto.TotalRewardResponse
 import com.dandi.nyummy.mail.entity.Mail
 import com.dandi.nyummy.mail.enum.MailCategory
 
@@ -34,6 +35,18 @@ fun Mail.toRewardResponse(items: List<RewardItemResponse>?): RewardResponse = Re
     coin = this.coinQuantity?.let { RewardCoinResponse(quantity = it, imageId = COIN_IMAGE_ID) },
     items = items,
     rewardBox = this.rewardBoxCategory?.let { RewardBoxResponse(imageId = it.id.toLong(), animationUrl = null) },
+)
+
+/**
+ * 여러 우편의 코인을 더해 합계로 준다. 코인이 든 우편이 없으면 coin은 null이다.
+ *
+ * @param items 우편들에서 지급한 아이템의 합계. 없으면 null이다.
+ */
+fun List<Mail>.toTotalRewardResponse(items: List<RewardItemResponse>?): TotalRewardResponse = TotalRewardResponse(
+    coin = this.mapNotNull { it.coinQuantity }
+        .takeIf { it.isNotEmpty() }
+        ?.let { RewardCoinResponse(quantity = it.sum(), imageId = COIN_IMAGE_ID) },
+    items = items,
 )
 
 /**

@@ -19,6 +19,30 @@ interface MailRepository : JpaRepository<Mail, Long> {
     fun findMailWithLockByIdAndDeletedAtIsNull(mailId: Long): Mail?
 
     /**
+     * 사용자의 안 받은 우편을 잠가(SELECT … FOR UPDATE) id 오름차순으로 조회한다. 모두 받기에 쓴다.
+     * 삭제된 우편과 [now] 기준으로 만료된 우편은 제외한다. 만료 기준은 목록 조회와 같다.
+     *
+     * 잠그는 순서를 id 오름차순으로 고정해, 모두 받기끼리 겹쳐도 서로 반대 순서로 기다리지 않게 한다.
+     * 하나 받기와 겹치면 뒤에 온 쪽이 앞쪽 커밋을 기다렸다가 최신 행을 읽으므로, 이미 받은 우편은 결과에서 빠진다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        select m
+        from Mail as m
+        where m.userId = :userId
+            and m.deletedAt is null
+            and m.claimedAt is null
+            and (m.expiresAt is null or m.expiresAt > :now)
+        order by m.id asc
+    """,
+    )
+    fun findMailsWithLockByUserIdAndClaimedAtIsNull(
+        @Param("userId") userId: Long,
+        @Param("now") now: Instant,
+    ): List<Mail>
+
+    /**
      * id가 [cursor]보다 작은 우편을 최신순(id 내림차순)으로 조회한다.
      * 삭제된 우편과 [now] 기준으로 만료된 우편은 받은 우편이어도 제외한다. expiresAt이 null이면 만료되지 않는다.
      *
