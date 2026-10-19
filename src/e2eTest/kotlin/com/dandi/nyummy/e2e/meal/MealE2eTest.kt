@@ -28,6 +28,7 @@ class MealE2eTest {
         val imageKey = ImageFixture.createUploadedImage("MEAL", "/images/cake-undated.jpeg", "image/jpeg")
         val created = createMeal(imageKey)
         val mealId = created.id
+        var rewardBoxMailId: Long? = null
 
         try {
             // 1. 분석 완료. Gemini 응답은 실행마다 달라 가끔 실패한다. 앱처럼 재시도 API로 다시 시도한다.
@@ -114,7 +115,7 @@ class MealE2eTest {
 
             // 기록 보상 상자는 식사와 같은 트랜잭션에서 만들어지므로 가장 최근 우편이다.
             // 생성 응답에 우편 id가 없어 등급 번호로 같은 상자인지 확인한다.
-            Given {
+            rewardBoxMailId = Given {
                 spec(RequestSpecs.createAuthorizedSpec())
                 queryParam("size", 1)
             } When {
@@ -125,6 +126,8 @@ class MealE2eTest {
                 body("mails[0].imageId", equalTo(REWARD_BOX_IDS.getValue(created.rewardBoxCategory)))
                 body("mails[0].isClaimed", equalTo(false))
                 body("mails[0].expiresAt", notNullValue())
+            } Extract {
+                jsonPath().getLong("mails[0].mailId")
             }
 
             val summaryAfterCreate = getTodayMealSummary()
@@ -194,8 +197,13 @@ class MealE2eTest {
         } finally {
             // 중간에 실패하면 이미 삭제된 상태일 수 있다(그때는 404). 정리는 결과를 검증하지 않는다.
             Given { spec(RequestSpecs.createAuthorizedSpec()) } When { delete("/api/v1/meals/$mealId") }
-            // 기록 보상으로 생긴 상자 우편은 아직 지우지 못한다. 받기·삭제 API가 고정 응답이라 정리할 길이 없고,
-            // 만료(7일)되면 목록에서 빠진다. 받기를 구현하면 여기서 받고 지운다.
+            // 기록 보상 상자는 받은 우편만 삭제할 수 있어 받은 뒤 지운다. 이미 받았거나 지웠을 수 있어 결과는 검증하지 않는다.
+            // 고정 계정 코인이 상자만큼 늘어나고 되돌릴 수 없다(코인을 쓰는 API가 없고, 어드민 API는 ALB 밖이라 닿지 않는다).
+            // 받기·삭제·복구 자체는 MailE2eTest가 확인한다.
+            rewardBoxMailId?.let { mailId ->
+                Given { spec(RequestSpecs.createAuthorizedSpec()) } When { post("/api/v1/mails/$mailId/claim") }
+                Given { spec(RequestSpecs.createAuthorizedSpec()) } When { delete("/api/v1/mails/$mailId") }
+            }
         }
     }
 
