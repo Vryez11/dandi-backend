@@ -115,32 +115,29 @@ class MailServiceTest {
     }
 
     @Test
-    fun `상자 우편은 등급 번호를 주고 itemId는 null이다`() {
+    fun `상자 우편은 imageId로 등급 번호를 준다`() {
         givenMails(mail(id = 1, category = MailCategory.REWARD_BOX, rewardBoxCategory = RewardBoxCategory.SILVER))
 
         val mail = mailService.getMails(userId, cursor = null, size = 10).mails.single()
 
-        assertEquals(2, mail.rewardBoxId)
-        assertNull(mail.itemId)
+        assertEquals(2L, mail.imageId)
     }
 
     @Test
-    fun `아이템 우편은 대표 아이템 id를 주고 상자 번호는 null이다`() {
+    fun `아이템 우편은 imageId로 대표 아이템 id를 준다`() {
         givenMails(mail(id = 1, category = MailCategory.ITEM, representativeItemId = 3L))
 
         val mail = mailService.getMails(userId, cursor = null, size = 10).mails.single()
 
-        assertEquals(3L, mail.itemId)
-        assertNull(mail.rewardBoxId)
+        assertEquals(3L, mail.imageId)
     }
 
     @Test
-    fun `코인 우편은 itemId와 상자 번호가 모두 null이다`() {
+    fun `코인 우편은 imageId가 null이다`() {
         givenMails(mail(id = 1, category = MailCategory.COIN))
 
         val mail = mailService.getMails(userId, cursor = null, size = 10).mails.single()
 
-        assertNull(mail.itemId)
-        assertNull(mail.rewardBoxId)
+        assertNull(mail.imageId)
     }
 }

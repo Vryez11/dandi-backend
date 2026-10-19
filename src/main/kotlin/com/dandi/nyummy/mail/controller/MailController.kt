@@ -36,8 +36,9 @@ class MailController(private val mailService: MailService) {
             "hasNext가 false면 마지막 묶음이며 nextCursor는 null이다. " +
             "만료된 우편은 받은 우편이어도 포함하지 않으며, expiresAt이 null이면 만료되지 않는 우편이다. " +
             "이미지 URL은 내려주지 않으며, 앱이 https://cdn.nyummy.co.kr/ 뒤에 경로를 붙여 조립한다. " +
-            "ITEM은 itemId로 items/{itemId}.png, REWARD_BOX는 rewardBoxId(1 브론즈, 2 실버, 3 골드)로 " +
-            "reward-boxes/{rewardBoxId}.png를 쓰고, 해당하지 않는 값은 null이다. COIN은 둘 다 null이다.",
+            "category로 경로를 고르고 imageId를 붙인다. ITEM은 아이템 id로 items/{imageId}.png, " +
+            "REWARD_BOX는 상자 번호(1 브론즈, 2 실버, 3 골드)로 reward-boxes/{imageId}.png이며, " +
+            "COIN은 imageId가 null이고 앱이 가진 코인 이미지를 쓴다.",
     )
     @GetMapping
     fun getMails(

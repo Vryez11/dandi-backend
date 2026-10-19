@@ -10,7 +10,6 @@ import io.restassured.module.kotlin.extensions.When
 import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.hasItems
 import org.hamcrest.Matchers.notNullValue
-import org.hamcrest.Matchers.nullValue
 import org.hamcrest.Matchers.oneOf
 import org.hamcrest.Matchers.startsWith
 import org.junit.jupiter.api.Test
@@ -123,8 +122,7 @@ class MealE2eTest {
             } Then {
                 statusCode(200)
                 body("mails[0].category", equalTo("REWARD_BOX"))
-                body("mails[0].rewardBoxId", equalTo(REWARD_BOX_IDS.getValue(created.rewardBoxCategory)))
-                body("mails[0].itemId", nullValue())
+                body("mails[0].imageId", equalTo(REWARD_BOX_IDS.getValue(created.rewardBoxCategory)))
                 body("mails[0].isClaimed", equalTo(false))
                 body("mails[0].expiresAt", notNullValue())
             }
