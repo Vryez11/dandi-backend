@@ -106,12 +106,16 @@ class MailController(private val mailService: MailService) {
     @Operation(
         summary = "우편 복구",
         description = "삭제한 우편을 되돌린다. 복구 기한은 없다. 삭제되지 않은 우편에 요청해도 그대로 두고 성공한다. " +
-            "현재는 요청과 관계없이 항상 204를 반환한다.",
+            "만료된 우편은 복구해도 목록에 보이지 않는다.",
     )
     @ApiResponse(responseCode = "204", description = "복구 성공")
+    @ApiErrorCodes(mail = [MailErrorCode.MAIL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @PostMapping("/{mailId}/restore")
     fun restoreMail(
         @CurrentUser user: AuthUser,
         @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
-    ): ResponseEntity<Void> = ResponseEntity.noContent().build()
+    ): ResponseEntity<Void> {
+        mailService.restoreMail(user.userId, mailId)
+        return ResponseEntity.noContent().build()
+    }
 }

@@ -172,6 +172,26 @@ class MailService(
         mail.updateDeletedAt(Instant.now(clock))
     }
 
+    /**
+     * 소프트 삭제한 우편을 되돌린다. 삭제 직후 앱의 되돌리기에서 호출하며, 복구 기한은 두지 않는다.
+     *
+     * 삭제되지 않은 우편도 그대로 성공한다(멱등). 되돌리기를 여러 번 눌러도 결과가 같게 하기 위함이다.
+     * deletedAt이 이미 null이면 같은 값을 넣어도 변경 감지에 걸리지 않아 UPDATE가 나가지 않으므로 따로 분기하지 않는다.
+     *
+     * 만료 여부는 보지 않는다. 만료된 우편을 복구해도 목록에서는 계속 빠진다.
+     *
+     * @throws BusinessException [MailErrorCode.MAIL_NOT_FOUND] 우편이 없는 경우
+     * @throws BusinessException [AuthErrorCode.FORBIDDEN] 다른 사용자의 우편인 경우
+     */
+    @Transactional
+    fun restoreMail(userId: Long, mailId: Long) {
+        val mail = mailRepository.findByIdOrNull(mailId)
+            ?: throw BusinessException(MailErrorCode.MAIL_NOT_FOUND)
+
+        mail.validateOwnership(userId)
+        mail.updateDeletedAt(null)
+    }
+
     // 우편에 든 아이템을 개수만큼 펼쳐 보유 아이템으로 만든다. 아이템이 없으면 아무것도 하지 않는다.
     private fun createOwnedRoomItems(userId: Long, mailItems: List<MailItemResult>) {
         if (mailItems.isEmpty()) {
