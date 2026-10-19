@@ -1,14 +1,19 @@
 package com.dandi.nyummy.mail.service
 
+import com.dandi.nyummy.mail.dto.MailsResponse
 import com.dandi.nyummy.mail.entity.Mail
 import com.dandi.nyummy.mail.enum.MailCategory
 import com.dandi.nyummy.mail.enum.RewardBoxCategory
+import com.dandi.nyummy.mail.mapper.toMailSummaryResponse
 import com.dandi.nyummy.mail.repository.MailRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
 import java.time.Instant
 
 @Service
-class MailService(private val mailRepository: MailRepository) {
+class MailService(private val mailRepository: MailRepository, private val clock: Clock) {
 
     /**
      * 보상 상자 우편을 만든다. 제목은 등급 이름이다.
@@ -40,4 +45,28 @@ class MailService(private val mailRepository: MailRepository) {
             expiresAt = expiresAt,
         ),
     )
+
+    /**
+     * 사용자의 우편 목록을 최신순으로 [size]개씩 조회한다. 무한 스크롤용 cursor 방식이다.
+     *
+     * 첫 요청은 [cursor] 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor(마지막 우편 id)를 보낸다.
+     * 만료된 우편은 받은 우편이어도 보여주지 않는다. 만료는 조회하는 시각을 기준으로 판단한다.
+     *
+     * @param cursor 직전 묶음의 마지막 우편 id. null이면 가장 최신 우편부터 조회한다.
+     */
+    @Transactional(readOnly = true)
+    fun getMails(userId: Long, cursor: Long?, size: Int): MailsResponse {
+        val mails = mailRepository.findMailsByUserIdBeforeCursor(
+            userId = userId,
+            cursor = cursor ?: Long.MAX_VALUE,
+            now = Instant.now(clock),
+            pageable = PageRequest.of(0, size),
+        )
+
+        return MailsResponse(
+            mails = mails.content.map { it.toMailSummaryResponse() },
+            nextCursor = if (mails.hasNext()) mails.content.last().id else null,
+            hasNext = mails.hasNext(),
+        )
+    }
 }
