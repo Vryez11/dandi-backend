@@ -1,7 +1,9 @@
 package com.dandi.nyummy.mail.controller
 
+import com.dandi.nyummy.config.openapi.ApiErrorCodes
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
+import com.dandi.nyummy.exception.errorcode.MailErrorCode
 import com.dandi.nyummy.mail.dto.MailsResponse
-import com.dandi.nyummy.mail.dto.RewardBoxResponse
 import com.dandi.nyummy.mail.dto.RewardCoinResponse
 import com.dandi.nyummy.mail.dto.RewardItemResponse
 import com.dandi.nyummy.mail.dto.RewardResponse
@@ -58,36 +60,17 @@ class MailController(private val mailService: MailService) {
             "보상 상자는 들어 있던 코인과 아이템이 그대로 담기고, rewardBox에 상자 번호와 열기 애니메이션 URL(animationUrl)이 담긴다. " +
             "animationUrl은 아직 null이다. 코인·아이템 우편이면 rewardBox는 null이다. " +
             "이미지는 목록과 같이 imageId로 조립한다. coin은 coins/{imageId}.png, items는 items/{imageId}.png, " +
-            "rewardBox는 reward-boxes/{imageId}.png다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
+            "rewardBox는 reward-boxes/{imageId}.png다. 아이템 지급은 아직 구현 전이라 items는 항상 null이다.",
+    )
+    @ApiErrorCodes(
+        mail = [MailErrorCode.MAIL_NOT_FOUND, MailErrorCode.ALREADY_CLAIMED, MailErrorCode.MAIL_EXPIRED],
+        auth = [AuthErrorCode.FORBIDDEN],
     )
     @PostMapping("/{mailId}/claim")
     fun claimMail(
         @CurrentUser user: AuthUser,
         @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
-    ): RewardResponse = RewardResponse(
-        coin = RewardCoinResponse(
-            quantity = 50,
-            imageId = 1,
-        ),
-        items = listOf(
-            RewardItemResponse(
-                itemId = 2,
-                name = "호박 쿠션",
-                imageId = 2,
-                quantity = 1,
-            ),
-            RewardItemResponse(
-                itemId = 3,
-                name = "스크래처 타워",
-                imageId = 3,
-                quantity = 1,
-            ),
-        ),
-        rewardBox = RewardBoxResponse(
-            imageId = 2,
-            animationUrl = null,
-        ),
-    )
+    ): RewardResponse = mailService.claimMail(user.userId, mailId)
 
     @Operation(
         summary = "우편 모두 받기",
