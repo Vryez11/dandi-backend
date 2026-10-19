@@ -60,7 +60,9 @@ class MailController(private val mailService: MailService) {
             "보상 상자는 들어 있던 코인과 아이템이 그대로 담기고, rewardBox에 상자 번호와 열기 애니메이션 URL(animationUrl)이 담긴다. " +
             "animationUrl은 아직 null이다. 코인·아이템 우편이면 rewardBox는 null이다. " +
             "이미지는 목록과 같이 imageId로 조립한다. coin은 coins/{imageId}.png, items는 items/{imageId}.png, " +
-            "rewardBox는 reward-boxes/{imageId}.png다. 아이템 지급은 아직 구현 전이라 items는 항상 null이다.",
+            "rewardBox는 reward-boxes/{imageId}.png다. " +
+            "items는 같은 아이템을 하나로 합쳐 quantity에 개수를 더하고, 우편에 넣은 순서로 준다. " +
+            "받은 아이템은 개수만큼 마이룸 보유 아이템으로 장착하지 않은 채 생긴다.",
     )
     @ApiErrorCodes(
         mail = [MailErrorCode.MAIL_NOT_FOUND, MailErrorCode.ALREADY_CLAIMED, MailErrorCode.MAIL_EXPIRED],
