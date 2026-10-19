@@ -55,9 +55,10 @@ class MailController(private val mailService: MailService) {
         summary = "우편 하나 받기",
         description = "우편 하나를 받고 지급된 보상을 반환한다. 보상 상자·코인·아이템 모두 이 API로 받는다. " +
             "응답 구조는 우편 종류와 관계없이 같으며, 해당하는 값이 없으면 coin 또는 items가 null이다. " +
-            "보상 상자는 들어 있던 코인과 아이템이 그대로 담기고, rewardBox에 상자 이미지와 열기 애니메이션 URL(animationUrl)이 담긴다. " +
-            "현재 고정 응답에서 animationUrl은 null이다. " +
-            "코인·아이템 우편이면 rewardBox는 null이다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
+            "보상 상자는 들어 있던 코인과 아이템이 그대로 담기고, rewardBox에 상자 번호와 열기 애니메이션 URL(animationUrl)이 담긴다. " +
+            "animationUrl은 아직 null이다. 코인·아이템 우편이면 rewardBox는 null이다. " +
+            "이미지는 목록과 같이 imageId로 조립한다. coin은 coins/{imageId}.png, items는 items/{imageId}.png, " +
+            "rewardBox는 reward-boxes/{imageId}.png다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
     )
     @PostMapping("/{mailId}/claim")
     fun claimMail(
@@ -66,24 +67,24 @@ class MailController(private val mailService: MailService) {
     ): RewardResponse = RewardResponse(
         coin = RewardCoinResponse(
             quantity = 50,
-            imageUrl = "https://example.com/images/mail/coin.png",
+            imageId = 1,
         ),
         items = listOf(
             RewardItemResponse(
-                itemId = 3,
-                name = "생선 간식",
-                imageUrl = "https://example.com/images/item/fish.png",
-                quantity = 2,
+                itemId = 2,
+                name = "호박 쿠션",
+                imageId = 2,
+                quantity = 1,
             ),
             RewardItemResponse(
-                itemId = 7,
-                name = "털실 공",
-                imageUrl = "https://example.com/images/item/yarn-ball.png",
+                itemId = 3,
+                name = "스크래처 타워",
+                imageId = 3,
                 quantity = 1,
             ),
         ),
         rewardBox = RewardBoxResponse(
-            imageUrl = "https://example.com/images/mail/reward-box.png",
+            imageId = 2,
             animationUrl = null,
         ),
     )
@@ -92,19 +93,20 @@ class MailController(private val mailService: MailService) {
         summary = "우편 모두 받기",
         description = "안 받은 우편을 한 번에 받고, 지급된 보상의 합계를 반환한다. " +
             "보상 상자도 포함하며, 열기 연출 없이 들어 있던 코인과 아이템을 합계에 더한다. " +
-            "받을 우편이 없으면 coin과 items가 null이다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
+            "받을 우편이 없으면 coin과 items가 null이다. 이미지는 하나 받기와 같이 imageId로 조립한다. " +
+            "현재는 요청과 관계없이 고정 응답을 반환한다.",
     )
     @PostMapping("/claim-all")
     fun claimMails(@CurrentUser user: AuthUser): TotalRewardResponse = TotalRewardResponse(
         coin = RewardCoinResponse(
             quantity = 150,
-            imageUrl = "https://example.com/images/mail/coin.png",
+            imageId = 1,
         ),
         items = listOf(
             RewardItemResponse(
-                itemId = 3,
-                name = "생선 간식",
-                imageUrl = "https://example.com/images/item/fish.png",
+                itemId = 2,
+                name = "호박 쿠션",
+                imageId = 2,
                 quantity = 3,
             ),
         ),
