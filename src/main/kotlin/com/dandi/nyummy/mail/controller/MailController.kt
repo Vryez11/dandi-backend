@@ -36,7 +36,11 @@ class MailController {
         description = "우편 목록을 최신순으로 조회한다. 만료된 우편은 포함하지 않는다. 무한 스크롤용 cursor 방식이다. " +
             "첫 요청은 cursor 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor를 cursor로 보낸다. " +
             "hasNext가 false면 마지막 묶음이며 nextCursor는 null이다. " +
-            "expiresAt이 null이면 만료되지 않는 우편이다. 현재는 요청과 관계없이 고정 응답을 반환한다.",
+            "expiresAt이 null이면 만료되지 않는 우편이다. " +
+            "이미지 URL은 내려주지 않으며, 앱이 https://cdn.nyummy.co.kr/ 뒤에 경로를 붙여 조립한다. " +
+            "ITEM은 itemId로 items/{itemId}.png, REWARD_BOX는 rewardBoxId(1 브론즈, 2 실버, 3 골드)로 " +
+            "reward-boxes/{rewardBoxId}.png를 쓰고, 해당하지 않는 값은 null이다. COIN은 둘 다 null이다. " +
+            "현재는 요청과 관계없이 고정 응답을 반환한다.",
     )
     @GetMapping
     fun getMails(
@@ -52,9 +56,10 @@ class MailController {
             MailSummaryResponse(
                 mailId = 4,
                 category = MailCategory.REWARD_BOX,
-                title = "보상 상자",
-                content = "7일 연속 식사 기록 보상",
-                imageUrl = "https://example.com/images/mail/reward-box.png",
+                title = "브론즈 상자",
+                content = "식사 기록 보상",
+                itemId = null,
+                rewardBoxId = 1,
                 isClaimed = false,
                 expiresAt = Instant.parse("2099-12-31T00:00:00Z"),
                 createdAt = Instant.parse("2026-10-16T08:00:00Z"),
@@ -64,7 +69,8 @@ class MailController {
                 category = MailCategory.COIN,
                 title = "코인 100개",
                 content = "오늘의 식사 기록 보상",
-                imageUrl = "https://example.com/images/mail/coin.png",
+                itemId = null,
+                rewardBoxId = null,
                 isClaimed = false,
                 expiresAt = Instant.parse("2099-12-31T00:00:00Z"),
                 createdAt = Instant.parse("2026-10-16T04:00:00Z"),
@@ -74,7 +80,8 @@ class MailController {
                 category = MailCategory.ITEM,
                 title = "생선 간식",
                 content = "주간 퀘스트 달성 보상",
-                imageUrl = "https://example.com/images/mail/item.png",
+                itemId = 3,
+                rewardBoxId = null,
                 isClaimed = false,
                 expiresAt = null,
                 createdAt = Instant.parse("2026-10-15T09:00:00Z"),
@@ -84,7 +91,8 @@ class MailController {
                 category = MailCategory.COIN,
                 title = "코인 50개",
                 content = "첫 식사 기록 보상",
-                imageUrl = "https://example.com/images/mail/coin.png",
+                itemId = null,
+                rewardBoxId = null,
                 isClaimed = true,
                 expiresAt = null,
                 createdAt = Instant.parse("2026-10-14T09:00:00Z"),
