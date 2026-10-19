@@ -133,11 +133,11 @@ class MailServiceTest {
     }
 
     @Test
-    fun `코인 우편은 imageId가 null이다`() {
+    fun `코인 우편은 imageId로 코인 이미지 번호 1을 준다`() {
         givenMails(mail(id = 1, category = MailCategory.COIN))
 
         val mail = mailService.getMails(userId, cursor = null, size = 10).mails.single()
 
-        assertNull(mail.imageId)
+        assertEquals(1L, mail.imageId)
     }
 }

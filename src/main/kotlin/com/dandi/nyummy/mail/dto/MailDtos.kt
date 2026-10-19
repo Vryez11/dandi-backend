@@ -11,7 +11,7 @@ data class MailsResponse(val mails: List<MailSummaryResponse>, val nextCursor: L
  * 우편 목록의 한 건. 이미지 URL은 내려주지 않고, 앱이 [category]로 경로를 고른 뒤 [imageId]를 붙여 CDN URL을 조립한다.
  *
  * @property imageId ITEM은 대표 아이템 id(`items/{imageId}.png`), REWARD_BOX는 상자 번호(`reward-boxes/{imageId}.png`),
- * COIN은 null(앱이 가진 코인 이미지)
+ * COIN은 코인 이미지 번호(`coins/{imageId}.png`)
  */
 data class MailSummaryResponse(
     val mailId: Long,
