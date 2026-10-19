@@ -2,20 +2,24 @@ package com.dandi.nyummy.e2e.room
 
 import com.dandi.nyummy.e2e.support.RequestSpecs
 import com.dandi.nyummy.e2e.support.Smoke
+import io.restassured.module.kotlin.extensions.Extract
 import io.restassured.module.kotlin.extensions.Given
 import io.restassured.module.kotlin.extensions.Then
 import io.restassured.module.kotlin.extensions.When
+import org.hamcrest.Matchers.empty
 import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.hasItems
-import org.hamcrest.Matchers.instanceOf
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 
 class RoomE2eTest {
-    // 조회만 하므로 prod에서도 돌린다. 보유 아이템이 없는 계정도 통과하도록 원소 구조는 보지 않는다.
+    // 조회만 하므로 prod에서도 돌린다. 모든 사용자는 가입할 때(기존 사용자는 채우기 SQL로) 기본 아이템을
+    // 장착한 채로 받으므로 고정 계정에도 배경과 장착 아이템이 있다.
     @Smoke
     @Test
-    fun `마이룸을 조회하면 모든 카테고리가 고정 순서로 온다`() {
-        Given {
+    fun `마이룸을 조회하면 모든 카테고리가 고정 순서로 오고 기본 아이템이 장착돼 있다`() {
+        val zIndexes: List<Int> = Given {
             spec(RequestSpecs.createAuthorizedSpec())
         } When {
             get("/api/v1/rooms")
@@ -28,8 +32,21 @@ class RoomE2eTest {
                 "categories[0].keySet()",
                 hasItems("category", "categoryName", "ownedRoomItems", "nextCursor", "hasNext"),
             )
-            body("equippedRoomItems", instanceOf<Any>(List::class.java))
+            body(
+                "categories.find { it.category == 'BACKGROUND' }.ownedRoomItems[0].keySet()",
+                hasItems("ownedRoomItemId", "name", "itemId", "isEquipped"),
+            )
+            body("equippedRoomItems", not(empty<Any>()))
+            body(
+                "equippedRoomItems[0].keySet()",
+                hasItems("ownedRoomItemId", "category", "itemId", "x", "y", "zIndex", "scale"),
+            )
+        } Extract {
+            path("equippedRoomItems.zIndex")
         }
+
+        // 앱은 받은 순서대로 겹쳐 그리므로 zIndex 오름차순이어야 배경이 맨 뒤에 깔린다.
+        assertEquals(zIndexes.sorted(), zIndexes, "장착 아이템이 zIndex 오름차순이 아닙니다: $zIndexes")
     }
 
     @Smoke
@@ -43,7 +60,7 @@ class RoomE2eTest {
         } Then {
             statusCode(200)
             body("keySet()", hasItems("ownedRoomItems", "nextCursor", "hasNext"))
-            body("ownedRoomItems", instanceOf<Any>(List::class.java))
+            body("ownedRoomItems[0].keySet()", hasItems("ownedRoomItemId", "name", "itemId", "isEquipped"))
         }
     }
 
