@@ -169,7 +169,7 @@
 ### 마이룸
 
 - 마이룸 `Room`(MyRoom 금지), 마이룸 아이템 `RoomItem`(Furniture·Decoration 금지)
-- 보유 아이템 `OwnedRoomItem` — 구매한 한 개. 같은 상품을 여러 개 사면 각각 따로이고 식별자 `roomItemId`는 그 한 개를 가리킨다(Inventory·UserItem 금지)
+- 보유 아이템 `OwnedRoomItem` — 구매한 한 개. 같은 상품을 여러 개 사면 각각 따로이고 식별자 `ownedRoomItemId`는 그 한 개를 가리킨다(Inventory·UserItem 금지, roomItemId 금지 — 상품 id `itemId`와 헷갈림)
 - 장착 `Equipped`(`isEquipped`, `equippedRoomItems`, Placement·Placed 금지), 배율 `Scale`(Size 금지 — 페이지 size와 충돌), 쌓임 순서 `ZIndex`(Order·Layer 금지)
 
 ### 관측
