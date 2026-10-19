@@ -45,7 +45,7 @@ class RoomService {
                 OwnedRoomItemResponse(
                     roomItemId = it.roomItemId,
                     name = it.name,
-                    imageUrl = createImageUrl(it.imageKey),
+                    itemId = it.itemId,
                     isEquipped = it.isEquipped,
                 )
             },
@@ -61,7 +61,7 @@ class RoomService {
             EquippedRoomItemResponse(
                 roomItemId = it.roomItemId,
                 category = it.category,
-                imageUrl = createImageUrl(it.imageKey),
+                itemId = it.itemId,
                 x = it.x,
                 y = it.y,
                 zIndex = it.zIndex,
@@ -77,13 +77,11 @@ class RoomService {
         // 해피케이스: 저장하지 않고 성공만 응답
     }
 
-    private fun createImageUrl(imageKey: String): String = "$SAMPLE_IMAGE_BASE_URL$imageKey"
-
     private data class SampleOwnedRoomItem(
         val roomItemId: Long,
         val category: RoomItemCategory,
         val name: String,
-        val imageKey: String,
+        val itemId: Long,
         val isEquipped: Boolean,
         val x: Float = 0f,
         val y: Float = 0f,
@@ -92,23 +90,21 @@ class RoomService {
     )
 
     companion object {
-        private const val SAMPLE_IMAGE_BASE_URL = "https://cdn.nyummy.co.kr/items/"
-
         private val ownedRoomItemOrder = compareByDescending<SampleOwnedRoomItem> { it.isEquipped }
             .thenByDescending { it.roomItemId }
 
         private val sampleOwnedRoomItems = listOf(
             // 배경: 3개 → size=2로 조회하면 다음 페이지 확인
-            SampleOwnedRoomItem(95, BACKGROUND, "기본 배경", "background/default.png", isEquipped = false),
-            SampleOwnedRoomItem(80, BACKGROUND, "밤하늘 배경", "background/night_sky.png", isEquipped = false),
-            SampleOwnedRoomItem(108, BACKGROUND, "노을 배경", "background/sunset.png", isEquipped = true),
+            SampleOwnedRoomItem(95, BACKGROUND, "기본 배경", 1L, isEquipped = false),
+            SampleOwnedRoomItem(80, BACKGROUND, "밤하늘 배경", 2L, isEquipped = false),
+            SampleOwnedRoomItem(108, BACKGROUND, "노을 배경", 3L, isEquipped = true),
 
             // 침대: 장착 1개
             SampleOwnedRoomItem(
                 101,
                 BED,
                 "구름 쿠션",
-                "bed/cloud_cushion.png",
+                4L,
                 isEquipped = true,
                 x = 150f,
                 y = 420f,
@@ -122,24 +118,24 @@ class RoomService {
                 104,
                 CARPET,
                 "동그라미 카펫",
-                "carpet/circle.png",
+                5L,
                 isEquipped = true,
                 x = 120f,
                 y = 480f,
                 zIndex = 1,
             ),
-            SampleOwnedRoomItem(103, CARPET, "줄무늬 카펫", "carpet/stripe.png", isEquipped = false),
+            SampleOwnedRoomItem(103, CARPET, "줄무늬 카펫", 6L, isEquipped = false),
 
             // 기타: 같은 아이템 3개 구매 → roomItemId는 각각 다름, 2개 장착(좌표 다름) + 1개 미장착
             SampleOwnedRoomItem(
-                112, ETC, "털실 공", "etc/yarn_ball.png",
+                112, ETC, "털실 공", 7L,
                 isEquipped = true, x = 40.5f, y = 520f, zIndex = 2, scale = 0.8f,
             ),
             SampleOwnedRoomItem(
-                111, ETC, "털실 공", "etc/yarn_ball.png",
+                111, ETC, "털실 공", 7L,
                 isEquipped = true, x = 260f, y = 515.5f, zIndex = 3, scale = 1.2f,
             ),
-            SampleOwnedRoomItem(110, ETC, "털실 공", "etc/yarn_ball.png", isEquipped = false),
+            SampleOwnedRoomItem(110, ETC, "털실 공", 7L, isEquipped = false),
         )
     }
 }

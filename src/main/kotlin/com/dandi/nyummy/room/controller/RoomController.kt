@@ -36,7 +36,8 @@ class RoomController(private val roomService: RoomService) {
             "각 카테고리의 보유 아이템은 장착한 아이템이 먼저 오고, 장착 여부가 같으면 최근 구매순이다. " +
             "카테고리별 다음 묶음은 보유 아이템 목록 조회 API에 해당 카테고리의 nextCursor를 cursor로 보내 조회한다. " +
             "equippedRoomItems는 방을 그리는 데 쓰며, 첫 묶음에 없는 아이템도 포함하고 zIndex 오름차순이다. " +
-            "같은 아이템을 여러 개 샀으면 한 개씩 따로 내려가며, roomItemId는 구매한 아이템 한 개를 가리킨다.",
+            "같은 아이템을 여러 개 샀으면 한 개씩 따로 내려가며, roomItemId는 구매한 아이템 한 개를 가리킨다. " +
+            "이미지는 앱이 itemId로 https://cdn.nyummy.co.kr/items/{itemId}.png를 조립한다.",
     )
     @GetMapping
     fun getRoom(
@@ -54,7 +55,8 @@ class RoomController(private val roomService: RoomService) {
             "장착한 아이템이 먼저 오고, 장착 여부가 같으면 최근 구매순이다. " +
             "첫 요청은 cursor 없이 보내고, 다음 요청부터는 직전 응답의 nextCursor를 cursor로 보낸다. " +
             "hasNext가 false면 마지막 묶음이며 nextCursor는 null이다. " +
-            "스크롤 중 장착 상태가 바뀌면 묶음 사이에 아이템이 겹치거나 빠질 수 있으니, 꾸민 방을 저장한 뒤에는 첫 묶음부터 다시 조회한다.",
+            "스크롤 중 장착 상태가 바뀌면 묶음 사이에 아이템이 겹치거나 빠질 수 있으니, 꾸민 방을 저장한 뒤에는 첫 묶음부터 다시 조회한다. " +
+            "이미지는 앱이 itemId로 https://cdn.nyummy.co.kr/items/{itemId}.png를 조립한다.",
     )
     @GetMapping("/owned-items")
     fun getOwnedRoomItems(

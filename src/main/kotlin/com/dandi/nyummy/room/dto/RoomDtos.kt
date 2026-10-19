@@ -25,12 +25,18 @@ data class OwnedRoomItemsResponse(
     val hasNext: Boolean,
 )
 
-data class OwnedRoomItemResponse(val roomItemId: Long, val name: String, val imageUrl: String, val isEquipped: Boolean)
+/**
+ * @property itemId 상품 id. 앱은 `https://cdn.nyummy.co.kr/items/{itemId}.png`로 이미지를 조립한다
+ */
+data class OwnedRoomItemResponse(val roomItemId: Long, val name: String, val itemId: Long, val isEquipped: Boolean)
 
+/**
+ * @property itemId 상품 id. 앱은 `https://cdn.nyummy.co.kr/items/{itemId}.png`로 이미지를 조립한다
+ */
 data class EquippedRoomItemResponse(
     val roomItemId: Long,
     val category: RoomItemCategory,
-    val imageUrl: String,
+    val itemId: Long,
     val x: Float,
     val y: Float,
     val zIndex: Int,
