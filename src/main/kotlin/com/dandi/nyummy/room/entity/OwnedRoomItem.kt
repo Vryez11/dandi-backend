@@ -1,5 +1,7 @@
 package com.dandi.nyummy.room.entity
 
+import com.dandi.nyummy.exception.BusinessException
+import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityListeners
@@ -57,4 +59,35 @@ class OwnedRoomItem(
 
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null
+
+    /**
+     * 장착하고 마이룸에서의 위치·크기를 바꾼다. 이미 장착한 아이템이면 위치·크기만 바뀐다.
+     */
+    fun equip(x: Float, y: Float, zIndex: Int, scale: Float) {
+        this.isEquipped = true
+        this.x = x
+        this.y = y
+        this.zIndex = zIndex
+        this.scale = scale
+    }
+
+    /**
+     * 장착을 해제한다. 마지막 위치·크기는 그대로 남긴다.
+     */
+    fun unequip() {
+        this.isEquipped = false
+    }
+
+    fun validateOwnership(requestUserId: Long) {
+        if (userId != requestUserId) {
+            throw BusinessException(AuthErrorCode.FORBIDDEN)
+        }
+    }
+
+    /**
+     * 삭제 시각을 바꾼다. 시각을 넣으면 삭제, null을 넣으면 복구다.
+     */
+    fun updateDeletedAt(deletedAt: Instant?) {
+        this.deletedAt = deletedAt
+    }
 }

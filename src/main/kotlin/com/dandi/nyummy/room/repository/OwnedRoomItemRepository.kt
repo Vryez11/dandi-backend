@@ -21,6 +21,11 @@ interface OwnedRoomItemRepository : JpaRepository<OwnedRoomItem, Long> {
     fun findOwnedRoomItemByIdAndUserId(id: Long, userId: Long): OwnedRoomItem?
 
     /**
+     * 사용자의 삭제되지 않은 보유 아이템을 모두 조회한다. 꾸민 방 저장에서 장착·해제할 대상을 고르는 데 쓴다.
+     */
+    fun findOwnedRoomItemsByUserIdAndDeletedAtIsNull(userId: Long): List<OwnedRoomItem>
+
+    /**
      * 한 카테고리의 보유 아이템을 장착한 것 먼저, 같은 장착 여부 안에서는 최신순(id 내림차순)으로 조회한다.
      *
      * 정렬이 두 값이라 커서도 두 값으로 비교한다. 커서보다 뒤 순서는 "커서가 장착이면 미장착 전부"와

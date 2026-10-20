@@ -4,6 +4,8 @@ package com.dandi.nyummy.room.dto
 
 import com.dandi.nyummy.room.enum.RoomItemCategory
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Positive
 
 data class RoomResponse(
@@ -50,8 +52,15 @@ data class UpdateEquippedRoomItemsRequest(
 
 data class EquippedRoomItemRequest(
     val ownedRoomItemId: Long,
+
+    @field:Min(value = 0, message = "x는 0 이상이어야 합니다.")
+    @field:Max(value = 100, message = "x는 100 이하여야 합니다.")
     val x: Float,
+
+    @field:Min(value = 0, message = "y는 0 이상이어야 합니다.")
+    @field:Max(value = 100, message = "y는 100 이하여야 합니다.")
     val y: Float,
+
     val zIndex: Int,
 
     @field:Positive(message = "scale은 0보다 커야 합니다.")
