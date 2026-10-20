@@ -2,7 +2,7 @@ package com.dandi.nyummy.home.service
 
 import com.dandi.nyummy.coin.service.CoinService
 import com.dandi.nyummy.home.dto.HomeResponse
-import com.dandi.nyummy.inquiry.service.InquiryService
+import com.dandi.nyummy.mail.service.MailService
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.room.service.RoomService
 import com.dandi.nyummy.user.dto.HomeUserResponse
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class HomeService(
     private val mealService: MealService,
-    private val inquiryService: InquiryService,
+    private val mailService: MailService,
     private val roomService: RoomService,
     private val coinService: CoinService,
 ) {
@@ -26,21 +26,21 @@ class HomeService(
      * 그 사이에 기록이 바뀌어 화면 안에서 어긋난 값이 보일 수 있다.
      *
      * @param userId 조회하는 사용자 ID
-     * @return 코인·연속 기록·오늘 식사 현황·안 읽은 문의 답변 여부·마이룸 장착 아이템을 담은 [HomeResponse]
+     * @return 코인·연속 기록·오늘 식사 현황·우편함 배지 여부·마이룸 장착 아이템을 담은 [HomeResponse]
      */
     @Transactional(readOnly = true)
     fun getHome(userId: Long): HomeResponse {
         val coin = coinService.getBalance(userId)
         val streak = mealService.getStreak(userId)
         val todayMealSummary = mealService.getTodayMealSummary(userId)
-        val hasUnreadInquiryAnswer = inquiryService.existsUnreadAnswer(userId)
+        val hasMailboxBadge = mailService.existsNotClaimedMail(userId)
         val equippedRoomItems = roomService.getEquippedRoomItems(userId)
 
         val response = HomeResponse(
             user = HomeUserResponse(coin = coin),
             streak = streak,
             todayMealSummary = todayMealSummary,
-            hasUnreadInquiryAnswer = hasUnreadInquiryAnswer,
+            hasMailboxBadge = hasMailboxBadge,
             equippedRoomItems = equippedRoomItems,
         )
 
