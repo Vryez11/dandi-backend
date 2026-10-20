@@ -133,6 +133,8 @@ class MealE2eTest {
             val summaryAfterCreate = getTodayMealSummary()
             assertEquals(summaryBefore.recordedCount + 1, summaryAfterCreate.recordedCount, "홈의 오늘 식사 수")
             assertEquals(summaryBefore.attemptCount + 1, summaryAfterCreate.attemptCount, "홈의 오늘 기록 시도 횟수")
+            // 고정 계정이 어제까지 이어 왔는지는 실행마다 달라 정확한 값은 단정하지 않는다. 오늘 기록했으니 1일 이상이다.
+            assertTrue(getStreakDays() >= 1, "식사를 기록한 날인데 홈의 연속 기록 일수가 0입니다")
 
             // 4. 이름 수정: 수정된 식사가 응답으로 온다
             val updatedName = "E2E 케이크 ${UUID.randomUUID().toString().take(8)}"
@@ -194,6 +196,8 @@ class MealE2eTest {
             val summaryAfterDelete = getTodayMealSummary()
             assertEquals(summaryBefore.recordedCount, summaryAfterDelete.recordedCount, "삭제 후 홈의 오늘 식사 수")
             assertEquals(summaryAfterCreate.attemptCount, summaryAfterDelete.attemptCount, "삭제 후 기록 시도 횟수")
+            // 식사를 삭제해도 그날 기록한 것은 연속 기록으로 인정한다.
+            assertTrue(getStreakDays() >= 1, "식사를 삭제했더니 홈의 연속 기록 일수가 0이 되었습니다")
         } finally {
             // 중간에 실패하면 이미 삭제된 상태일 수 있다(그때는 404). 정리는 결과를 검증하지 않는다.
             Given { spec(RequestSpecs.createAuthorizedSpec()) } When { delete("/api/v1/meals/$mealId") }
@@ -286,6 +290,16 @@ class MealE2eTest {
             recordedCount = home.getInt("todayMealSummary.todayRecordedCount"),
             attemptCount = home.getInt("todayMealSummary.todayAttemptCount"),
         )
+    }
+
+    private fun getStreakDays(): Int = Given {
+        spec(RequestSpecs.createAuthorizedSpec())
+    } When {
+        get("/api/v1/home")
+    } Then {
+        statusCode(200)
+    } Extract {
+        path("streak.streakDays")
     }
 
     private fun retryNutritionAnalysis(mealId: Long): String = Given {

@@ -27,7 +27,6 @@ import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
-import com.dandi.nyummy.streak.dto.StreakResponse
 import com.dandi.nyummy.user.repository.ProfileRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -301,12 +300,6 @@ class MealService(
         meal.validateOwnership(userId)
 
         meal.updateDeletedAt(Instant.now())
-    }
-
-    @Transactional(readOnly = true)
-    fun getStreak(userId: Long): StreakResponse {
-        // TODO: 스트릭 구현하기
-        return StreakResponse(0, 0)
     }
 
     /**

@@ -5,6 +5,7 @@ import com.dandi.nyummy.home.dto.HomeResponse
 import com.dandi.nyummy.mail.service.MailService
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.room.service.RoomService
+import com.dandi.nyummy.streak.service.StreakService
 import com.dandi.nyummy.user.dto.HomeUserResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,6 +16,7 @@ class HomeService(
     private val mailService: MailService,
     private val roomService: RoomService,
     private val coinService: CoinService,
+    private val streakService: StreakService,
 ) {
     /**
      * 홈 화면에 필요한 값을 도메인별로 모아 반환한다.
@@ -31,7 +33,7 @@ class HomeService(
     @Transactional(readOnly = true)
     fun getHome(userId: Long): HomeResponse {
         val coin = coinService.getBalance(userId)
-        val streak = mealService.getStreak(userId)
+        val streak = streakService.getStreak(userId)
         val todayMealSummary = mealService.getTodayMealSummary(userId)
         val hasMailboxBadge = mailService.existsNotClaimedMail(userId)
         val equippedRoomItems = roomService.getEquippedRoomItems(userId)
