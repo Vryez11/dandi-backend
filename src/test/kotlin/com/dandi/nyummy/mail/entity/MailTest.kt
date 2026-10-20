@@ -74,6 +74,34 @@ class MailTest {
         assertBusinessException(MailErrorCode.MAIL_EXPIRED) { mail.claim(now) }
     }
 
+    // updateDeletedAt
+
+    @Test
+    fun `받은 우편을 삭제하면 삭제 시각을 기록한다`() {
+        val mail = mail(claimedAt = now.minusSeconds(600))
+
+        mail.updateDeletedAt(now)
+
+        assertEquals(now, mail.deletedAt)
+    }
+
+    @Test
+    fun `안 받은 우편은 삭제할 수 없고 삭제 시각도 그대로다`() {
+        val mail = mail()
+
+        assertBusinessException(MailErrorCode.MAIL_NOT_CLAIMED) { mail.updateDeletedAt(now) }
+        assertNull(mail.deletedAt)
+    }
+
+    @Test
+    fun `삭제 시각을 비우면 복구된다`() {
+        val mail = mail(claimedAt = now.minusSeconds(600)).apply { deletedAt = now.minusSeconds(60) }
+
+        mail.updateDeletedAt(null)
+
+        assertNull(mail.deletedAt)
+    }
+
     // validateOwnership
 
     @Test

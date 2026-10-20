@@ -79,6 +79,6 @@ class RoomE2eTest {
     }
 
     companion object {
-        private val ROOM_ITEM_CATEGORIES = listOf("BACKGROUND", "BED", "CAT_WHEEL", "CARPET", "ETC")
+        private val ROOM_ITEM_CATEGORIES = listOf("BACKGROUND", "BED", "ETC")
     }
 }

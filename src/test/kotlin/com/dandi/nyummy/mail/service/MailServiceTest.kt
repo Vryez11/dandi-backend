@@ -26,6 +26,7 @@ import org.springframework.test.util.ReflectionTestUtils
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.Optional
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -84,6 +85,11 @@ class MailServiceTest {
 
     private fun givenMail(mail: Mail?) {
         every { mailRepository.findMailWithLockByIdAndDeletedAtIsNull(mailId) } returns mail
+    }
+
+    // 삭제·복구는 삭제된 우편도 잠그지 않고 조회한다.
+    private fun givenMailById(mail: Mail?) {
+        every { mailRepository.findById(mailId) } returns Optional.ofNullable(mail)
     }
 
     private fun givenMailItems(vararg mailItems: MailItemResult) {
@@ -425,5 +431,100 @@ class MailServiceTest {
             roomService.createOwnedRoomItems(userId, listOf(3L))
             coinService.increaseBalance(userId, 30, CoinHistoryCategory.MAIL_CLAIM, 1L)
         }
+    }
+
+    // deleteMail
+
+    @Test
+    fun `받은 우편을 현재 시각으로 삭제한다`() {
+        val mail = mail(id = mailId).apply { claimedAt = now.minusSeconds(600) }
+        givenMailById(mail)
+
+        mailService.deleteMail(userId, mailId)
+
+        assertEquals(now, mail.deletedAt)
+    }
+
+    @Test
+    fun `이미 삭제된 우편도 거부하지 않고 다시 삭제한다`() {
+        val mail = mail(id = mailId).apply {
+            claimedAt = now.minusSeconds(600)
+            deletedAt = now.minusSeconds(60)
+        }
+        givenMailById(mail)
+
+        mailService.deleteMail(userId, mailId)
+
+        assertEquals(now, mail.deletedAt)
+    }
+
+    @Test
+    fun `없는 우편은 삭제할 수 없다`() {
+        givenMailById(null)
+
+        assertBusinessException(MailErrorCode.MAIL_NOT_FOUND) { mailService.deleteMail(userId, mailId) }
+    }
+
+    @Test
+    fun `다른 사용자의 우편이면 삭제하지 않고 거부한다`() {
+        val mail = mail(id = mailId, ownerId = 2L).apply { claimedAt = now.minusSeconds(600) }
+        givenMailById(mail)
+
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { mailService.deleteMail(userId, mailId) }
+        assertNull(mail.deletedAt)
+    }
+
+    @Test
+    fun `안 받은 우편이면 삭제하지 않고 거부한다`() {
+        val mail = mail(id = mailId)
+        givenMailById(mail)
+
+        assertBusinessException(MailErrorCode.MAIL_NOT_CLAIMED) { mailService.deleteMail(userId, mailId) }
+        assertNull(mail.deletedAt)
+    }
+
+    // restoreMail
+
+    @Test
+    fun `삭제한 우편을 복구한다`() {
+        val mail = mail(id = mailId).apply {
+            claimedAt = now.minusSeconds(600)
+            deletedAt = now.minusSeconds(60)
+        }
+        givenMailById(mail)
+
+        mailService.restoreMail(userId, mailId)
+
+        assertNull(mail.deletedAt)
+    }
+
+    @Test
+    fun `삭제되지 않은 우편도 거부하지 않고 그대로 둔다`() {
+        val mail = mail(id = mailId).apply { claimedAt = now.minusSeconds(600) }
+        givenMailById(mail)
+
+        mailService.restoreMail(userId, mailId)
+
+        assertNull(mail.deletedAt)
+    }
+
+    @Test
+    fun `없는 우편은 복구할 수 없다`() {
+        givenMailById(null)
+
+        assertBusinessException(MailErrorCode.MAIL_NOT_FOUND) { mailService.restoreMail(userId, mailId) }
+    }
+
+    @Test
+    fun `다른 사용자의 우편이면 복구하지 않고 거부한다`() {
+        val deletedAt = now.minusSeconds(60)
+        val mail = mail(id = mailId, ownerId = 2L).apply {
+            claimedAt = now.minusSeconds(600)
+            this.deletedAt = deletedAt
+        }
+        givenMailById(mail)
+
+        assertBusinessException(AuthErrorCode.FORBIDDEN) { mailService.restoreMail(userId, mailId) }
+        assertEquals(deletedAt, mail.deletedAt)
     }
 }

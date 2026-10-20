@@ -106,4 +106,17 @@ class Mail(
 
         this.claimedAt = claimedAt
     }
+
+    /**
+     * 삭제 시각을 바꾼다. 시각을 넣으면 삭제, null을 넣으면 복구다. 받은 우편만 삭제할 수 있다.
+     *
+     * @throws BusinessException [MailErrorCode.MAIL_NOT_CLAIMED] 안 받은 우편을 삭제하려는 경우
+     */
+    fun updateDeletedAt(deletedAt: Instant?) {
+        if (deletedAt != null && !isClaimed) {
+            throw BusinessException(MailErrorCode.MAIL_NOT_CLAIMED)
+        }
+
+        this.deletedAt = deletedAt
+    }
 }

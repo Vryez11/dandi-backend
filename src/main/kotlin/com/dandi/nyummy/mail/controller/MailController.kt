@@ -87,24 +87,35 @@ class MailController(private val mailService: MailService) {
         summary = "받은 우편 삭제",
         description = "받은 우편을 삭제한다. 아직 받지 않은 우편은 삭제할 수 없다. " +
             "실제로 지우지 않고 삭제 표시만 하므로 우편 복구 API로 되돌릴 수 있다. " +
-            "현재는 요청과 관계없이 항상 204를 반환한다.",
+            "이미 삭제한 우편에 다시 요청해도 성공한다.",
     )
     @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @ApiErrorCodes(
+        mail = [MailErrorCode.MAIL_NOT_FOUND, MailErrorCode.MAIL_NOT_CLAIMED],
+        auth = [AuthErrorCode.FORBIDDEN],
+    )
     @DeleteMapping("/{mailId}")
     fun deleteMail(
         @CurrentUser user: AuthUser,
         @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
-    ): ResponseEntity<Void> = ResponseEntity.noContent().build()
+    ): ResponseEntity<Void> {
+        mailService.deleteMail(user.userId, mailId)
+        return ResponseEntity.noContent().build()
+    }
 
     @Operation(
         summary = "우편 복구",
         description = "삭제한 우편을 되돌린다. 복구 기한은 없다. 삭제되지 않은 우편에 요청해도 그대로 두고 성공한다. " +
-            "현재는 요청과 관계없이 항상 204를 반환한다.",
+            "만료된 우편은 복구해도 목록에 보이지 않는다.",
     )
     @ApiResponse(responseCode = "204", description = "복구 성공")
+    @ApiErrorCodes(mail = [MailErrorCode.MAIL_NOT_FOUND], auth = [AuthErrorCode.FORBIDDEN])
     @PostMapping("/{mailId}/restore")
     fun restoreMail(
         @CurrentUser user: AuthUser,
         @Parameter(description = "우편 ID") @PathVariable("mailId") mailId: Long,
-    ): ResponseEntity<Void> = ResponseEntity.noContent().build()
+    ): ResponseEntity<Void> {
+        mailService.restoreMail(user.userId, mailId)
+        return ResponseEntity.noContent().build()
+    }
 }
