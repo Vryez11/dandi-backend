@@ -79,6 +79,20 @@ class RoomServiceTest {
         assertEquals(0.8f, items[1].scale)
     }
 
+    // createOwnedRoomItems
+
+    @Test
+    fun `받은 아이템 id마다 보유 아이템을 장착하지 않은 채로 하나씩 만든다`() {
+        val savedItems = slot<List<OwnedRoomItem>>()
+        every { ownedRoomItemRepository.saveAll(capture(savedItems)) } answers { firstArg() }
+
+        roomService.createOwnedRoomItems(userId, listOf(2L, 2L, 3L))
+
+        val items = savedItems.captured
+        assertEquals(listOf(2L, 2L, 3L), items.map { it.itemId })
+        assertTrue(items.all { it.userId == userId && !it.isEquipped })
+    }
+
     // getOwnedRoomItems
 
     @Test

@@ -8,6 +8,7 @@ import com.dandi.nyummy.room.dto.OwnedRoomItemsResponse
 import com.dandi.nyummy.room.dto.RoomItemCategoryResponse
 import com.dandi.nyummy.room.dto.RoomResponse
 import com.dandi.nyummy.room.dto.UpdateEquippedRoomItemsRequest
+import com.dandi.nyummy.room.entity.OwnedRoomItem
 import com.dandi.nyummy.room.enum.RoomItemCategory
 import com.dandi.nyummy.room.mapper.toEquippedRoomItemResponse
 import com.dandi.nyummy.room.mapper.toOwnedRoomItem
@@ -32,6 +33,17 @@ class RoomService(
     @Transactional
     fun createDefaultOwnedRoomItems(userId: Long) {
         ownedRoomItemRepository.saveAll(roomProperties.defaultRoomItems.map { it.toOwnedRoomItem(userId) })
+    }
+
+    /**
+     * [itemIds]마다 보유 아이템을 하나씩 장착하지 않은 채로 만든다. 같은 아이템을 여러 개 주려면 그 수만큼 넣는다.
+     * 우편 받기처럼 보상을 지급하는 쪽의 트랜잭션 안에서 호출한다.
+     *
+     * 마이룸 아이템(room_items)이 아닌 id가 있으면 외래 키 제약에 걸려 실패한다.
+     */
+    @Transactional
+    fun createOwnedRoomItems(userId: Long, itemIds: List<Long>) {
+        ownedRoomItemRepository.saveAll(itemIds.map { OwnedRoomItem(userId = userId, itemId = it) })
     }
 
     /**

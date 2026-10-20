@@ -4,8 +4,6 @@ import com.dandi.nyummy.config.openapi.ApiErrorCodes
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.MailErrorCode
 import com.dandi.nyummy.mail.dto.MailsResponse
-import com.dandi.nyummy.mail.dto.RewardCoinResponse
-import com.dandi.nyummy.mail.dto.RewardItemResponse
 import com.dandi.nyummy.mail.dto.RewardResponse
 import com.dandi.nyummy.mail.dto.TotalRewardResponse
 import com.dandi.nyummy.mail.service.MailService
@@ -60,7 +58,9 @@ class MailController(private val mailService: MailService) {
             "보상 상자는 들어 있던 코인과 아이템이 그대로 담기고, rewardBox에 상자 번호와 열기 애니메이션 URL(animationUrl)이 담긴다. " +
             "animationUrl은 아직 null이다. 코인·아이템 우편이면 rewardBox는 null이다. " +
             "이미지는 목록과 같이 imageId로 조립한다. coin은 coins/{imageId}.png, items는 items/{imageId}.png, " +
-            "rewardBox는 reward-boxes/{imageId}.png다. 아이템 지급은 아직 구현 전이라 items는 항상 null이다.",
+            "rewardBox는 reward-boxes/{imageId}.png다. " +
+            "items는 같은 아이템을 하나로 합쳐 quantity에 개수를 더하고, 우편에 넣은 순서로 준다. " +
+            "받은 아이템은 개수만큼 마이룸 보유 아이템으로 장착하지 않은 채 생긴다.",
     )
     @ApiErrorCodes(
         mail = [MailErrorCode.MAIL_NOT_FOUND, MailErrorCode.ALREADY_CLAIMED, MailErrorCode.MAIL_EXPIRED],
@@ -77,22 +77,11 @@ class MailController(private val mailService: MailService) {
         description = "안 받은 우편을 한 번에 받고, 지급된 보상의 합계를 반환한다. " +
             "보상 상자도 포함하며, 열기 연출 없이 들어 있던 코인과 아이템을 합계에 더한다. " +
             "받을 우편이 없으면 coin과 items가 null이다. 이미지는 하나 받기와 같이 imageId로 조립한다. " +
-            "현재는 요청과 관계없이 고정 응답을 반환한다.",
+            "이미 받은 우편과 만료된 우편은 대상이 아니며, 받을 수 있는 우편은 개수 제한 없이 모두 받는다. " +
+            "items는 여러 우편의 같은 아이템을 하나로 합쳐 quantity에 개수를 더하고, 먼저 온 우편 → 우편에 넣은 순서로 준다.",
     )
     @PostMapping("/claim-all")
-    fun claimMails(@CurrentUser user: AuthUser): TotalRewardResponse = TotalRewardResponse(
-        coin = RewardCoinResponse(
-            quantity = 150,
-            imageId = 1,
-        ),
-        items = listOf(
-            RewardItemResponse(
-                imageId = 2,
-                name = "호박 쿠션",
-                quantity = 3,
-            ),
-        ),
-    )
+    fun claimMails(@CurrentUser user: AuthUser): TotalRewardResponse = mailService.claimMails(user.userId)
 
     @Operation(
         summary = "받은 우편 삭제",
