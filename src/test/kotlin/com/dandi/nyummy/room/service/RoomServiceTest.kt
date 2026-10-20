@@ -3,6 +3,8 @@ package com.dandi.nyummy.room.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.CommonErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
+import com.dandi.nyummy.room.config.DefaultRoomItemProperties
+import com.dandi.nyummy.room.config.RoomProperties
 import com.dandi.nyummy.room.dto.EquippedRoomItemResult
 import com.dandi.nyummy.room.dto.OwnedRoomItemResult
 import com.dandi.nyummy.room.entity.OwnedRoomItem
@@ -10,6 +12,7 @@ import com.dandi.nyummy.room.enum.RoomItemCategory
 import com.dandi.nyummy.room.repository.OwnedRoomItemRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.SliceImpl
@@ -26,8 +29,17 @@ class RoomServiceTest {
     private val userId = 1L
 
     private val ownedRoomItemRepository = mockk<OwnedRoomItemRepository>()
+    private val roomProperties = RoomProperties(
+        defaultRoomItems = listOf(
+            DefaultRoomItemProperties(itemId = 1L, x = 0f, y = 0f, zIndex = 0, scale = 1f),
+            DefaultRoomItemProperties(itemId = 2L, x = 27f, y = 22f, zIndex = 2, scale = 0.8f),
+        ),
+    )
 
-    private val roomService = RoomService(ownedRoomItemRepository = ownedRoomItemRepository)
+    private val roomService = RoomService(
+        ownedRoomItemRepository = ownedRoomItemRepository,
+        roomProperties = roomProperties,
+    )
 
     private fun ownedRoomItem(id: Long, isEquipped: Boolean) = OwnedRoomItem(userId = userId, itemId = 2L).apply {
         this.isEquipped = isEquipped
@@ -47,6 +59,24 @@ class RoomServiceTest {
     private fun assertBusinessException(expected: ErrorCode, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
         assertEquals(expected, exception.errorCode)
+    }
+
+    // createDefaultOwnedRoomItems
+
+    @Test
+    fun `설정한 기본 아이템을 장착한 채로 설정한 좌표에 지급한다`() {
+        val savedItems = slot<List<OwnedRoomItem>>()
+        every { ownedRoomItemRepository.saveAll(capture(savedItems)) } answers { firstArg() }
+
+        roomService.createDefaultOwnedRoomItems(userId)
+
+        val items = savedItems.captured
+        assertEquals(listOf(1L, 2L), items.map { it.itemId })
+        assertTrue(items.all { it.userId == userId && it.isEquipped })
+        assertEquals(27f, items[1].x)
+        assertEquals(22f, items[1].y)
+        assertEquals(2, items[1].zIndex)
+        assertEquals(0.8f, items[1].scale)
     }
 
     // getOwnedRoomItems

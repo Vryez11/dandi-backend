@@ -23,6 +23,7 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.infra.email.EmailService
 import com.dandi.nyummy.notification.repository.DeviceTokenRepository
+import com.dandi.nyummy.room.service.RoomService
 import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.security.jwt.TokenType
 import com.dandi.nyummy.security.jwt.VerifiedClaims
@@ -55,6 +56,7 @@ class AuthService(
     private val deviceTokenRepository: DeviceTokenRepository,
     private val catRepository: CatRepository,
     private val coinRepository: CoinRepository,
+    private val roomService: RoomService,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AuthService::class.java)
@@ -99,7 +101,7 @@ class AuthService(
     }
 
     /**
-     * 회원가입 용도의 verifiedToken을 검증하고 사용자·프로필을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
+     * 회원가입 용도의 verifiedToken을 검증하고 사용자·프로필·코인·기본 아이템을 생성한 뒤 AccessToken·RefreshToken을 발급한다.
      *
      * 이메일 인증([validateAuthCode])과 소셜 로그인([OAuthService.login])이 발급한 verifiedToken을 같은 경로로 받는다.
      * 토큰의 provider에 따라 달라지는 것은 둘뿐이다 — 신원 키의 중복 검사와 비밀번호 필수 여부.
@@ -170,6 +172,7 @@ class AuthService(
         )
 
         coinRepository.save(Coin(userId = userId))
+        roomService.createDefaultOwnedRoomItems(userId)
 
         val (accessToken, refreshToken) = jwtService.createTokenPair(userId)
 

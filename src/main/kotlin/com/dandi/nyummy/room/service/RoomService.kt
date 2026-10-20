@@ -2,6 +2,7 @@ package com.dandi.nyummy.room.service
 
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.CommonErrorCode
+import com.dandi.nyummy.room.config.RoomProperties
 import com.dandi.nyummy.room.dto.EquippedRoomItemResponse
 import com.dandi.nyummy.room.dto.OwnedRoomItemsResponse
 import com.dandi.nyummy.room.dto.RoomItemCategoryResponse
@@ -9,6 +10,7 @@ import com.dandi.nyummy.room.dto.RoomResponse
 import com.dandi.nyummy.room.dto.UpdateEquippedRoomItemsRequest
 import com.dandi.nyummy.room.enum.RoomItemCategory
 import com.dandi.nyummy.room.mapper.toEquippedRoomItemResponse
+import com.dandi.nyummy.room.mapper.toOwnedRoomItem
 import com.dandi.nyummy.room.mapper.toOwnedRoomItemResponse
 import com.dandi.nyummy.room.repository.OwnedRoomItemRepository
 import org.springframework.data.domain.PageRequest
@@ -16,7 +18,21 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class RoomService(private val ownedRoomItemRepository: OwnedRoomItemRepository) {
+class RoomService(
+    private val ownedRoomItemRepository: OwnedRoomItemRepository,
+    private val roomProperties: RoomProperties,
+) {
+
+    /**
+     * 가입한 사용자에게 기본 아이템을 장착한 채로 지급한다. 가입 트랜잭션 안에서 호출되어, 지급이 실패하면 가입도 실패한다.
+     *
+     * 아이템·좌표는 설정(app.room.default-room-items)에서 읽는다. 아이템 행(items·room_items)이 없는 DB에서는
+     * 외래 키 제약에 걸려 가입이 실패하므로, 새 환경에는 기본 아이템 행을 먼저 넣는다.
+     */
+    @Transactional
+    fun createDefaultOwnedRoomItems(userId: Long) {
+        ownedRoomItemRepository.saveAll(roomProperties.defaultRoomItems.map { it.toOwnedRoomItem(userId) })
+    }
 
     /**
      * 카테고리별 보유 아이템의 첫 묶음과 장착한 아이템을 조회한다.

@@ -18,6 +18,7 @@ import com.dandi.nyummy.exception.errorcode.EmailErrorCode
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.infra.email.EmailService
 import com.dandi.nyummy.notification.repository.DeviceTokenRepository
+import com.dandi.nyummy.room.service.RoomService
 import com.dandi.nyummy.security.jwt.EmailChallengeClaims
 import com.dandi.nyummy.security.jwt.JwtService
 import com.dandi.nyummy.security.jwt.VerifiedClaims
@@ -70,6 +71,7 @@ class AuthServiceTest {
     private val deviceTokenRepository = mockk<DeviceTokenRepository>()
     private val catRepository = mockk<CatRepository>()
     private val coinRepository = mockk<CoinRepository>()
+    private val roomService = mockk<RoomService>(relaxUnitFun = true)
 
     private val authService = AuthService(
         userRepository = userRepository,
@@ -86,6 +88,7 @@ class AuthServiceTest {
         deviceTokenRepository = deviceTokenRepository,
         catRepository = catRepository,
         coinRepository = coinRepository,
+        roomService = roomService,
     )
 
     private fun createSignUpRequest() = SignUpRequest(
@@ -186,7 +189,7 @@ class AuthServiceTest {
     }
 
     @Test
-    fun `가입에 성공하면 사용자·프로필·코인·리프레시 토큰을 저장하고 토큰 쌍을 반환한다`() {
+    fun `가입에 성공하면 사용자·프로필·코인·기본 아이템·리프레시 토큰을 저장하고 토큰 쌍을 반환한다`() {
         stubVerifiedToken(AuthPurpose.SIGNUP)
         every { userRepository.existsByProviderAndEmail(AuthProvider.EMAIL, email) } returns false
         every { passwordService.encodePassword("password1") } returns "encoded:password1"
@@ -216,6 +219,8 @@ class AuthServiceTest {
 
         assertEquals(savedUser.captured.id, savedCoin.captured.userId)
         assertEquals(0, savedCoin.captured.balance)
+
+        verify(exactly = 1) { roomService.createDefaultOwnedRoomItems(savedUser.captured.id) }
 
         verify(exactly = 1) { refreshTokenService.startSession(savedUser.captured.id, "refresh-token") }
     }

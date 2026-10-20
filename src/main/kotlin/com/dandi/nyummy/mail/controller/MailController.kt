@@ -87,9 +87,8 @@ class MailController(private val mailService: MailService) {
         ),
         items = listOf(
             RewardItemResponse(
-                itemId = 2,
-                name = "호박 쿠션",
                 imageId = 2,
+                name = "호박 쿠션",
                 quantity = 3,
             ),
         ),
