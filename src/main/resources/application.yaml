@@ -149,17 +149,17 @@ app:
     # 세 등급이 모두 있어야 하고 rate 합은 100이어야 한다. 아니면 앱이 뜨지 않는다(MealProperties).
     reward-boxes:
       bronze:
-        rate: 40
-        min-coin-quantity: 100
-        max-coin-quantity: 199
+        rate: 50
+        min-coin-quantity: 1
+        max-coin-quantity: 5
       silver:
-        rate: 40
-        min-coin-quantity: 200
-        max-coin-quantity: 349
+        rate: 30
+        min-coin-quantity: 5
+        max-coin-quantity: 10
       gold:
         rate: 20
-        min-coin-quantity: 350
-        max-coin-quantity: 500
+        min-coin-quantity: 10
+        max-coin-quantity: 15
     reward-mail-time-to-live: 7d
   cat:
     weight-update-interval-days: 3
