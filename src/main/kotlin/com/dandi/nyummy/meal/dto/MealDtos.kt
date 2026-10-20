@@ -63,8 +63,6 @@ data class MonthlyMealDayResponse(
     val foodIconIds: List<Long>,
 )
 
-data class StreakResponse(val streakDays: Int, val recordsUntilNextReward: Int)
-
 /**
  * 오늘의 식사 현황.
  *

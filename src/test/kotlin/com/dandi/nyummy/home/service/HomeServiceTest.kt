@@ -2,10 +2,10 @@ package com.dandi.nyummy.home.service
 
 import com.dandi.nyummy.coin.service.CoinService
 import com.dandi.nyummy.mail.service.MailService
-import com.dandi.nyummy.meal.dto.StreakResponse
 import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
 import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.room.service.RoomService
+import com.dandi.nyummy.streak.dto.StreakResponse
 import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test

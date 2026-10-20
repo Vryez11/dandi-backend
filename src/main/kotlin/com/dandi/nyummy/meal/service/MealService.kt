@@ -18,7 +18,6 @@ import com.dandi.nyummy.meal.dto.MealResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.Nutrition
-import com.dandi.nyummy.meal.dto.StreakResponse
 import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
@@ -28,6 +27,7 @@ import com.dandi.nyummy.meal.mapper.toEntity
 import com.dandi.nyummy.meal.mapper.toMealResponse
 import com.dandi.nyummy.meal.mapper.toNutrition
 import com.dandi.nyummy.meal.repository.MealRepository
+import com.dandi.nyummy.streak.dto.StreakResponse
 import com.dandi.nyummy.user.repository.ProfileRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
