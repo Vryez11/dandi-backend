@@ -18,7 +18,6 @@ import com.dandi.nyummy.meal.dto.MealResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealDayResponse
 import com.dandi.nyummy.meal.dto.MonthlyMealsResponse
 import com.dandi.nyummy.meal.dto.Nutrition
-import com.dandi.nyummy.meal.dto.StreakResponse
 import com.dandi.nyummy.meal.dto.TodayMealSummaryResponse
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
@@ -301,12 +300,6 @@ class MealService(
         meal.validateOwnership(userId)
 
         meal.updateDeletedAt(Instant.now())
-    }
-
-    @Transactional(readOnly = true)
-    fun getStreak(userId: Long): StreakResponse {
-        // TODO: 스트릭 구현하기
-        return StreakResponse(0, 0)
     }
 
     /**

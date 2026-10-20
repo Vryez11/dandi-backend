@@ -9,6 +9,8 @@ import com.dandi.nyummy.meal.dto.RewardBoxResult
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
+import com.dandi.nyummy.streak.entity.Streak
+import com.dandi.nyummy.streak.repository.StreakRepository
 import com.dandi.nyummy.user.entity.Profile
 import com.dandi.nyummy.user.entity.User
 import com.dandi.nyummy.user.repository.ProfileRepository
@@ -32,7 +34,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 같은 사용자의 식사 기록이 동시에 들어와도 하루 시도 횟수를 넘겨 저장되지 않는지 실제 DB로 확인한다.
+ * 같은 사용자의 식사 기록이 동시에 들어와도 하루 시도 횟수를 넘겨 저장되지 않고 연속 기록도 한 번만 반영되는지 실제 DB로 확인한다.
  * 이 경로에는 외부 호출(S3·AI)이 없어서 [MealService.createMeal]의 DB 순서(이미지 확정 전 검사 → 트랜잭션 서비스)를 그대로 따라 한다.
  */
 @Testcontainers
@@ -45,6 +47,7 @@ class MealTransactionServiceConcurrencyTest @Autowired constructor(
     private val profileRepository: ProfileRepository,
     private val mealRepository: MealRepository,
     private val mailRepository: MailRepository,
+    private val streakRepository: StreakRepository,
     private val clock: Clock,
 ) {
     companion object {
@@ -69,6 +72,9 @@ class MealTransactionServiceConcurrencyTest @Autowired constructor(
         repeat(EXISTING_MEAL_COUNT) { index ->
             mealRepository.save(createMeal(userId, "existing-$index", now))
         }
+        // 오늘 이미 기록한 사용자라 연속 기록 행도 있다. 행이 없으면 첫 행 INSERT끼리 uk_streaks_user_id에 걸려
+        // 한 건만 남으므로, 잠금이 빠져도 이 테스트가 통과해 버린다.
+        streakRepository.save(Streak(userId = userId, lastMealAt = now))
 
         val startGate = CountDownLatch(1)
         val executor = Executors.newFixedThreadPool(REQUEST_COUNT)
@@ -98,6 +104,7 @@ class MealTransactionServiceConcurrencyTest @Autowired constructor(
         assertEquals(1, successCount, summary)
         assertEquals(5L, todayAttempts, summary)
         assertEquals(1, rewardBoxMailCount, summary)
+        assertEquals(1, streakRepository.findByUserId(userId)?.streakDays, summary)
         results.mapNotNull { it.exceptionOrNull() }.forEach { failure ->
             assertEquals(MealErrorCode.DAILY_COUNT_EXCEEDED, (failure as BusinessException).errorCode, summary)
         }

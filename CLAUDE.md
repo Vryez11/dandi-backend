@@ -128,7 +128,7 @@
 
 ### 식사·영양
 
-- 식사 기록 `Meal`(History 금지), 끼니 `MealTime`, 식사 상태 `MealStatus`, 아이콘 `Icon`, 연속 기록 `Streak`(`streakDays`)
+- 식사 기록 `Meal`(History 금지), 끼니 `MealTime`, 식사 상태 `MealStatus`, 아이콘 `Icon`
 - 하루 제한을 세는 식사 기록 요청 `Attempt`(`countDailyAttempts`)
 - 영양 분석 `Analysis` — 명사 자리(`AnalysisService`). 동사는 analyze이고 analysis·analyse를 동사로 쓰지 않는다
 - 분석 결과에 대한 사용자 평가 `AnalysisFeedback`(Review·Survey 금지, Evaluation은 하루 평가 전용) — 별점 `Rating`(Star·Score 금지 — Score는 식사 영양 점수), 이유 `Reason`(Comment 금지 — catComment와 충돌), 평가 가능 여부 `canCreateAnalysisFeedback`(hasAnalysisFeedback·isRated 금지)
@@ -136,6 +136,10 @@
 - 칼로리 `calory`(calories 금지), 탄수화물 `carbs`(carbohydrate 금지), 단백질 `protein`, 지방 `fat` — 단수형
 - 하루 평가 `DailyNutritionEvaluation`, 권장 섭취량 `RecommendedDailyIntake`(전용 클래스 없이 `calculateRecommendedDailyIntake()`가 `Nutrition` 반환)
 - 하루 섭취 합계 `Current`와 목표 섭취량 `Target` — 응답에서 쌍으로 쓴다
+
+### 스트릭
+
+- 연속 기록 `Streak`(`streakDays`, 패키지 streak) — 식사 기록 외의 연속 기록이 생겨도 이 단어를 쓴다
 
 ### 기간·캘린더
 

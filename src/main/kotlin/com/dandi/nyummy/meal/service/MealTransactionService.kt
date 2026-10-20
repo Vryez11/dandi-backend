@@ -8,6 +8,7 @@ import com.dandi.nyummy.meal.dto.RewardBoxResult
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
+import com.dandi.nyummy.streak.service.StreakService
 import com.dandi.nyummy.user.repository.ProfileRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,17 +26,20 @@ class MealTransactionService(
     private val mealAttemptService: MealAttemptService,
     private val mealRepository: MealRepository,
     private val mailService: MailService,
+    private val streakService: StreakService,
 ) {
     companion object {
         private const val MEAL_REWARD_CONTENT = "식사 기록 보상"
     }
 
     /**
-     * 식사와 보상 상자 우편을 한 트랜잭션으로 저장한다. 우편 저장이 실패하면 식사도 남기지 않는다.
+     * 식사와 보상 상자 우편을 한 트랜잭션으로 저장하고 연속 기록을 갱신한다. 우편 저장이나 연속 기록 갱신이
+     * 실패하면 식사도 남기지 않는다. 연속 기록은 분석 결과와 상관없이 식사를 만든 날을 인정하므로 여기서 갱신한다.
      *
      * 하루 시도 횟수는 [MealService.createMeal]이 이미지 확정 전에 한 번 거르지만, 그 검사와 저장 사이에
      * 같은 사용자의 요청이 동시에 들어오면 둘 다 통과할 수 있다. 그래서 프로필 행을 잠가 같은 사용자의 기록을
-     * 줄 세운 뒤 다시 센다. 잠금은 커밋하거나 롤백할 때 풀린다.
+     * 줄 세운 뒤 다시 센다. 잠금은 커밋하거나 롤백할 때 풀린다. 같은 잠금 덕분에 연속 기록의 첫 행이 두 번 만들어지거나
+     * 일수 갱신이 유실되지 않는다.
      *
      * 프로필 데이터를 지키려는 잠금이 아니라, 사용자마다 항상 한 행이 있는 테이블을 줄 세우기 표로 빌려 쓰는 것이다.
      * 아직 없는 식사 행은 잠글 수 없고(범위를 잠그면 갭 락끼리 데드락이 난다), users는 여러 테이블의 FK 부모라
@@ -65,6 +69,7 @@ class MealTransactionService(
             content = MEAL_REWARD_CONTENT,
             expiresAt = rewardMailExpiresAt,
         )
+        streakService.updateStreak(meal.userId)
         return meal
     }
 

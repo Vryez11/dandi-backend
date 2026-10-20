@@ -22,6 +22,9 @@ class HomeController(private val homeService: HomeService) {
         description = "홈 화면을 그리는 데 필요한 값을 한 번에 조회한다. " +
             "보유 코인, 연속 기록 현황(streak), 오늘의 식사 현황(기록한 끼니 수, 섭취·목표 칼로리), " +
             "우편함 배지 여부(hasMailboxBadge), 마이룸에 장착한 아이템(equippedRoomItems)이 들어 있다. " +
+            "streak.streakDays는 오늘이나 어제까지 이어진 연속 기록 일수이고, 그보다 전에 끊겼거나 기록한 적이 없으면 0이다. " +
+            "식사를 기록(생성)한 날을 하루로 세며, 분석에 실패하거나 나중에 삭제한 식사도 인정한다. 날짜는 한국 시간 기준이다. " +
+            "streak.recordsUntilNextReward는 아직 정해지지 않아 항상 0이다. " +
             "hasMailboxBadge는 받을 수 있는(받지 않았고 만료되지 않은) 우편이 하나라도 있으면 true다. " +
             "equippedRoomItems는 마이룸 조회 API의 equippedRoomItems와 같으며 zIndex 오름차순이다. " +
             "todayRecordedCount는 삭제하지 않은 식사 수이고, todayAttemptCount는 삭제·실패까지 포함한 " +
