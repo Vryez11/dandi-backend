@@ -24,7 +24,7 @@ class StreakService(private val streakRepository: StreakRepository, private val 
      * 기기 시계를 따라가므로 쓰지 않는다.
      *
      * 같은 사용자의 기록은 호출하는 쪽이 줄 세워야 한다. 동시에 들어오면 첫 행 INSERT가 겹치거나(유니크 제약 위반)
-     * 한쪽의 일수 갱신이 유실된다.
+     * 한쪽의 일수 갱신이 유실된다. [com.dandi.nyummy.meal.service.MealTransactionService.createMeal]은 프로필 행 잠금으로 줄 세운다.
      *
      * 행이 있으면 변경 감지로 저장하므로 트랜잭션이 있어야 반영된다. 혼자 불려도 갱신이 조용히 사라지지 않게
      * 트랜잭션을 걸고, 호출하는 쪽 트랜잭션이 있으면 거기에 합류한다.
