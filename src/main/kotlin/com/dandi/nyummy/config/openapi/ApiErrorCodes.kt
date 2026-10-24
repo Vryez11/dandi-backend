@@ -3,6 +3,7 @@ package com.dandi.nyummy.config.openapi
 import com.dandi.nyummy.exception.errorcode.AdminErrorCode
 import com.dandi.nyummy.exception.errorcode.AuthErrorCode
 import com.dandi.nyummy.exception.errorcode.CatErrorCode
+import com.dandi.nyummy.exception.errorcode.CdnErrorCode
 import com.dandi.nyummy.exception.errorcode.EmailErrorCode
 import com.dandi.nyummy.exception.errorcode.InquiryErrorCode
 import com.dandi.nyummy.exception.errorcode.InternalErrorCode
@@ -29,6 +30,7 @@ annotation class ApiErrorCodes(
     val admin: Array<AdminErrorCode> = [],
     val auth: Array<AuthErrorCode> = [],
     val cat: Array<CatErrorCode> = [],
+    val cdn: Array<CdnErrorCode> = [],
     val email: Array<EmailErrorCode> = [],
     val inquiry: Array<InquiryErrorCode> = [],
     val internal: Array<InternalErrorCode> = [],

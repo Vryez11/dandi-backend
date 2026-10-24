@@ -13,6 +13,8 @@ import org.springframework.validation.annotation.Validated
  *   개발 서버(localhost:3000)와 prod 어드민 서비스로 여는 SSM 터널(localhost:18080) 두 곳이고 모든 환경에서 같다
  * @property googleClientId 어드민 웹용 Google OAuth 클라이언트 ID. enabled일 때만 필요하다
  * @property webLocation 빌드된 admin-web(index.html, assets)이 있는 위치. Docker 이미지는 /app/admin-web에 넣는다
+ * @property cdnBaseUrl 앱이 이미지 URL을 조립하는 CDN 주소. 어드민 미리보기와 `icons.image_url`을 같은 규칙으로 만든다
+ * @property cdnDistributionId 이미지를 교체할 때 캐시를 버릴 CloudFront 배포 ID. enabled일 때만 필요하다
  */
 @Validated
 @ConfigurationProperties(prefix = "app.admin")
@@ -25,4 +27,8 @@ data class AdminProperties(
     val googleClientId: String? = null,
 
     val webLocation: String = "file:/app/admin-web/",
+
+    val cdnBaseUrl: String = "https://cdn.nyummy.co.kr",
+
+    val cdnDistributionId: String? = null,
 )
