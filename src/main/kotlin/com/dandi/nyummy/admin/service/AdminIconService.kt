@@ -5,6 +5,7 @@ import com.dandi.nyummy.admin.config.ConditionalOnAdminEnabled
 import com.dandi.nyummy.admin.dto.AdminIconResponse
 import com.dandi.nyummy.admin.dto.AdminIconsResponse
 import com.dandi.nyummy.admin.dto.UpdateIconNameRequest
+import com.dandi.nyummy.admin.enum.AdminImagePurpose
 import com.dandi.nyummy.admin.mapper.toAdminIconResponse
 import com.dandi.nyummy.admin.validator.AdminImageValidator
 import com.dandi.nyummy.exception.BusinessException
@@ -42,12 +43,7 @@ class AdminIconService(
     companion object {
         private val logger = LoggerFactory.getLogger(AdminIconService::class.java)
 
-        private const val OBJECT_KEY_PREFIX = "icons"
-        private const val MAX_FILE_SIZE_BYTES = 512 * 1024L
-        private const val IMAGE_CONTENT_TYPE = "image/png"
-
-        // CDN은 길게 들고 있다가 이미지를 바꿀 때만 무효화한다. 무효화가 닿지 않는 기기 캐시는 1시간으로 짧게 둔다.
-        private const val CACHE_CONTROL = "public, max-age=3600, s-maxage=31536000"
+        private val IMAGE_PURPOSE = AdminImagePurpose.ICON
     }
 
     /**
@@ -78,13 +74,18 @@ class AdminIconService(
      */
     fun createIcon(name: String, image: MultipartFile): AdminIconResponse {
         val bytes = image.bytes
-        adminImageValidator.validateImage(bytes, MAX_FILE_SIZE_BYTES)
+        adminImageValidator.validateImage(bytes, IMAGE_PURPOSE.maxFileSizeBytes)
 
         val icon = adminIconTransactionService.createIcon(name.trim(), ::createImageUrl)
 
         try {
             runBlocking {
-                s3StorageClient.uploadObject(createObjectKey(icon.id), bytes, IMAGE_CONTENT_TYPE, CACHE_CONTROL)
+                s3StorageClient.uploadObject(
+                    IMAGE_PURPOSE.createObjectKey(icon.id),
+                    bytes,
+                    AdminImagePurpose.CONTENT_TYPE,
+                    AdminImagePurpose.CACHE_CONTROL,
+                )
             }
         } catch (e: Exception) {
             deleteIconAfterUploadFailure(icon.id)
@@ -139,11 +140,16 @@ class AdminIconService(
             ?: throw BusinessException(AdminErrorCode.ICON_NOT_FOUND)
 
         val bytes = image.bytes
-        adminImageValidator.validateImage(bytes, MAX_FILE_SIZE_BYTES)
+        adminImageValidator.validateImage(bytes, IMAGE_PURPOSE.maxFileSizeBytes)
 
-        val objectKey = createObjectKey(iconId)
+        val objectKey = IMAGE_PURPOSE.createObjectKey(iconId)
         runBlocking {
-            s3StorageClient.uploadObject(objectKey, bytes, IMAGE_CONTENT_TYPE, CACHE_CONTROL)
+            s3StorageClient.uploadObject(
+                objectKey,
+                bytes,
+                AdminImagePurpose.CONTENT_TYPE,
+                AdminImagePurpose.CACHE_CONTROL,
+            )
             cdnClient.createInvalidation(listOf("/$objectKey"))
         }
 
@@ -159,7 +165,5 @@ class AdminIconService(
         }
     }
 
-    private fun createObjectKey(iconId: Long): String = "$OBJECT_KEY_PREFIX/$iconId.png"
-
-    private fun createImageUrl(iconId: Long): String = "${adminProperties.cdnBaseUrl}/${createObjectKey(iconId)}"
+    private fun createImageUrl(iconId: Long): String = IMAGE_PURPOSE.createImageUrl(adminProperties.cdnBaseUrl, iconId)
 }
