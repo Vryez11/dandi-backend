@@ -22,10 +22,10 @@ import java.time.Instant
 @Table(name = "items")
 class Item(
     @Column(name = "name", nullable = false, length = 100)
-    val name: String,
+    var name: String,
 
     @Column(name = "price")
-    val price: Int? = null,
+    var price: Int? = null,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,4 +35,18 @@ class Item(
     @CreatedDate
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
+
+    /**
+     * 이름을 바꾼다. 보유 아이템 목록·우편 보상은 이름을 저장하지 않고 여기서 읽으므로 바로 바뀐다.
+     */
+    fun updateName(name: String) {
+        this.name = name
+    }
+
+    /**
+     * 가격을 바꾼다. null이면 상점에서 팔지 않는 아이템(보상 전용)이 된다.
+     */
+    fun updatePrice(price: Int?) {
+        this.price = price
+    }
 }

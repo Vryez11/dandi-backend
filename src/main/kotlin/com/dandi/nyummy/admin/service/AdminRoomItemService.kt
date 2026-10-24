@@ -4,6 +4,7 @@ import com.dandi.nyummy.admin.config.AdminProperties
 import com.dandi.nyummy.admin.config.ConditionalOnAdminEnabled
 import com.dandi.nyummy.admin.dto.AdminRoomItemResponse
 import com.dandi.nyummy.admin.dto.AdminRoomItemsResponse
+import com.dandi.nyummy.admin.dto.UpdateRoomItemRequest
 import com.dandi.nyummy.admin.enum.AdminImagePurpose
 import com.dandi.nyummy.admin.mapper.toAdminRoomItemResponse
 import com.dandi.nyummy.admin.validator.AdminImageValidator
@@ -11,10 +12,13 @@ import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AdminErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import com.dandi.nyummy.infra.storage.s3.S3StorageClient
+import com.dandi.nyummy.item.repository.ItemRepository
+import com.dandi.nyummy.room.dto.RoomItemResult
 import com.dandi.nyummy.room.enum.RoomItemCategory
 import com.dandi.nyummy.room.repository.RoomItemRepository
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
@@ -27,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile
 @Service
 @ConditionalOnAdminEnabled
 class AdminRoomItemService(
+    private val itemRepository: ItemRepository,
     private val roomItemRepository: RoomItemRepository,
     private val adminRoomItemTransactionService: AdminRoomItemTransactionService,
     private val adminImageValidator: AdminImageValidator,
@@ -90,6 +95,39 @@ class AdminRoomItemService(
         }
 
         return roomItem.toAdminRoomItemResponse(createImageUrl(roomItem.itemId))
+    }
+
+    /**
+     * 마이룸 아이템의 이름과 가격을 함께 바꾼다(전체 교체). 카테고리는 이미 가진 사용자의 방 배치가 깨질 수 있어 바꾸지 않는다.
+     *
+     * 이름은 보유 아이템 목록·우편 보상(받은 우편 포함)에서 items를 읽어 보여 주므로 사용자에게 바로 바뀐다.
+     *
+     * @throws BusinessException [AdminErrorCode.ROOM_ITEM_NOT_FOUND] 아이템이 없거나 마이룸 아이템이 아닐 경우
+     * @throws BusinessException [AdminErrorCode.DUPLICATE_ROOM_ITEM_NAME] 다른 아이템이 같은 이름을 쓸 경우.
+     *   자기 이름 그대로는 허용한다
+     */
+    @Transactional
+    fun updateRoomItem(itemId: Long, request: UpdateRoomItemRequest): AdminRoomItemResponse {
+        val roomItem = roomItemRepository.findByIdOrNull(itemId)
+            ?: throw BusinessException(AdminErrorCode.ROOM_ITEM_NOT_FOUND)
+        val item = itemRepository.findByIdOrNull(itemId)
+            ?: throw BusinessException(AdminErrorCode.ROOM_ITEM_NOT_FOUND)
+
+        val name = request.name.trim()
+        if (itemRepository.existsByNameAndIdNot(name, itemId)) {
+            throw BusinessException(AdminErrorCode.DUPLICATE_ROOM_ITEM_NAME)
+        }
+
+        item.updateName(name)
+        item.updatePrice(request.price)
+
+        return RoomItemResult(
+            itemId = item.id,
+            name = item.name,
+            price = item.price,
+            category = roomItem.category,
+            createdAt = item.createdAt,
+        ).toAdminRoomItemResponse(createImageUrl(item.id))
     }
 
     // 보상 삭제까지 실패하면 업로드 실패를 그대로 알리고 남은 행은 로그로 남긴다. 아무도 참조하지 않는 행이다.
