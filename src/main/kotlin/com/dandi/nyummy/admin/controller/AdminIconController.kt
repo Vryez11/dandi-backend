@@ -8,6 +8,7 @@ import com.dandi.nyummy.admin.dto.UpdateIconNameRequest
 import com.dandi.nyummy.admin.service.AdminIconService
 import com.dandi.nyummy.config.openapi.ApiErrorCodes
 import com.dandi.nyummy.exception.errorcode.AdminErrorCode
+import com.dandi.nyummy.exception.errorcode.CdnErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -83,4 +85,21 @@ class AdminIconController(private val adminIconService: AdminIconService) {
         @Parameter(description = "음식 아이콘 ID") @PathVariable("iconId") iconId: Long,
         @Valid @RequestBody request: UpdateIconNameRequest,
     ): AdminIconResponse = adminIconService.updateIconName(iconId, request)
+
+    @Operation(
+        summary = "음식 아이콘 이미지 교체",
+        description = "S3 icons/{iconId}.png를 새 이미지로 덮어쓰고 CDN 캐시를 버린다. 이미지는 PNG, 512KB 이하다. " +
+            "DB와 imageUrl은 바뀌지 않는다. CDN 반영은 보통 수 초~수 분, 이미 받아 둔 앱 기기는 최대 1시간 뒤 바뀐다. " +
+            "CDN 무효화에 실패하면(api.cdn.invalidationFailed) 이미지는 이미 바뀐 상태이므로 같은 파일로 다시 교체한다.",
+    )
+    @ApiErrorCodes(
+        admin = [AdminErrorCode.ICON_NOT_FOUND],
+        s3 = [S3ErrorCode.FILE_SIZE_EXCEEDED, S3ErrorCode.UNSUPPORTED_CONTENT_TYPE, S3ErrorCode.OBJECT_UPLOAD_FAILED],
+        cdn = [CdnErrorCode.INVALIDATION_FAILED],
+    )
+    @PutMapping("/{iconId}/image", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun updateIconImage(
+        @Parameter(description = "음식 아이콘 ID") @PathVariable("iconId") iconId: Long,
+        @Parameter(description = "PNG 이미지 (512KB 이하)") @RequestPart("image") image: MultipartFile,
+    ): AdminIconResponse = adminIconService.updateIconImage(iconId, image)
 }

@@ -9,7 +9,9 @@ import com.dandi.nyummy.admin.mapper.toAdminIconResponse
 import com.dandi.nyummy.admin.validator.AdminImageValidator
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AdminErrorCode
+import com.dandi.nyummy.exception.errorcode.CdnErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.infra.cdn.CdnClient
 import com.dandi.nyummy.infra.storage.s3.S3StorageClient
 import com.dandi.nyummy.meal.repository.IconRepository
 import kotlinx.coroutines.runBlocking
@@ -33,6 +35,7 @@ class AdminIconService(
     private val adminIconTransactionService: AdminIconTransactionService,
     private val adminImageValidator: AdminImageValidator,
     private val s3StorageClient: S3StorageClient,
+    private val cdnClient: CdnClient,
     private val adminProperties: AdminProperties,
 ) {
 
@@ -114,6 +117,37 @@ class AdminIconService(
         icon.updateName(name)
 
         return icon.toAdminIconResponse(createImageUrl(icon.id))
+    }
+
+    /**
+     * 음식 아이콘 이미지를 바꾼다. 같은 키(`icons/{iconId}.png`)에 덮어쓰고 CDN 캐시를 버린다.
+     *
+     * DB는 바뀌지 않는다(`image_url`도 같은 주소). 옛 이미지는 버킷 버전 관리로 이전 버전에 남는다.
+     * CDN은 무효화가 엣지에 반영되면(보통 수 초~수 분) 새 이미지를 내려주지만, 이미 받아 둔 기기는
+     * Cache-Control max-age(1시간)가 지나야 다시 받는다.
+     *
+     * 무효화가 실패하면 S3는 이미 바뀐 상태다. 같은 파일로 다시 부르면 덮어쓰기와 무효화를 다시 하므로 안전하다.
+     *
+     * @throws BusinessException [AdminErrorCode.ICON_NOT_FOUND] 음식 아이콘이 없을 경우
+     * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] 비었거나 512KB를 넘을 경우
+     * @throws BusinessException [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE] PNG가 아닐 경우
+     * @throws BusinessException [S3ErrorCode.OBJECT_UPLOAD_FAILED] S3 업로드에 실패한 경우(아무것도 바뀌지 않음)
+     * @throws BusinessException [CdnErrorCode.INVALIDATION_FAILED] CDN 무효화에 실패한 경우(S3는 바뀜)
+     */
+    fun updateIconImage(iconId: Long, image: MultipartFile): AdminIconResponse {
+        val icon = iconRepository.findByIdOrNull(iconId)
+            ?: throw BusinessException(AdminErrorCode.ICON_NOT_FOUND)
+
+        val bytes = image.bytes
+        adminImageValidator.validateImage(bytes, MAX_FILE_SIZE_BYTES)
+
+        val objectKey = createObjectKey(iconId)
+        runBlocking {
+            s3StorageClient.uploadObject(objectKey, bytes, IMAGE_CONTENT_TYPE, CACHE_CONTROL)
+            cdnClient.createInvalidation(listOf("/$objectKey"))
+        }
+
+        return icon.toAdminIconResponse(createImageUrl(iconId))
     }
 
     // 보상 삭제까지 실패하면 업로드 실패를 그대로 알리고 남은 행은 로그로 남긴다. 아무도 참조하지 않는 행이다.
