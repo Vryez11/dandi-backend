@@ -4,6 +4,7 @@ import com.dandi.nyummy.admin.config.AdminPaths
 import com.dandi.nyummy.admin.config.ConditionalOnAdminEnabled
 import com.dandi.nyummy.admin.dto.AdminIconResponse
 import com.dandi.nyummy.admin.dto.AdminIconsResponse
+import com.dandi.nyummy.admin.dto.UpdateIconNameRequest
 import com.dandi.nyummy.admin.service.AdminIconService
 import com.dandi.nyummy.config.openapi.ApiErrorCodes
 import com.dandi.nyummy.exception.errorcode.AdminErrorCode
@@ -12,13 +13,17 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
@@ -65,4 +70,17 @@ class AdminIconController(private val adminIconService: AdminIconService) {
             .status(HttpStatus.CREATED)
             .body(response)
     }
+
+    @Operation(
+        summary = "음식 아이콘 이름 수정",
+        description = "음식 아이콘 이름만 바꾼다. 이미지와 지난 식사에는 영향이 없다. " +
+            "앞뒤 공백을 다듬어 저장하고, 다른 음식 아이콘이 같은 이름을 쓰면 거절한다(자기 이름 그대로는 허용). " +
+            "새 이름은 최대 1시간 뒤부터 식사 분석에 쓰인다.",
+    )
+    @ApiErrorCodes(admin = [AdminErrorCode.ICON_NOT_FOUND, AdminErrorCode.DUPLICATE_ICON_NAME])
+    @PatchMapping("/{iconId}")
+    fun updateIconName(
+        @Parameter(description = "음식 아이콘 ID") @PathVariable("iconId") iconId: Long,
+        @Valid @RequestBody request: UpdateIconNameRequest,
+    ): AdminIconResponse = adminIconService.updateIconName(iconId, request)
 }

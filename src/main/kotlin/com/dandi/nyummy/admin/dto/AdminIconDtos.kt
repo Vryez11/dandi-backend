@@ -2,6 +2,15 @@
 
 package com.dandi.nyummy.admin.dto
 
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
+
+data class UpdateIconNameRequest(
+    @field:NotBlank(message = "음식 아이콘 이름은 필수입니다.")
+    @field:Size(max = 100, message = "음식 아이콘 이름은 100자 이하여야 합니다.")
+    val name: String,
+)
+
 data class AdminIconsResponse(val icons: List<AdminIconResponse>)
 
 /**

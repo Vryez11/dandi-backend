@@ -27,6 +27,13 @@ class Icon(
     val id: Long = 0L
 
     /**
+     * 이름을 바꾼다. Gemini가 이 이름을 보고 음식 아이콘을 고른다.
+     */
+    fun updateName(name: String) {
+        this.name = name
+    }
+
+    /**
      * 이미지 URL을 저장한다. URL에 id가 들어가므로 행을 저장해 id를 받은 직후에 채운다.
      */
     fun updateImageUrl(imageUrl: String) {

@@ -4,6 +4,7 @@ import com.dandi.nyummy.admin.config.AdminProperties
 import com.dandi.nyummy.admin.config.ConditionalOnAdminEnabled
 import com.dandi.nyummy.admin.dto.AdminIconResponse
 import com.dandi.nyummy.admin.dto.AdminIconsResponse
+import com.dandi.nyummy.admin.dto.UpdateIconNameRequest
 import com.dandi.nyummy.admin.mapper.toAdminIconResponse
 import com.dandi.nyummy.admin.validator.AdminImageValidator
 import com.dandi.nyummy.exception.BusinessException
@@ -14,6 +15,7 @@ import com.dandi.nyummy.meal.repository.IconRepository
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Sort
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
@@ -87,6 +89,31 @@ class AdminIconService(
         }
 
         return icon.toAdminIconResponse(icon.imageUrl)
+    }
+
+    /**
+     * 음식 아이콘 이름을 바꾼다. id·이미지·`image_url`은 그대로라 지난 식사에는 영향이 없다
+     * (식사는 icon_id로 가리키고 음식 이름은 meals.name에 따로 있다).
+     *
+     * Gemini 프롬프트에는 [com.dandi.nyummy.meal.service.IconService]의 캐시가 만료된 뒤(최대 1시간) 반영된다.
+     *
+     * @throws BusinessException [AdminErrorCode.ICON_NOT_FOUND] 음식 아이콘이 없을 경우
+     * @throws BusinessException [AdminErrorCode.DUPLICATE_ICON_NAME] 다른 음식 아이콘이 같은 이름을 쓸 경우.
+     *   자기 이름 그대로는 허용한다
+     */
+    @Transactional
+    fun updateIconName(iconId: Long, request: UpdateIconNameRequest): AdminIconResponse {
+        val icon = iconRepository.findByIdOrNull(iconId)
+            ?: throw BusinessException(AdminErrorCode.ICON_NOT_FOUND)
+
+        val name = request.name.trim()
+        if (iconRepository.existsByNameAndIdNot(name, iconId)) {
+            throw BusinessException(AdminErrorCode.DUPLICATE_ICON_NAME)
+        }
+
+        icon.updateName(name)
+
+        return icon.toAdminIconResponse(createImageUrl(icon.id))
     }
 
     // 보상 삭제까지 실패하면 업로드 실패를 그대로 알리고 남은 행은 로그로 남긴다. 아무도 참조하지 않는 행이다.
