@@ -10,10 +10,13 @@ import com.dandi.nyummy.admin.mapper.toAdminRoomItemResponse
 import com.dandi.nyummy.admin.validator.AdminImageValidator
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.AdminErrorCode
+import com.dandi.nyummy.exception.errorcode.CdnErrorCode
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
+import com.dandi.nyummy.infra.cdn.CdnClient
 import com.dandi.nyummy.infra.storage.s3.S3StorageClient
+import com.dandi.nyummy.item.entity.Item
 import com.dandi.nyummy.item.repository.ItemRepository
-import com.dandi.nyummy.room.dto.RoomItemResult
+import com.dandi.nyummy.room.entity.RoomItem
 import com.dandi.nyummy.room.enum.RoomItemCategory
 import com.dandi.nyummy.room.repository.RoomItemRepository
 import kotlinx.coroutines.runBlocking
@@ -36,6 +39,7 @@ class AdminRoomItemService(
     private val adminRoomItemTransactionService: AdminRoomItemTransactionService,
     private val adminImageValidator: AdminImageValidator,
     private val s3StorageClient: S3StorageClient,
+    private val cdnClient: CdnClient,
     private val adminProperties: AdminProperties,
 ) {
 
@@ -108,10 +112,7 @@ class AdminRoomItemService(
      */
     @Transactional
     fun updateRoomItem(itemId: Long, request: UpdateRoomItemRequest): AdminRoomItemResponse {
-        val roomItem = roomItemRepository.findByIdOrNull(itemId)
-            ?: throw BusinessException(AdminErrorCode.ROOM_ITEM_NOT_FOUND)
-        val item = itemRepository.findByIdOrNull(itemId)
-            ?: throw BusinessException(AdminErrorCode.ROOM_ITEM_NOT_FOUND)
+        val (roomItem, item) = getRoomItemAndItem(itemId)
 
         val name = request.name.trim()
         if (itemRepository.existsByNameAndIdNot(name, itemId)) {
@@ -121,13 +122,52 @@ class AdminRoomItemService(
         item.updateName(name)
         item.updatePrice(request.price)
 
-        return RoomItemResult(
-            itemId = item.id,
-            name = item.name,
-            price = item.price,
-            category = roomItem.category,
-            createdAt = item.createdAt,
-        ).toAdminRoomItemResponse(createImageUrl(item.id))
+        return item.toAdminRoomItemResponse(roomItem.category, createImageUrl(itemId))
+    }
+
+    /**
+     * 마이룸 아이템 이미지를 바꾼다. 같은 키(`items/{itemId}.png`)에 덮어쓰고 CDN 캐시를 버린다.
+     *
+     * DB는 바뀌지 않는다. 옛 이미지는 버킷 버전 관리로 이전 버전에 남는다. CDN은 무효화가 엣지에 반영되면
+     * (보통 수 초~수 분) 새 이미지를 내려주지만, 이미 받아 둔 기기는 Cache-Control max-age(1시간)가 지나야 다시 받는다.
+     * 기본 지급 아이템(예: 1번 배경)을 바꾸면 그 아이템을 가진 모든 사용자의 방이 바뀐다.
+     *
+     * 무효화가 실패하면 S3는 이미 바뀐 상태다. 같은 파일로 다시 부르면 덮어쓰기와 무효화를 다시 하므로 안전하다.
+     *
+     * @throws BusinessException [AdminErrorCode.ROOM_ITEM_NOT_FOUND] 아이템이 없거나 마이룸 아이템이 아닐 경우
+     * @throws BusinessException [S3ErrorCode.FILE_SIZE_EXCEEDED] 비었거나 5MB를 넘을 경우
+     * @throws BusinessException [S3ErrorCode.UNSUPPORTED_CONTENT_TYPE] PNG가 아닐 경우
+     * @throws BusinessException [S3ErrorCode.OBJECT_UPLOAD_FAILED] S3 업로드에 실패한 경우(아무것도 바뀌지 않음)
+     * @throws BusinessException [CdnErrorCode.INVALIDATION_FAILED] CDN 무효화에 실패한 경우(S3는 바뀜)
+     */
+    fun updateRoomItemImage(itemId: Long, image: MultipartFile): AdminRoomItemResponse {
+        val (roomItem, item) = getRoomItemAndItem(itemId)
+
+        val bytes = image.bytes
+        adminImageValidator.validateImage(bytes, IMAGE_PURPOSE.maxFileSizeBytes)
+
+        val objectKey = IMAGE_PURPOSE.createObjectKey(itemId)
+        runBlocking {
+            s3StorageClient.uploadObject(
+                objectKey,
+                bytes,
+                AdminImagePurpose.CONTENT_TYPE,
+                AdminImagePurpose.CACHE_CONTROL,
+            )
+            cdnClient.createInvalidation(listOf("/$objectKey"))
+        }
+
+        return item.toAdminRoomItemResponse(roomItem.category, createImageUrl(itemId))
+    }
+
+    // room_items와 items가 둘 다 있어야 마이룸 아이템이다. items만 있으면 다른 종류의 아이템이므로 없는 것으로 본다.
+    private fun getRoomItemAndItem(itemId: Long): Pair<RoomItem, Item> {
+        val roomItem = roomItemRepository.findByIdOrNull(itemId)
+            ?: throw BusinessException(AdminErrorCode.ROOM_ITEM_NOT_FOUND)
+        val item = itemRepository.findByIdOrNull(itemId)
+            ?: throw BusinessException(AdminErrorCode.ROOM_ITEM_NOT_FOUND)
+
+        return roomItem to item
     }
 
     // 보상 삭제까지 실패하면 업로드 실패를 그대로 알리고 남은 행은 로그로 남긴다. 아무도 참조하지 않는 행이다.
