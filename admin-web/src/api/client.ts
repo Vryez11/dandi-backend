@@ -21,7 +21,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     ...init,
     credentials: "include",
     headers: {
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      // FormData는 브라우저가 boundary를 넣은 multipart 헤더를 직접 붙인다. 여기서 덮어쓰면 서버가 파일을 읽지 못한다.
+      ...(init.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
       ...init.headers,
     },
   });
