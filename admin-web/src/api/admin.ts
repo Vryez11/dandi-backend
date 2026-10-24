@@ -58,6 +58,35 @@ export type AdminIcons = { icons: AdminIcon[] };
 export const ICON_NAME_MAX = 100;
 export const ICON_IMAGE_MAX_BYTES = 512 * 1024;
 
+export type RoomItemCategory = "BACKGROUND" | "BED" | "ETC";
+
+export const ROOM_ITEM_CATEGORY_LABELS: Record<RoomItemCategory, string> = {
+  BACKGROUND: "배경",
+  BED: "침대",
+  ETC: "기타",
+};
+
+/**
+ * 마이룸 아이템(상품). price가 null이면 상점에서 팔지 않는 아이템(보상 전용)이다.
+ * imageUrl은 앱과 같은 규칙(CDN 주소 + /items/{itemId}.png)의 미리보기 주소다.
+ */
+export type AdminRoomItem = {
+  itemId: number;
+  name: string;
+  price: number | null;
+  category: RoomItemCategory;
+  imageUrl: string;
+  createdAt: string;
+};
+
+export type AdminRoomItems = { roomItems: AdminRoomItem[] };
+
+export type CreateRoomItemInput = { name: string; price: number | null; category: RoomItemCategory; image: File };
+
+/** 서버 검사와 같은 값. 화면은 먼저 안내만 하고, 기준은 서버다. */
+export const ROOM_ITEM_NAME_MAX = 100;
+export const ROOM_ITEM_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
 export type GoogleClientResponse = { clientId: string };
 
 /** 어드민 웹용 Google 클라이언트 ID. 공개 값이라 로그인 전에 받는다(빌드 시점에 박지 않고 백엔드 설정 하나만 쓴다). */
@@ -105,4 +134,33 @@ export function updateIconImage(iconId: number, image: File) {
   body.append("image", image);
 
   return request<AdminIcon>(`${PREFIX}/icons/${iconId}/image`, { method: "PUT", body });
+}
+
+export function getRoomItems(category?: RoomItemCategory) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+
+  return request<AdminRoomItems>(`${PREFIX}/room-items?${params}`);
+}
+
+export function createRoomItem({ name, price, category, image }: CreateRoomItemInput) {
+  const body = new FormData();
+  body.append("name", name);
+  // 가격을 보내지 않으면 서버가 비매품(null)으로 만든다.
+  if (price !== null) body.append("price", String(price));
+  body.append("category", category);
+  body.append("image", image);
+
+  return request<AdminRoomItem>(`${PREFIX}/room-items`, { method: "POST", body });
+}
+
+/** 이름과 가격을 항상 함께 보낸다(서버가 전체 교체). price가 null이면 비매품으로 바뀐다. */
+export const updateRoomItem = (itemId: number, name: string, price: number | null) =>
+  request<AdminRoomItem>(`${PREFIX}/room-items/${itemId}`, { method: "PATCH", body: JSON.stringify({ name, price }) });
+
+export function updateRoomItemImage(itemId: number, image: File) {
+  const body = new FormData();
+  body.append("image", image);
+
+  return request<AdminRoomItem>(`${PREFIX}/room-items/${itemId}/image`, { method: "PUT", body });
 }

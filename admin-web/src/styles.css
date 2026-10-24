@@ -393,6 +393,12 @@ button.primary:disabled {
   background: var(--surface);
 }
 
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
 .image-picker {
   display: flex;
   flex-direction: column;

@@ -8,6 +8,7 @@ import { IconListPage } from "./pages/IconListPage";
 import { InquiryDetailPage } from "./pages/InquiryDetailPage";
 import { InquiryListPage } from "./pages/InquiryListPage";
 import { LoginPage } from "./pages/LoginPage";
+import { RoomItemListPage } from "./pages/RoomItemListPage";
 import "./styles.css";
 
 // 화면은 /admin/ 아래에 있다(vite base, 라우터 basename과 같은 값).
@@ -39,6 +40,7 @@ const router = createBrowserRouter(
       { path: "/inquiries", element: <InquiryListPage /> },
       { path: "/inquiries/:inquiryId", element: <InquiryDetailPage /> },
       { path: "/icons", element: <IconListPage /> },
+      { path: "/room-items", element: <RoomItemListPage /> },
     ],
   },
   ],
