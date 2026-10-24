@@ -4,6 +4,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@ta
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { isUnauthorized } from "./api/client";
 import { AdminLayout } from "./components/AdminLayout";
+import { IconListPage } from "./pages/IconListPage";
 import { InquiryDetailPage } from "./pages/InquiryDetailPage";
 import { InquiryListPage } from "./pages/InquiryListPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -37,6 +38,7 @@ const router = createBrowserRouter(
       { path: "/", element: <Navigate to="/inquiries" replace /> },
       { path: "/inquiries", element: <InquiryListPage /> },
       { path: "/inquiries/:inquiryId", element: <InquiryDetailPage /> },
+      { path: "/icons", element: <IconListPage /> },
     ],
   },
   ],

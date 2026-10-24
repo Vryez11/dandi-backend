@@ -49,6 +49,15 @@ export type InquiryFilter = {
   isAnswered?: boolean;
 };
 
+/** 음식 아이콘. imageUrl은 앱과 같은 규칙(CDN 주소 + /icons/{iconId}.png)의 미리보기 주소다. */
+export type AdminIcon = { iconId: number; name: string; imageUrl: string };
+
+export type AdminIcons = { icons: AdminIcon[] };
+
+/** 서버 검사와 같은 값. 화면은 먼저 안내만 하고, 기준은 서버다. */
+export const ICON_NAME_MAX = 100;
+export const ICON_IMAGE_MAX_BYTES = 512 * 1024;
+
 export type GoogleClientResponse = { clientId: string };
 
 /** 어드민 웹용 Google 클라이언트 ID. 공개 값이라 로그인 전에 받는다(빌드 시점에 박지 않고 백엔드 설정 하나만 쓴다). */
@@ -77,3 +86,23 @@ export const updateAnswer = (inquiryId: number, answerTitle: string, answerConte
     method: "PUT",
     body: JSON.stringify({ answerTitle, answerContent }),
   });
+
+export const getIcons = () => request<AdminIcons>(`${PREFIX}/icons`);
+
+export function createIcon(name: string, image: File) {
+  const body = new FormData();
+  body.append("name", name);
+  body.append("image", image);
+
+  return request<AdminIcon>(`${PREFIX}/icons`, { method: "POST", body });
+}
+
+export const updateIconName = (iconId: number, name: string) =>
+  request<AdminIcon>(`${PREFIX}/icons/${iconId}`, { method: "PATCH", body: JSON.stringify({ name }) });
+
+export function updateIconImage(iconId: number, image: File) {
+  const body = new FormData();
+  body.append("image", image);
+
+  return request<AdminIcon>(`${PREFIX}/icons/${iconId}/image`, { method: "PUT", body });
+}

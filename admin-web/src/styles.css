@@ -92,6 +92,11 @@ textarea {
   text-decoration: none;
 }
 
+.header nav {
+  display: flex;
+  gap: 16px;
+}
+
 .header nav a {
   color: var(--muted);
   text-decoration: none;
@@ -349,6 +354,115 @@ button.primary:hover:not(:disabled) {
 }
 
 button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 이미지 관리(음식 아이콘·마이룸 아이템) */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form h3 {
+  margin: 0;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.form input[type="text"],
+.form input[type="number"],
+.form select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.image-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.image-picker .error {
+  margin: 0;
+}
+
+.preview {
+  max-width: 160px;
+  max-height: 160px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.thumb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.thumb-card p {
+  margin: 0;
+}
+
+/* 배경처럼 세로로 긴 그림도 잘리지 않게 비율을 지켜 칸 안에 담는다. */
+.thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.thumb-card .name {
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+button.secondary {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+button.secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
