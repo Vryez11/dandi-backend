@@ -472,3 +472,78 @@ button.secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* 바로가기 */
+.link-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.link-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.link-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.link-group-header h3 {
+  margin: 0;
+}
+
+.link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.link-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.link-list a:hover {
+  border-color: var(--primary);
+}
+
+.command {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.command p {
+  margin: 0;
+}
+
+.command-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.command-row code {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  overflow-x: auto;
+  white-space: nowrap;
+  user-select: all;
+}

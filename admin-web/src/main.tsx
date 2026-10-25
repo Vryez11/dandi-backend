@@ -1,10 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { isUnauthorized } from "./api/client";
 import { AdminLayout } from "./components/AdminLayout";
 import { IconListPage } from "./pages/IconListPage";
+import { LinksPage } from "./pages/LinksPage";
 import { InquiryDetailPage } from "./pages/InquiryDetailPage";
 import { InquiryListPage } from "./pages/InquiryListPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -36,7 +37,7 @@ const router = createBrowserRouter(
   {
     element: <AdminLayout />,
     children: [
-      { path: "/", element: <Navigate to="/inquiries" replace /> },
+      { path: "/", element: <LinksPage /> },
       { path: "/inquiries", element: <InquiryListPage /> },
       { path: "/inquiries/:inquiryId", element: <InquiryDetailPage /> },
       { path: "/icons", element: <IconListPage /> },
