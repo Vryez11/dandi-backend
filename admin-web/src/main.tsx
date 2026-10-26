@@ -1,12 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { isUnauthorized } from "./api/client";
 import { AdminLayout } from "./components/AdminLayout";
+import { IconListPage } from "./pages/IconListPage";
+import { LinksPage } from "./pages/LinksPage";
 import { InquiryDetailPage } from "./pages/InquiryDetailPage";
 import { InquiryListPage } from "./pages/InquiryListPage";
 import { LoginPage } from "./pages/LoginPage";
+import { RoomItemListPage } from "./pages/RoomItemListPage";
 import "./styles.css";
 
 // 화면은 /admin/ 아래에 있다(vite base, 라우터 basename과 같은 값).
@@ -34,9 +37,11 @@ const router = createBrowserRouter(
   {
     element: <AdminLayout />,
     children: [
-      { path: "/", element: <Navigate to="/inquiries" replace /> },
+      { path: "/", element: <LinksPage /> },
       { path: "/inquiries", element: <InquiryListPage /> },
       { path: "/inquiries/:inquiryId", element: <InquiryDetailPage /> },
+      { path: "/icons", element: <IconListPage /> },
+      { path: "/room-items", element: <RoomItemListPage /> },
     ],
   },
   ],

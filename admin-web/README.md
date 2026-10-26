@@ -8,8 +8,13 @@
 prod에서는 **어드민 Spring 서비스가 이 화면을 직접 내려줍니다.** Docker 이미지를 만들 때 이 폴더를 빌드해
 `/app/admin-web`에 넣고, 어드민 서비스(`ADMIN_ENABLED=true`)가 `/admin/**`로 내려줍니다.
 
-1. SSM 터널을 엽니다(로컬 포트 **18080 고정** — 허용 출처와 Google 승인 출처가 이 주소입니다).
-2. Chrome으로 http://localhost:18080/admin 을 엽니다.
+1. 백엔드 레포 루트에서 SSM 터널을 엽니다(로컬 포트 **18080 고정** — 허용 출처와 Google 승인 출처가 이 주소입니다).
+   ```bash
+   ./scripts/tunnel.sh admin
+   ```
+   AWS SSO 로그인(`aws sso login --profile dandi-ryo`)이 살아 있어야 합니다. 태스크 IP는 스크립트가 매번 찾습니다.
+2. Chrome으로 http://localhost:18080/admin 을 엽니다. 첫 화면은 운영 도구 바로가기(GA4·Firebase·Metabase)입니다.
+   Metabase는 `./scripts/tunnel.sh metabase`로 터널(localhost:13000)을 따로 열어야 열립니다.
 
 Node나 `npm install`이 필요 없습니다.
 
@@ -38,7 +43,10 @@ Google 클라이언트 ID는 화면이 백엔드(`GET /admin/api/auth/google-cli
 
 - 로그인: Google 버튼 → `POST /admin/api/auth/login` → 서버가 httpOnly 쿠키(`admin_token`)를 굽습니다. JS는 토큰을 다루지 않습니다.
 - 모든 요청은 `credentials: "include"`. 401이 오면 로그인 화면으로 갑니다.
-- 화면: 문의함(기본 "답변 대기") → 문의 상세 → 답변 등록·수정
+- 화면
+  - 바로가기(첫 화면): GA4·Firebase Crashlytics·Firebase Performance·Metabase 링크. 목록은 `src/links.ts`
+  - 문의함(기본 "답변 대기") → 문의 상세 → 답변 등록·수정
+  - 음식 아이콘·마이룸 아이템: 목록, 만들기, 수정, 이미지 교체(S3 업로드 + CDN 무효화)
   - 답변 등록은 사용자에게 알림이 갑니다. 수정은 오타 정정용이라 알림이 가지 않습니다.
 - 화면 경로를 새로고침해도 되도록 서버는 없는 화면 경로에 `index.html`을 내려줍니다(`AdminWebFallbackResourceResolver`).
 

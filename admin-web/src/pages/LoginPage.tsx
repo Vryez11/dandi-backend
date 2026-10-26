@@ -32,7 +32,7 @@ export function LoginPage() {
           try {
             const admin = await login(credential);
             queryClient.setQueryData(["me"], admin);
-            navigate("/inquiries", { replace: true });
+            navigate("/", { replace: true });
           } catch (e) {
             setError(e instanceof ApiError ? e.message : "로그인에 실패했습니다.");
           }
