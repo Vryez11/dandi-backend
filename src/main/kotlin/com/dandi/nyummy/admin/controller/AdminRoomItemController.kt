@@ -23,7 +23,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -84,12 +83,12 @@ class AdminRoomItemController(private val adminRoomItemService: AdminRoomItemSer
 
     @Operation(
         summary = "마이룸 아이템 이름 · 가격 수정",
-        description = "이름과 가격을 항상 함께 보낸다(전체 교체). price를 null로 보내거나 빼면 비매품(보상 전용)으로 바뀐다. " +
-            "이름은 앞뒤 공백을 다듬어 저장하고, 다른 아이템이 같은 이름을 쓰면 거절한다(자기 이름 그대로는 허용). " +
+        description = "이름과 가격을 보낸 값으로 통째로 바꾼다. 둘 다 보내야 하고, price가 null이면(키를 빼도 null로 받는다) " +
+            "비매품(보상 전용)이 된다. 이름은 앞뒤 공백을 다듬어 저장하고, 다른 아이템이 같은 이름을 쓰면 거절한다(자기 이름 그대로는 허용). " +
             "카테고리와 이미지는 바꾸지 않는다. 이름은 사용자의 보유 아이템 목록·우편 보상에 바로 반영된다.",
     )
     @ApiErrorCodes(admin = [AdminErrorCode.ROOM_ITEM_NOT_FOUND, AdminErrorCode.DUPLICATE_ROOM_ITEM_NAME])
-    @PatchMapping("/{itemId}")
+    @PutMapping("/{itemId}")
     fun updateRoomItem(
         @Parameter(description = "아이템 ID") @PathVariable("itemId") itemId: Long,
         @Valid @RequestBody request: UpdateRoomItemRequest,

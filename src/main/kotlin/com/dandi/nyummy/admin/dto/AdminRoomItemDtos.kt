@@ -9,7 +9,8 @@ import jakarta.validation.constraints.Size
 import java.time.Instant
 
 /**
- * 이름과 가격을 항상 함께 보낸다(전체 교체). 키를 빼도 null로 받으므로 [price]를 빼면 비매품이 된다.
+ * 마이룸 아이템 수정(PUT) 요청. 이름과 가격을 보낸 값으로 통째로 바꾸므로 둘 다 보낸다.
+ * Kotlin DTO는 키가 없는 것과 null을 구분하지 못해 [price]를 빼면 null로 받고, 비매품이 된다.
  *
  * @property price null이면 상점에서 팔지 않는 아이템(보상 전용)으로 바꾼다
  */
