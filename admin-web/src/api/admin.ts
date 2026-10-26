@@ -154,9 +154,9 @@ export function createRoomItem({ name, price, category, image }: CreateRoomItemI
   return request<AdminRoomItem>(`${PREFIX}/room-items`, { method: "POST", body });
 }
 
-/** 이름과 가격을 항상 함께 보낸다(서버가 전체 교체). price가 null이면 비매품으로 바뀐다. */
+/** 이름과 가격을 보낸 값으로 통째로 바꾼다(PUT). 둘 다 보내고, price가 null이면 비매품으로 바뀐다. */
 export const updateRoomItem = (itemId: number, name: string, price: number | null) =>
-  request<AdminRoomItem>(`${PREFIX}/room-items/${itemId}`, { method: "PATCH", body: JSON.stringify({ name, price }) });
+  request<AdminRoomItem>(`${PREFIX}/room-items/${itemId}`, { method: "PUT", body: JSON.stringify({ name, price }) });
 
 export function updateRoomItemImage(itemId: number, image: File) {
   const body = new FormData();
