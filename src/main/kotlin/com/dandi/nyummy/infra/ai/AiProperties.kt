@@ -10,4 +10,6 @@ class AiProperties(
     val baseUrl: String,
     val connectTimeout: Duration,
     val readTimeout: Duration,
+    val maxConnections: Int,
+    val connectionRequestTimeout: Duration,
 )
