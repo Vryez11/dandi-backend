@@ -13,4 +13,5 @@ enum class S3ErrorCode(override val status: HttpStatus, override val code: Strin
         "api.s3.objectReadFailed",
         "서버 리소스를 읽을 수 없습니다.",
     ),
+    OBJECT_UPLOAD_FAILED(HttpStatus.BAD_GATEWAY, "api.s3.objectUploadFailed", "파일을 저장하지 못했습니다. 다시 시도해 주세요."),
 }

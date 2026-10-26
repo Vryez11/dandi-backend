@@ -10,10 +10,12 @@ import aws.sdk.kotlin.services.s3.model.NotFound
 import aws.sdk.kotlin.services.s3.model.ObjectIdentifier
 import aws.sdk.kotlin.services.s3.model.PutObjectRequest
 import aws.sdk.kotlin.services.s3.model.PutObjectTaggingRequest
+import aws.sdk.kotlin.services.s3.model.S3Exception
 import aws.sdk.kotlin.services.s3.model.Tag
 import aws.sdk.kotlin.services.s3.model.Tagging
 import aws.sdk.kotlin.services.s3.presigners.presignGetObject
 import aws.sdk.kotlin.services.s3.presigners.presignPutObject
+import aws.smithy.kotlin.runtime.content.ByteStream
 import aws.smithy.kotlin.runtime.content.toByteArray
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.S3ErrorCode
@@ -133,6 +135,35 @@ class S3StorageClient(private val s3Client: S3Client, @Value("\${AWS_S3_BUCKET_N
                 }
             },
         )
+    }
+
+    /**
+     * 서버가 가진 바이트를 객체로 올린다.
+     *
+     * presigned 업로드와 달리 `status=temp` 태그를 붙이지 않으므로 라이프사이클 정리 대상이 아니다.
+     * 같은 키가 있으면 덮어쓴다(버킷 버전 관리로 이전 버전은 남는다).
+     *
+     * @param objectKey 업로드될 S3 객체 키
+     * @param bytes 객체 내용
+     * @param contentType 객체의 MIME 타입
+     * @param cacheControl 객체에 붙일 Cache-Control 헤더. CDN과 클라이언트가 이 값으로 캐시 기간을 정한다
+     * @throws BusinessException [S3ErrorCode.OBJECT_UPLOAD_FAILED] S3가 업로드를 거부했을 경우
+     */
+    suspend fun uploadObject(objectKey: String, bytes: ByteArray, contentType: String, cacheControl: String) {
+        val request = PutObjectRequest {
+            bucket = bucketName
+            key = objectKey
+            body = ByteStream.fromBytes(bytes)
+            this.contentType = contentType
+            this.cacheControl = cacheControl
+        }
+
+        try {
+            s3Client.putObject(request)
+        } catch (e: S3Exception) {
+            logger.error("S3 객체를 업로드하지 못했습니다: key={}", objectKey, e)
+            throw BusinessException(S3ErrorCode.OBJECT_UPLOAD_FAILED)
+        }
     }
 
     fun downloadText(key: String): String = runBlocking {
