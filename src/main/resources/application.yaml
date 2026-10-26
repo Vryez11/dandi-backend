@@ -170,6 +170,11 @@ app:
     base-url: "https://aiplatform.googleapis.com"
     connect-timeout: 5s
     read-timeout: 30s
+    # task당 Gemini 동시 호출 상한. 실사용 100 TPS(식사 기록 6.33건/s, 한 task 60%) × Stub 지연 p95 약 10.4초 ≈ 40 + 여유
+    max-connections: ${AI_MAX_CONNECTIONS:50}
+    # 풀이 찼을 때 연결을 기다리는 최대 시간. 넘으면 대기열에 쌓지 않고 바로 실패한다(분석 FAILED).
+    # 식사 기록 p95 기준 15초 − Gemini p95 약 10.4초 ≈ 4.6초 안으로 둔다. 길면 기다려 성공해도 기준을 넘고, + read-timeout 30초는 ALB 60초보다 짧아야 한다
+    connection-request-timeout: ${AI_CONNECTION_REQUEST_TIMEOUT:3s}
   app-link:
     base-url: "https://link.nyummy.co.kr"
     home-url: "/home"
