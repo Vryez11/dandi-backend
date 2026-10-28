@@ -9,6 +9,7 @@ import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.config.RewardBoxProperties
+import com.dandi.nyummy.meal.config.TutorialRewardBoxProperties
 import com.dandi.nyummy.meal.dto.CreateMealRequest
 import com.dandi.nyummy.meal.dto.RewardBoxResult
 import com.dandi.nyummy.meal.entity.Meal
@@ -68,6 +69,7 @@ class MealServiceTest {
             minPositiveMacroCount = 2,
             rewardBoxes = rewardBoxes,
             rewardMailTimeToLive = Duration.ofDays(7),
+            tutorialRewardBox = TutorialRewardBoxProperties(itemIds = listOf(2L, 3L), coinQuantity = 100),
         ),
         analysisFeedbackService = analysisFeedbackService,
         mealTransactionService = mealTransactionService,

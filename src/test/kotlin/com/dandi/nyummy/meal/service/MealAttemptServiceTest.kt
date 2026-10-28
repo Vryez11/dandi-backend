@@ -7,6 +7,7 @@ import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.config.RewardBoxProperties
+import com.dandi.nyummy.meal.config.TutorialRewardBoxProperties
 import com.dandi.nyummy.meal.repository.MealRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -43,6 +44,7 @@ class MealAttemptServiceTest {
             RewardBoxCategory.GOLD to RewardBoxProperties(rate = 20, minCoinQuantity = 350, maxCoinQuantity = 500),
         ),
         rewardMailTimeToLive = Duration.ofDays(7),
+        tutorialRewardBox = TutorialRewardBoxProperties(itemIds = listOf(2L, 3L), coinQuantity = 100),
     )
     private val mealAttemptService = MealAttemptService(mealRepository, mealProperties, clock)
 

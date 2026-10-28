@@ -169,6 +169,12 @@ app:
         min-coin-quantity: 10
         max-coin-quantity: 15
     reward-mail-time-to-live: 7d
+    # 튜토리얼 식사 보상 상자. 등급은 골드로 고정이고 만료되지 않는다. 아이템은 하나에 1개씩 넣는다.
+    # itemId는 items·room_items에 직접 넣은 행이다(default-room-items와 같다).
+    tutorial-reward-box:
+      # 호박 쿠션(침대), 스크래처 타워(기타)
+      item-ids: [2, 3]
+      coin-quantity: 100
   cat:
     weight-update-interval-days: 3
     weight-update-tolerance: 0.2
