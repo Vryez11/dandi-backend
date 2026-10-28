@@ -3,9 +3,11 @@ package com.dandi.nyummy.meal.service
 import com.dandi.nyummy.exception.BusinessException
 import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.MealErrorCode
+import com.dandi.nyummy.exception.errorcode.UserErrorCode
 import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
+import com.dandi.nyummy.mail.entity.Mail
 import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.mail.service.MailService
 import com.dandi.nyummy.meal.config.MealProperties
@@ -16,6 +18,7 @@ import com.dandi.nyummy.meal.dto.RewardBoxResult
 import com.dandi.nyummy.meal.entity.Meal
 import com.dandi.nyummy.meal.enum.MealStatus
 import com.dandi.nyummy.meal.repository.MealRepository
+import com.dandi.nyummy.user.entity.Profile
 import com.dandi.nyummy.user.repository.ProfileRepository
 import io.mockk.Runs
 import io.mockk.every
@@ -33,7 +36,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-/** createMeal의 검사·확정 순서와 mealAt 결정만 다룬다. 하루 정책 자체는 MealAttemptServiceTest가 맡는다. */
+/**
+ * createMeal의 검사·확정 순서와 mealAt 결정, createTutorialMeal의 완료 기록과 보상 상자 우편을 다룬다.
+ * 하루 정책 자체는 MealAttemptServiceTest가 맡는다.
+ */
 class MealServiceTest {
 
     private val now = Instant.parse("2026-10-10T03:00:00Z")
@@ -190,5 +196,63 @@ class MealServiceTest {
         assertBusinessException(MealErrorCode.STALE_IMAGE) { mealService.createMeal(userId, request) }
         verify(exactly = 0) { mealTransactionService.createMeal(any(), any(), any()) }
         verify(exactly = 0) { analysisService.analyzeNutrition(any()) }
+    }
+
+    // createTutorialMeal
+
+    private fun givenProfile(tutorialCompletedAt: Instant? = null): Profile {
+        val profile = Profile(userId = userId).apply { this.tutorialCompletedAt = tutorialCompletedAt }
+        every { profileRepository.findProfileWithLockByUserId(userId) } returns profile
+        every { mailService.createRewardBoxMail(any(), any(), any(), any(), any(), any()) } returns mockk<Mail>()
+        return profile
+    }
+
+    @Test
+    fun `튜토리얼 식사를 만들면 완료 시각을 기록하고 골드 상자 우편을 만든다`() {
+        val profile = givenProfile()
+
+        mealService.createTutorialMeal(userId)
+
+        assertEquals(now, profile.tutorialCompletedAt)
+        verify(exactly = 1) {
+            mailService.createRewardBoxMail(
+                userId = userId,
+                rewardBoxCategory = RewardBoxCategory.GOLD,
+                coinQuantity = 100,
+                content = "첫 기록 보상",
+                expiresAt = null,
+                itemIds = listOf(2L, 3L),
+            )
+        }
+    }
+
+    @Test
+    fun `이미 튜토리얼을 완료했으면 tutorialAlreadyCompleted 예외를 던지고 우편을 만들지 않는다`() {
+        val completedAt = now.minus(Duration.ofDays(1))
+        val profile = givenProfile(tutorialCompletedAt = completedAt)
+
+        assertBusinessException(MealErrorCode.TUTORIAL_ALREADY_COMPLETED) { mealService.createTutorialMeal(userId) }
+
+        assertEquals(completedAt, profile.tutorialCompletedAt)
+        verify(exactly = 0) { mailService.createRewardBoxMail(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `프로필이 없으면 PROFILE_NOT_FOUND 예외를 던진다`() {
+        every { profileRepository.findProfileWithLockByUserId(userId) } returns null
+
+        assertBusinessException(UserErrorCode.PROFILE_NOT_FOUND) { mealService.createTutorialMeal(userId) }
+
+        verify(exactly = 0) { mailService.createRewardBoxMail(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `튜토리얼 식사는 식사 기록을 저장하지 않는다`() {
+        givenProfile()
+
+        mealService.createTutorialMeal(userId)
+
+        verify(exactly = 0) { mealRepository.save(any()) }
+        verify(exactly = 0) { mealTransactionService.createMeal(any(), any(), any()) }
     }
 }
