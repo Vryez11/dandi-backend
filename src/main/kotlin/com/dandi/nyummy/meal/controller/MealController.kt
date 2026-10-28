@@ -125,6 +125,21 @@ class MealController(
         mealService.createMeal(user.userId, request)
 
     @Operation(
+        summary = "튜토리얼 식사 생성",
+        description = "튜토리얼 식사를 기록하고 보상 상자 우편을 하나 만든다. 요청 본문은 없다. " +
+            "식사 기록은 남지 않아 기록 조회·연속 기록·오늘 식사 현황·하루 기록 횟수에 들어가지 않는다. " +
+            "보상은 만료되지 않는 골드 상자이고, 상자에 든 아이템과 코인은 우편을 받을 때 알 수 있다. " +
+            "사용자당 한 번만 성공하며, 완료 여부는 홈 조회 API의 user.isTutorialCompleted로 확인한다.",
+    )
+    @ApiResponse(responseCode = "204", description = "생성 성공")
+    @ApiErrorCodes(meal = [MealErrorCode.TUTORIAL_ALREADY_COMPLETED])
+    @PostMapping("/tutorial")
+    fun createTutorialMeal(@CurrentUser user: AuthUser): ResponseEntity<Void> {
+        mealService.createTutorialMeal(user.userId)
+        return ResponseEntity.noContent().build()
+    }
+
+    @Operation(
         summary = "영양 분석 상태 조회",
         description = "식사의 영양 분석 상태를 조회한다. " +
             "UNKNOWN은 enum에 정의만 되어 있고 현재 서버가 내려주지 않는다. " +

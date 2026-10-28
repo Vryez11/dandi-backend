@@ -7,6 +7,7 @@ import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.room.service.RoomService
 import com.dandi.nyummy.streak.dto.StreakResponse
 import com.dandi.nyummy.streak.service.StreakService
+import com.dandi.nyummy.user.service.UserService
 import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test
@@ -23,6 +24,7 @@ class HomeServiceTest {
     private val roomService = mockk<RoomService>()
     private val coinService = mockk<CoinService>()
     private val streakService = mockk<StreakService>()
+    private val userService = mockk<UserService>()
 
     private val homeService = HomeService(
         mealService = mealService,
@@ -30,6 +32,7 @@ class HomeServiceTest {
         roomService = roomService,
         coinService = coinService,
         streakService = streakService,
+        userService = userService,
     )
 
     init {
@@ -43,6 +46,24 @@ class HomeServiceTest {
             todayTargetCalory = 2000,
         )
         every { roomService.getEquippedRoomItems(userId) } returns emptyList()
+        every { userService.isTutorialCompleted(userId) } returns false
+    }
+
+    // getHome — user
+
+    @Test
+    fun `튜토리얼을 마쳤으면 사용자 정보에 완료로 담는다`() {
+        every { mailService.existsNotClaimedMail(userId) } returns false
+        every { userService.isTutorialCompleted(userId) } returns true
+
+        assertTrue(homeService.getHome(userId).user.isTutorialCompleted)
+    }
+
+    @Test
+    fun `튜토리얼을 마치지 않았으면 사용자 정보에 미완료로 담는다`() {
+        every { mailService.existsNotClaimedMail(userId) } returns false
+
+        assertFalse(homeService.getHome(userId).user.isTutorialCompleted)
     }
 
     // getHome — streak

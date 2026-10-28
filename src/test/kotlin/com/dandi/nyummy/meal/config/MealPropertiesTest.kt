@@ -20,6 +20,7 @@ class MealPropertiesTest {
         minPositiveMacroCount = 2,
         rewardBoxes = rewardBoxes,
         rewardMailTimeToLive = Duration.ofDays(7),
+        tutorialRewardBox = TutorialRewardBoxProperties(itemIds = listOf(2L, 3L), coinQuantity = 100),
     )
 
     // rewardBoxes

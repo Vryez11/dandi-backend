@@ -93,6 +93,14 @@ class UserService(
     }
 
     /**
+     * 튜토리얼을 마쳤는지 확인한다. 홈에서 튜토리얼을 띄울지 정하는 데 쓴다.
+     *
+     * @throws BusinessException [UserErrorCode.PROFILE_NOT_FOUND] 프로필이 없는 경우
+     */
+    @Transactional(readOnly = true)
+    fun isTutorialCompleted(userId: Long): Boolean = getProfile(userId).isTutorialCompleted
+
+    /**
      * 프로필은 가입 시 함께 생성되므로 없으면 데이터 정합성 문제다. 로그를 남기고 끊는다.
      *
      * @throws BusinessException [UserErrorCode.PROFILE_NOT_FOUND] 프로필이 없는 경우
