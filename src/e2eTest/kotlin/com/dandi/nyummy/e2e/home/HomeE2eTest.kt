@@ -6,6 +6,7 @@ import io.restassured.module.kotlin.extensions.Extract
 import io.restassured.module.kotlin.extensions.Given
 import io.restassured.module.kotlin.extensions.Then
 import io.restassured.module.kotlin.extensions.When
+import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.hasItems
 import org.hamcrest.Matchers.instanceOf
 import org.hamcrest.Matchers.oneOf
@@ -27,7 +28,9 @@ class HomeE2eTest {
                 "keySet()",
                 hasItems("user", "streak", "todayMealSummary", "hasMailboxBadge", "equippedRoomItems"),
             )
-            body("user.keySet()", hasItems("coin"))
+            body("user.keySet()", hasItems("coin", "isTutorialCompleted"))
+            // 고정 계정은 튜토리얼 배포 전에 가입해 마이그레이션이 완료로 채웠다.
+            body("user.isTutorialCompleted", equalTo(true))
             body("streak.keySet()", hasItems("streakDays", "recordsUntilNextReward"))
             body(
                 "todayMealSummary.keySet()",

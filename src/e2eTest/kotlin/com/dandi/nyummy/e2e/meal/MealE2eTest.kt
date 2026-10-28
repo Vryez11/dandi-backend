@@ -255,6 +255,25 @@ class MealE2eTest {
         assertEquals(0, days.size % 7, "캘린더 칸 수가 주 단위가 아닙니다: ${days.size}")
     }
 
+    // 고정 계정은 튜토리얼 배포 전에 가입해 마이그레이션이 완료로 채웠으므로 항상 거부된다.
+    // 성공 경로는 사용자당 한 번뿐이라 고정 계정으로 반복해 돌릴 수 없어 단위 테스트(MealServiceTest)가 맡는다.
+    @Test
+    fun `이미 튜토리얼을 마친 사용자는 튜토리얼 식사를 다시 만들 수 없다`() {
+        val latestMailIdBefore = getLatestMailId()
+
+        Given {
+            spec(RequestSpecs.createAuthorizedSpec())
+        } When {
+            post("/api/v1/meals/tutorial")
+        } Then {
+            statusCode(409)
+            body("code", equalTo("api.meal.tutorialAlreadyCompleted"))
+        }
+
+        // 거부됐어도 보상 상자 우편이 먼저 만들어졌을 수 있으므로 가장 최근 우편이 그대로인지 본다.
+        assertEquals(latestMailIdBefore, getLatestMailId(), "튜토리얼 거부 후 새 우편이 생겼습니다")
+    }
+
     // 분석은 생성 요청 안에서 동기로 끝나므로 응답의 상태가 최종 결과다.
     // 기록 보상으로 보낸 상자의 등급도 함께 온다. 상자에 든 코인 수는 응답에 없다.
     private fun createMeal(imageKey: String): CreateMealResponse = Given {
@@ -311,6 +330,18 @@ class MealE2eTest {
         body("status", oneOf("COMPLETED", "FAILED"))
     } Extract {
         path("status")
+    }
+
+    // 우편 목록은 최신순이라 첫 우편이 가장 최근 우편이다. 우편이 하나도 없으면 null이다.
+    private fun getLatestMailId(): Long? = Given {
+        spec(RequestSpecs.createAuthorizedSpec())
+        queryParam("size", 1)
+    } When {
+        get("/api/v1/mails")
+    } Then {
+        statusCode(200)
+    } Extract {
+        jsonPath().get<Number?>("mails[0].mailId")?.toLong()
     }
 
     private data class TodayMealSummary(val recordedCount: Int, val attemptCount: Int)
