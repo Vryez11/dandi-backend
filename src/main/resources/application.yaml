@@ -128,24 +128,13 @@ app:
   room:
     # 가입할 때 장착한 채로 지급하는 기본 아이템. itemId는 items·room_items에 직접 넣은 행이다.
     # 값을 바꾸면 새로 가입하는 사용자부터 적용되고, 이미 지급한 아이템은 그대로다.
+    # 호박 쿠션·스크래처 타워는 가입 때 주지 않고 튜토리얼 보상 상자(app.meal.tutorial-reward-box)로 준다.
     default-room-items:
       # 줄무늬 원목 방(배경). 배경은 항상 원점·원본 크기·맨 뒤다.
       - item-id: 1
         x: 0.0
         y: 0.0
         z-index: 0
-        scale: 1.0
-      # 호박 쿠션(침대)
-      - item-id: 2
-        x: 27.0
-        y: 22.0
-        z-index: 2
-        scale: 0.8
-      # 스크래처 타워(기타)
-      - item-id: 3
-        x: 76.0
-        y: 24.0
-        z-index: 1
         scale: 1.0
   meal:
     max-daily-count: 10
