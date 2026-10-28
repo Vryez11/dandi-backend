@@ -7,6 +7,7 @@ import com.dandi.nyummy.meal.service.MealService
 import com.dandi.nyummy.room.service.RoomService
 import com.dandi.nyummy.streak.service.StreakService
 import com.dandi.nyummy.user.dto.HomeUserResponse
+import com.dandi.nyummy.user.service.UserService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -17,6 +18,7 @@ class HomeService(
     private val roomService: RoomService,
     private val coinService: CoinService,
     private val streakService: StreakService,
+    private val userService: UserService,
 ) {
     /**
      * 홈 화면에 필요한 값을 도메인별로 모아 반환한다.
@@ -28,18 +30,19 @@ class HomeService(
      * 그 사이에 기록이 바뀌어 화면 안에서 어긋난 값이 보일 수 있다.
      *
      * @param userId 조회하는 사용자 ID
-     * @return 코인·연속 기록·오늘 식사 현황·우편함 배지 여부·마이룸 장착 아이템을 담은 [HomeResponse]
+     * @return 코인·튜토리얼 완료 여부·연속 기록·오늘 식사 현황·우편함 배지 여부·마이룸 장착 아이템을 담은 [HomeResponse]
      */
     @Transactional(readOnly = true)
     fun getHome(userId: Long): HomeResponse {
         val coin = coinService.getBalance(userId)
+        val isTutorialCompleted = userService.isTutorialCompleted(userId)
         val streak = streakService.getStreak(userId)
         val todayMealSummary = mealService.getTodayMealSummary(userId)
         val hasMailboxBadge = mailService.existsNotClaimedMail(userId)
         val equippedRoomItems = roomService.getEquippedRoomItems(userId)
 
         val response = HomeResponse(
-            user = HomeUserResponse(coin = coin),
+            user = HomeUserResponse(coin = coin, isTutorialCompleted = isTutorialCompleted),
             streak = streak,
             todayMealSummary = todayMealSummary,
             hasMailboxBadge = hasMailboxBadge,

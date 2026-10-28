@@ -26,7 +26,7 @@ data class UserResponse(
     val dinnerHour: Int?,
 )
 
-data class HomeUserResponse(val coin: Int)
+data class HomeUserResponse(val coin: Int, val isTutorialCompleted: Boolean)
 
 data class UpdatePasswordRequest(
     @field:NotBlank
