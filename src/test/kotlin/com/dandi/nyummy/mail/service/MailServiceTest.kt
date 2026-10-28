@@ -8,6 +8,7 @@ import com.dandi.nyummy.exception.errorcode.ErrorCode
 import com.dandi.nyummy.exception.errorcode.MailErrorCode
 import com.dandi.nyummy.mail.dto.MailItemResult
 import com.dandi.nyummy.mail.entity.Mail
+import com.dandi.nyummy.mail.entity.MailItem
 import com.dandi.nyummy.mail.enum.MailCategory
 import com.dandi.nyummy.mail.enum.RewardBoxCategory
 import com.dandi.nyummy.mail.repository.MailItemRepository
@@ -137,6 +138,60 @@ class MailServiceTest {
         assertEquals(expiresAt, savedMail.captured.expiresAt)
         assertNull(savedMail.captured.representativeItemId)
         assertFalse(savedMail.captured.isClaimed)
+    }
+
+    @Test
+    fun `아이템을 넣으면 우편 id로 아이템을 하나씩 저장한다`() {
+        every { mailRepository.save(any()) } answers {
+            firstArg<Mail>().apply { ReflectionTestUtils.setField(this, "id", mailId) }
+        }
+        val savedMailItems = slot<List<MailItem>>()
+        every { mailItemRepository.saveAll(capture(savedMailItems)) } answers { firstArg() }
+
+        mailService.createRewardBoxMail(
+            userId = userId,
+            rewardBoxCategory = RewardBoxCategory.GOLD,
+            coinQuantity = 100,
+            content = "첫 기록 보상",
+            expiresAt = null,
+            itemIds = listOf(2L, 3L),
+        )
+
+        assertEquals(listOf(mailId, mailId), savedMailItems.captured.map { it.mailId })
+        assertEquals(listOf(2L, 3L), savedMailItems.captured.map { it.itemId })
+        assertEquals(listOf(1, 1), savedMailItems.captured.map { it.quantity })
+    }
+
+    @Test
+    fun `아이템이 없으면 우편 아이템을 저장하지 않는다`() {
+        every { mailRepository.save(any()) } answers { firstArg() }
+
+        mailService.createRewardBoxMail(
+            userId = userId,
+            rewardBoxCategory = RewardBoxCategory.BRONZE,
+            coinQuantity = 3,
+            content = "식사 기록 보상",
+            expiresAt = expiresAt,
+        )
+
+        verify(exactly = 0) { mailItemRepository.saveAll(any<List<MailItem>>()) }
+    }
+
+    @Test
+    fun `만료 시각 없이 우편을 만든다`() {
+        val savedMail = slot<Mail>()
+        every { mailRepository.save(capture(savedMail)) } answers { firstArg() }
+
+        mailService.createRewardBoxMail(
+            userId = userId,
+            rewardBoxCategory = RewardBoxCategory.GOLD,
+            coinQuantity = 100,
+            content = "첫 기록 보상",
+            expiresAt = null,
+        )
+
+        assertNull(savedMail.captured.expiresAt)
+        assertFalse(savedMail.captured.isExpired(Instant.MAX))
     }
 
     // getMails
