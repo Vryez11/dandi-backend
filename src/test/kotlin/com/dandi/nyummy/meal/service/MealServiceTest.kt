@@ -7,6 +7,7 @@ import com.dandi.nyummy.image.dto.UploadedImageResult
 import com.dandi.nyummy.image.enum.ImagePurpose
 import com.dandi.nyummy.image.service.ImageService
 import com.dandi.nyummy.mail.enum.RewardBoxCategory
+import com.dandi.nyummy.mail.service.MailService
 import com.dandi.nyummy.meal.config.MealProperties
 import com.dandi.nyummy.meal.config.RewardBoxProperties
 import com.dandi.nyummy.meal.config.TutorialRewardBoxProperties
@@ -54,6 +55,7 @@ class MealServiceTest {
     private val analysisFeedbackService = mockk<AnalysisFeedbackService>()
     private val mealTransactionService = mockk<MealTransactionService>()
     private val random = mockk<Random>()
+    private val mailService = mockk<MailService>()
 
     private val mealService = MealService(
         analysisService = analysisService,
@@ -74,6 +76,7 @@ class MealServiceTest {
         analysisFeedbackService = analysisFeedbackService,
         mealTransactionService = mealTransactionService,
         random = random,
+        mailService = mailService,
     )
 
     private val savedMeal = slot<Meal>()
