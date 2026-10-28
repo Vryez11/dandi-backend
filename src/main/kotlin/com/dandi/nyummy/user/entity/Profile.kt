@@ -63,12 +63,18 @@ class Profile(
     @Column(name = "marketing_agreed_at")
     var marketingAgreedAt: Instant? = null
 
+    @Column(name = "tutorial_completed_at")
+    var tutorialCompletedAt: Instant? = null
+
     @LastModifiedDate
     @Column(name = "updated_at")
     var updatedAt: Instant? = null
 
     @Column(name = "last_login_at")
     val lastLoginAt: Instant? = null
+
+    val isTutorialCompleted: Boolean
+        get() = tutorialCompletedAt != null
 
     fun updateServicePushEnabled(isServicePushEnabled: Boolean) {
         this.isServicePushEnabled = isServicePushEnabled
@@ -84,6 +90,10 @@ class Profile(
         }
 
         this.isMarketingPushEnabled = isMarketingPushEnabled
+    }
+
+    fun updateTutorialCompletedAt(tutorialCompletedAt: Instant) {
+        this.tutorialCompletedAt = tutorialCompletedAt
     }
 
     fun updateMealTime(breakfastHour: Int?, lunchHour: Int?, dinnerHour: Int?) {
